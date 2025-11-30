@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import svgPaths from "../imports/svg-y4ms3lw2z2";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { AddTaskModal } from "./AddTaskModal";
@@ -56,6 +56,8 @@ export function TodoApp() {
   const [selectedList, setSelectedList] = useState<ListItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
+  const completionTimeouts = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -121,6 +123,14 @@ export function TodoApp() {
     loadData();
   }, []);
 
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      completionTimeouts.current.forEach(timeout => clearTimeout(timeout));
+      completionTimeouts.current.clear();
+    };
+  }, []);
+
   const handleSelectList = (list: ListItem) => {
     setSelectedList(list);
     setCurrentPage("listDetail");
@@ -165,6 +175,11 @@ export function TodoApp() {
     const todo = todos.find(t => t.id === id);
     if (!todo) return;
     
+    // Check if this is a today task being completed
+    const isTodayTask = todo.deadline && 
+      new Date(todo.deadline.date).toDateString() === new Date().toDateString();
+    const isCompleting = !todo.completed;
+    
     if (!todo.completed && todo.deadline?.recurring) {
       // Task is being completed and has recurring setting
       // Create a new recurring instance with the next deadline
@@ -194,7 +209,7 @@ export function TodoApp() {
         const newTask = await createTask(newRecurringTodo);
         const newAppTodo = dbTodoToDisplayTodo(newTask);
         
-        setTodos([
+        const updatedTodos = [
           ...todos.map((t) => {
             if (t.id === id) {
               return dbTodoToDisplayTodo(updatedTodo);
@@ -202,7 +217,23 @@ export function TodoApp() {
             return t;
           }),
           newAppTodo
-        ]);
+        ];
+        
+        setTodos(updatedTodos);
+        
+        // If it's a today task, show it as completed for 1 second
+        if (isTodayTask && isCompleting) {
+          setRecentlyCompleted(prev => new Set(prev).add(id));
+          const timeout = setTimeout(() => {
+            setRecentlyCompleted(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(id);
+              return newSet;
+            });
+            completionTimeouts.current.delete(id);
+          }, 1000);
+          completionTimeouts.current.set(id, timeout);
+        }
       } catch (error) {
         console.error('Error toggling recurring task:', error);
       }
@@ -224,6 +255,32 @@ export function TodoApp() {
             return t;
           })
         );
+        
+        // If it's a today task being completed, show it as completed for 1 second
+        if (isTodayTask && isCompleting) {
+          setRecentlyCompleted(prev => new Set(prev).add(id));
+          const timeout = setTimeout(() => {
+            setRecentlyCompleted(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(id);
+              return newSet;
+            });
+            completionTimeouts.current.delete(id);
+          }, 1000);
+          completionTimeouts.current.set(id, timeout);
+        } else if (isTodayTask && !isCompleting) {
+          // If uncompleting, remove from recently completed immediately
+          setRecentlyCompleted(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(id);
+            return newSet;
+          });
+          const timeout = completionTimeouts.current.get(id);
+          if (timeout) {
+            clearTimeout(timeout);
+            completionTimeouts.current.delete(id);
+          }
+        }
       } catch (error) {
         console.error('Error toggling task:', error);
       }
@@ -375,7 +432,14 @@ export function TodoApp() {
     if (!todo.deadline) return false;
     const today = new Date();
     const taskDate = todo.deadline.date;
-    return taskDate.toDateString() === today.toDateString();
+    const isToday = taskDate.toDateString() === today.toDateString();
+    
+    if (!isToday) return false;
+    
+    // Show task if:
+    // 1. It's not completed, OR
+    // 2. It was recently completed (within 1 second)
+    return !todo.completed || recentlyCompleted.has(todo.id);
   });
 
   const getListById = (listId?: number) => {
@@ -460,10 +524,14 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             
             {/* Todo List */}
             <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
-              {todayTasks.map((todo) => (
+              {todayTasks.map((todo) => {
+                const isRecentlyCompleted = recentlyCompleted.has(todo.id);
+                return (
                 <div
                   key={todo.id}
-                  className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+                  className={`content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer transition-opacity duration-1000 ${
+                    isRecentlyCompleted ? 'opacity-100' : 'opacity-100'
+                  }`}
                   onClick={() => handleTaskClick(todo)}
                 >
                   {/* Task Name Row */}
@@ -597,7 +665,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                     })()}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
