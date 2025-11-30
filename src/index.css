@@ -91,6 +91,12 @@
     padding: 0;
   }
 
+  /* PWA specific styles */
+  html {
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior-y: none;
+  }
+
   html, :host {
     -webkit-text-size-adjust: 100%;
     tab-size: 4;
