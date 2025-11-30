@@ -18,6 +18,14 @@ interface ListItem {
   isShared: boolean;
 }
 
+interface ListItem {
+  id: number;
+  name: string;
+  color: string;
+  count: number;
+  isShared: boolean;
+}
+
 interface ListDetailProps {
   listId: number;
   listName: string;
@@ -30,13 +38,16 @@ interface ListDetailProps {
   onUpdateList: (listId: number, listName: string, isShared: boolean, color: string) => void;
   onDeleteList: (listId: number) => void;
   onTaskClick?: (task: Todo) => void;
+  lists?: ListItem[];
 }
 
-export function ListDetail({ listId, listName, listColor, isShared, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList, onTaskClick }: ListDetailProps) {
+export function ListDetail({ listId, listName, listColor, isShared, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList, onTaskClick, lists = [] }: ListDetailProps) {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
 
-  const handleAddTask = (taskText: string) => {
+  const handleAddTask = (taskText: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => {
+    // onAddTask from parent expects just taskText and already knows the listId
+    // The listId from the modal will be the current list (via defaultListId)
     onAddTask(taskText);
     setIsAddTaskModalOpen(false);
   };
@@ -183,6 +194,8 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
             isOpen={isAddTaskModalOpen}
             onClose={() => setIsAddTaskModalOpen(false)}
             onAddTask={handleAddTask}
+            defaultListId={listId}
+            lists={lists}
           />
           <AddListModal
             isOpen={isEditListModalOpen}

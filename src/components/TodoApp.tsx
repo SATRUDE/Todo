@@ -694,6 +694,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onUpdateList={updateList}
           onDeleteList={deleteList}
           onTaskClick={handleTaskClick}
+          lists={lists}
         />
       ) : null}
 

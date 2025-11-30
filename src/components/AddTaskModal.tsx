@@ -1,4 +1,5 @@
 import { useState, KeyboardEvent, useEffect } from "react";
+import { createPortal } from "react-dom";
 import svgPaths from "../imports/svg-p3zv31caxs";
 import generateSvgPaths from "../imports/svg-gf1ry58lrd";
 import { SelectListModal } from "./SelectListModal";
@@ -17,9 +18,10 @@ interface AddTaskModalProps {
   onClose: () => void;
   onAddTask: (task: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => void;
   lists?: ListItem[];
+  defaultListId?: number;
 }
 
-export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [] }: AddTaskModalProps) {
+export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultListId }: AddTaskModalProps) {
   const getDefaultDeadline = () => {
     const today = new Date();
     return { date: today, time: "", recurring: undefined };
@@ -28,9 +30,21 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [] }: AddTask
   const [taskInput, setTaskInput] = useState("");
   const [isSelectListOpen, setIsSelectListOpen] = useState(false);
   const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
-  const [selectedListId, setSelectedListId] = useState<number | null>(null);
+  const [selectedListId, setSelectedListId] = useState<number | null>(defaultListId || null);
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(getDefaultDeadline());
   const [isBulkAddMode, setIsBulkAddMode] = useState(false);
+
+  // Update selectedListId when defaultListId changes or modal opens
+  useEffect(() => {
+    if (isOpen && defaultListId !== undefined) {
+      setSelectedListId(defaultListId);
+    } else if (!isOpen) {
+      // Reset when modal closes
+      setSelectedListId(defaultListId || null);
+      setTaskInput("");
+      setDeadline(getDefaultDeadline());
+    }
+  }, [isOpen, defaultListId]);
 
   const handleSubmit = async () => {
     if (taskInput.trim() !== "") {
@@ -143,8 +157,8 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [] }: AddTask
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[10001] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+  return createPortal(
+    <div className="fixed inset-0 z-[10001] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10001 }}>
       {/* Backdrop */}
       <div 
         className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
@@ -325,6 +339,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [] }: AddTask
         onClearDeadline={() => setDeadline(null)}
         currentDeadline={deadline}
       />
-    </div>
+    </div>,
+    document.body
   );
 }
