@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent } from "react";
+import { useState, KeyboardEvent, useEffect } from "react";
 import svgPaths from "../imports/svg-p3zv31caxs";
 import generateSvgPaths from "../imports/svg-gf1ry58lrd";
 import { SelectListModal } from "./SelectListModal";
@@ -111,13 +111,25 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [] }: AddTask
     onClose();
   };
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] pointer-events-none">
+    <div className="fixed inset-0 z-[9999] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black bg-opacity-50 pointer-events-auto"
+        className="absolute inset-0 bg-black/60 pointer-events-auto backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
       
