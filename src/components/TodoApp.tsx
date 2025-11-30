@@ -1,10 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import svgPaths from "../imports/svg-y4ms3lw2z2";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { AddTaskModal } from "./AddTaskModal";
 import { TaskDetailModal } from "./TaskDetailModal";
 import { Lists } from "./Lists";
 import { ListDetail } from "./ListDetail";
+import { 
+  fetchTasks, 
+  createTask, 
+  updateTask as updateTaskDb, 
+  deleteTask as deleteTaskDb,
+  fetchLists,
+  createList,
+  updateList as updateListDb,
+  deleteList as deleteListDb,
+  dbTodoToDisplayTodo
+} from "../lib/database";
 
 interface Todo {
   id: number;
@@ -36,17 +47,67 @@ const TODAY_LIST_ID = 0;
 const listColors = ["#0B64F9", "#00C853", "#EF4123", "#FF6D00", "#FA8072"];
 
 export function TodoApp() {
-  const [todos, setTodos] = useState<Todo[]>([
-    { id: 1, text: "Task name", completed: false, time: "9:00", group: "Group", listId: TODAY_LIST_ID },
-    { id: 2, text: "Task name", completed: false, time: "9:00", group: "Group", listId: TODAY_LIST_ID },
-    { id: 3, text: "Task name", completed: false, time: "9:00", group: "Group", listId: TODAY_LIST_ID },
-  ]);
+  const [todos, setTodos] = useState<Todo[]>([]);
   const [lists, setLists] = useState<ListItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Todo | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("today");
   const [selectedList, setSelectedList] = useState<ListItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+
+  // Load data from Supabase on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setConnectionError(null);
+        
+        // Check if Supabase is configured
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        
+        if (!supabaseUrl || !supabaseKey) {
+          setConnectionError('Supabase not configured. Please create a .env file with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+          setLoading(false);
+          return;
+        }
+        
+        const [tasksData, listsData] = await Promise.all([
+          fetchTasks(),
+          fetchLists()
+        ]);
+        
+        // Convert database format to app format
+        const appTodos = tasksData.map(dbTodoToDisplayTodo);
+        const appLists = listsData.map(list => ({
+          id: list.id,
+          name: list.name,
+          color: list.color,
+          count: 0, // Will be calculated
+          isShared: list.is_shared,
+        }));
+        
+        setTodos(appTodos);
+        setLists(appLists);
+      } catch (error: any) {
+        console.error('Error loading data:', error);
+        
+        if (error.message?.includes('Invalid API key') || error.message?.includes('JWT')) {
+          setConnectionError('Invalid Supabase credentials. Please check your .env file.');
+        } else if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
+          setConnectionError('Connected to Supabase, but tables not found. Please run the SQL schema from supabase-schema.sql in your Supabase SQL Editor.');
+        } else {
+          setConnectionError(`Connection error: ${error.message || 'Failed to connect to Supabase'}`);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const handleSelectList = (list: ListItem) => {
     setSelectedList(list);
@@ -88,15 +149,16 @@ export function TodoApp() {
     return nextDate;
   };
 
-  const toggleTodo = (id: number) => {
+  const toggleTodo = async (id: number) => {
     const todo = todos.find(t => t.id === id);
+    if (!todo) return;
     
-    if (todo && !todo.completed && todo.deadline?.recurring) {
+    if (!todo.completed && todo.deadline?.recurring) {
       // Task is being completed and has recurring setting
       // Create a new recurring instance with the next deadline
       const nextDate = getNextRecurringDate(todo.deadline.date, todo.deadline.recurring);
       const newRecurringTodo: Todo = {
-        id: Date.now() + 1, // Ensure unique ID
+        id: Date.now() + 1, // Temporary ID, will be replaced by database
         text: todo.text,
         completed: false,
         time: todo.deadline.time,
@@ -108,40 +170,57 @@ export function TodoApp() {
         }
       };
       
-      setTodos([
-        ...todos.map((t) => {
-          if (t.id === id) {
-            return {
-              ...t,
-              completed: true,
-              listId: COMPLETED_LIST_ID
-            };
-          }
-          return t;
-        }),
-        newRecurringTodo
-      ]);
+      try {
+        // Update current task to completed
+        const updatedTodo = await updateTaskDb(id, {
+          ...todo,
+          completed: true,
+          listId: COMPLETED_LIST_ID
+        });
+        
+        // Create new recurring task
+        const newTask = await createTask(newRecurringTodo);
+        const newAppTodo = dbTodoToDisplayTodo(newTask);
+        
+        setTodos([
+          ...todos.map((t) => {
+            if (t.id === id) {
+              return dbTodoToDisplayTodo(updatedTodo);
+            }
+            return t;
+          }),
+          newAppTodo
+        ]);
+      } catch (error) {
+        console.error('Error toggling recurring task:', error);
+      }
     } else {
       // Normal toggle behavior
-      setTodos(
-        todos.map((todo) => {
-          if (todo.id === id) {
-            const newCompleted = !todo.completed;
-            return {
-              ...todo,
-              completed: newCompleted,
-              listId: newCompleted ? COMPLETED_LIST_ID : todo.listId
-            };
-          }
-          return todo;
-        })
-      );
+      try {
+        const newCompleted = !todo.completed;
+        const updatedTodo = await updateTaskDb(id, {
+          ...todo,
+          completed: newCompleted,
+          listId: newCompleted ? COMPLETED_LIST_ID : todo.listId
+        });
+        
+        setTodos(
+          todos.map((t) => {
+            if (t.id === id) {
+              return dbTodoToDisplayTodo(updatedTodo);
+            }
+            return t;
+          })
+        );
+      } catch (error) {
+        console.error('Error toggling task:', error);
+      }
     }
   };
 
-  const addNewTask = (taskText: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => {
+  const addNewTask = async (taskText: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => {
     const newTodo: Todo = {
-      id: Date.now(),
+      id: Date.now(), // Temporary ID
       text: taskText,
       completed: false,
       time: deadline?.time,
@@ -149,78 +228,126 @@ export function TodoApp() {
       listId: listId !== undefined ? listId : TODAY_LIST_ID,
       deadline: deadline,
     };
-    setTodos([...todos, newTodo]);
+    
+    try {
+      const createdTask = await createTask(newTodo);
+      const appTodo = dbTodoToDisplayTodo(createdTask);
+      setTodos([...todos, appTodo]);
+    } catch (error) {
+      console.error('Error adding task:', error);
+    }
   };
 
-  const addNewTaskToList = (taskText: string, listId: number) => {
+  const addNewTaskToList = async (taskText: string, listId: number) => {
     const newTodo: Todo = {
-      id: Date.now(),
+      id: Date.now(), // Temporary ID
       text: taskText,
       completed: false,
       time: "9:00",
       listId: listId,
     };
-    setTodos([...todos, newTodo]);
+    
+    try {
+      const createdTask = await createTask(newTodo);
+      const appTodo = dbTodoToDisplayTodo(createdTask);
+      setTodos([...todos, appTodo]);
+    } catch (error) {
+      console.error('Error adding task to list:', error);
+    }
   };
 
-  const addNewList = (listName: string, isShared: boolean, color: string) => {
-    const newList: ListItem = {
-      id: Date.now(),
-      name: listName,
-      color: color,
-      count: 0,
-      isShared: isShared,
-    };
-    setLists([...lists, newList]);
+  const addNewList = async (listName: string, isShared: boolean, color: string) => {
+    try {
+      const createdList = await createList({ name: listName, color, isShared });
+      const appList: ListItem = {
+        id: createdList.id,
+        name: createdList.name,
+        color: createdList.color,
+        count: 0,
+        isShared: createdList.is_shared,
+      };
+      setLists([...lists, appList]);
+    } catch (error) {
+      console.error('Error adding list:', error);
+    }
   };
 
-  const updateList = (listId: number, listName: string, isShared: boolean, color: string) => {
-    setLists(lists.map(list => {
-      if (list.id === listId) {
-        return {
-          ...list,
-          name: listName,
-          isShared: isShared,
-          color: color,
-        };
+  const updateList = async (listId: number, listName: string, isShared: boolean, color: string) => {
+    try {
+      const updatedList = await updateListDb(listId, { name: listName, color, isShared });
+      setLists(lists.map(list => {
+        if (list.id === listId) {
+          return {
+            ...list,
+            name: updatedList.name,
+            isShared: updatedList.is_shared,
+            color: updatedList.color,
+          };
+        }
+        return list;
+      }));
+    } catch (error) {
+      console.error('Error updating list:', error);
+    }
+  };
+
+  const deleteList = async (listId: number) => {
+    try {
+      await deleteListDb(listId);
+      // Remove the list
+      setLists(lists.filter(list => list.id !== listId));
+      // Move all tasks from this list to Today
+      setTodos(todos.map(todo => {
+        if (todo.listId === listId) {
+          return {
+            ...todo,
+            listId: TODAY_LIST_ID,
+          };
+        }
+        return todo;
+      }));
+    } catch (error) {
+      console.error('Error deleting list:', error);
+    }
+  };
+
+  const updateTask = async (taskId: number, text: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => {
+    try {
+      const todo = todos.find(t => t.id === taskId);
+      if (!todo) return;
+      
+      const updateData: any = {
+        ...todo,
+        text,
+        listId: listId !== undefined ? listId : todo.listId,
+      };
+      
+      if (deadline !== undefined) {
+        updateData.deadline = deadline;
+        updateData.time = deadline?.time;
+        updateData.group = deadline ? undefined : todo.group;
       }
-      return list;
-    }));
+      
+      const updatedTodo = await updateTaskDb(taskId, updateData);
+      
+      setTodos(todos.map(t => {
+        if (t.id === taskId) {
+          return dbTodoToDisplayTodo(updatedTodo);
+        }
+        return t;
+      }));
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
   };
 
-  const deleteList = (listId: number) => {
-    // Remove the list
-    setLists(lists.filter(list => list.id !== listId));
-    // Move all tasks from this list to Today
-    setTodos(todos.map(todo => {
-      if (todo.listId === listId) {
-        return {
-          ...todo,
-          listId: TODAY_LIST_ID,
-        };
-      }
-      return todo;
-    }));
-  };
-
-  const updateTask = (taskId: number, text: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => {
-    setTodos(todos.map(todo => {
-      if (todo.id === taskId) {
-        return {
-          ...todo,
-          text,
-          listId: listId !== undefined ? listId : todo.listId,
-          deadline: deadline,
-          time: deadline?.time,
-          group: deadline ? undefined : todo.group,
-        };
-      }
-      return todo;
-    }));
-  };
-
-  const deleteTask = (taskId: number) => {
-    setTodos(todos.filter(todo => todo.id !== taskId));
+  const deleteTask = async (taskId: number) => {
+    try {
+      await deleteTaskDb(taskId);
+      setTodos(todos.filter(todo => todo.id !== taskId));
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
   };
 
   const handleTaskClick = (task: Todo) => {
@@ -265,6 +392,46 @@ export function TodoApp() {
     
     return `${dayOfWeek} ${day}${getOrdinalSuffix(day)}`;
   };
+
+  if (loading) {
+    return (
+      <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-center pb-0 pt-[60px] px-0 relative size-full min-h-screen">
+        <p className="text-white text-lg">Loading...</p>
+      </div>
+    );
+  }
+
+  if (connectionError) {
+    return (
+      <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-center pb-0 pt-[60px] px-0 relative size-full min-h-screen">
+        <div className="max-w-md mx-auto px-6">
+          <div className="bg-[#EF4123] text-white p-6 rounded-lg mb-4">
+            <h2 className="text-xl font-semibold mb-2">⚠️ Connection Error</h2>
+            <p className="text-sm mb-4">{connectionError}</p>
+            <div className="text-sm space-y-2">
+              <p><strong>To fix this:</strong></p>
+              <ol className="list-decimal list-inside space-y-1 ml-2">
+                <li>Create a <code className="bg-black/20 px-1 rounded">.env</code> file in the project root</li>
+                <li>Add your Supabase credentials:
+                  <pre className="bg-black/20 p-2 rounded mt-2 text-xs overflow-x-auto">
+VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
+                  </pre>
+                </li>
+                <li>Run the SQL from <code className="bg-black/20 px-1 rounded">supabase-schema.sql</code> in Supabase SQL Editor</li>
+                <li>Refresh this page</li>
+              </ol>
+            </div>
+          </div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="w-full bg-[#0B64F9] text-white py-2 px-4 rounded hover:bg-[#0954d0]"
+          >
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-between pb-0 pt-[60px] px-0 relative size-full min-h-screen">

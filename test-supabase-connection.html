@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Supabase Connection</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #110c10;
+            color: #E1E6EE;
+        }
+        .container {
+            background: #1a1619;
+            padding: 30px;
+            border-radius: 8px;
+        }
+        h1 {
+            color: #E1E6EE;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #5b5d62;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            background: #110c10;
+            border: 1px solid #5b5d62;
+            border-radius: 4px;
+            color: #E1E6EE;
+            font-size: 14px;
+        }
+        button {
+            background: #0B64F9;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0954d0;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .result.success {
+            background: #00C853;
+            color: white;
+            display: block;
+        }
+        .result.error {
+            background: #EF4123;
+            color: white;
+            display: block;
+        }
+        .result.info {
+            background: #5b5d62;
+            color: white;
+            display: block;
+        }
+        code {
+            background: #110c10;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .instructions {
+            background: #1a1619;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 3px solid #0B64F9;
+        }
+        .instructions h2 {
+            margin-top: 0;
+            color: #E1E6EE;
+        }
+        .instructions ol {
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 Test Supabase Connection</h1>
+        
+        <div class="instructions">
+            <h2>How to get your Supabase credentials:</h2>
+            <ol>
+                <li>Go to <a href="https://supabase.com" target="_blank" style="color: #0B64F9;">supabase.com</a> and sign in</li>
+                <li>Create a new project or select an existing one</li>
+                <li>Go to <strong>Project Settings</strong> → <strong>API</strong></li>
+                <li>Copy your <strong>Project URL</strong> and <strong>anon/public key</strong></li>
+                <li>Paste them below and click "Test Connection"</li>
+            </ol>
+        </div>
+
+        <div class="form-group">
+            <label for="supabaseUrl">Supabase Project URL:</label>
+            <input type="text" id="supabaseUrl" placeholder="https://xxxxx.supabase.co" />
+        </div>
+
+        <div class="form-group">
+            <label for="supabaseKey">Supabase Anon Key:</label>
+            <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+        </div>
+
+        <button onclick="testConnection()">Test Connection</button>
+        <button onclick="saveToEnv()">Save to .env file</button>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+        window.testConnection = async function() {
+            const url = document.getElementById('supabaseUrl').value.trim()
+            const key = document.getElementById('supabaseKey').value.trim()
+            const resultDiv = document.getElementById('result')
+
+            if (!url || !key) {
+                resultDiv.className = 'result error'
+                resultDiv.textContent = 'Please enter both URL and Key'
+                return
+            }
+
+            resultDiv.className = 'result info'
+            resultDiv.textContent = 'Testing connection...'
+
+            try {
+                const supabase = createClient(url, key)
+                
+                // Try to query a table (it's okay if it doesn't exist)
+                const { data, error } = await supabase
+                    .from('todos')
+                    .select('count')
+                    .limit(1)
+
+                if (error) {
+                    if (error.code === 'PGRST116' || error.message.includes('relation') || error.message.includes('does not exist')) {
+                        resultDiv.className = 'result success'
+                        resultDiv.innerHTML = `
+                            ✅ <strong>Connection successful!</strong><br>
+                            The database is connected, but tables haven't been created yet.<br>
+                            Run the SQL from <code>supabase-schema.sql</code> in your Supabase SQL Editor.
+                        `
+                        window.supabaseUrl = url
+                        window.supabaseKey = key
+                        return
+                    }
+                    throw error
+                }
+
+                resultDiv.className = 'result success'
+                resultDiv.innerHTML = `
+                    ✅ <strong>Connection successful!</strong><br>
+                    Database is connected and tables exist. You're all set!
+                `
+                window.supabaseUrl = url
+                window.supabaseKey = key
+            } catch (error) {
+                resultDiv.className = 'result error'
+                
+                if (error.message.includes('Invalid API key') || error.message.includes('JWT')) {
+                    resultDiv.innerHTML = `
+                        ❌ <strong>Invalid credentials</strong><br>
+                        Please check that your URL and anon key are correct.
+                    `
+                } else {
+                    resultDiv.innerHTML = `
+                        ❌ <strong>Connection failed</strong><br>
+                        ${error.message}
+                    `
+                }
+            }
+        }
+
+        window.saveToEnv = function() {
+            if (!window.supabaseUrl || !window.supabaseKey) {
+                alert('Please test the connection first!')
+                return
+            }
+
+            const envContent = `VITE_SUPABASE_URL=${window.supabaseUrl}
+VITE_SUPABASE_ANON_KEY=${window.supabaseKey}`
+
+            const blob = new Blob([envContent], { type: 'text/plain' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = '.env'
+            a.click()
+            URL.revokeObjectURL(url)
+
+            alert('✅ .env file downloaded! Save it to your project root directory.')
+        }
+    </script>
+</body>
+</html>
+
