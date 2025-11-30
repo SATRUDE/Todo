@@ -301,7 +301,8 @@ export function TodoApp() {
     try {
       const createdTask = await createTask(newTodo);
       const appTodo = dbTodoToDisplayTodo(createdTask);
-      setTodos([...todos, appTodo]);
+      // Use functional update to ensure we get the latest state
+      setTodos(prevTodos => [...prevTodos, appTodo]);
     } catch (error) {
       console.error('Error adding task:', error);
     }
@@ -312,7 +313,6 @@ export function TodoApp() {
       id: Date.now(), // Temporary ID
       text: taskText,
       completed: false,
-      time: "9:00",
       listId: listId,
     };
     
@@ -510,7 +510,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
   }
 
   return (
-    <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-between pb-0 pt-[60px] px-0 relative size-full min-h-screen">
+    <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-between pb-[120px] pt-[60px] px-0 relative size-full min-h-screen">
       {/* Main Content */}
       {currentPage === "today" ? (
         <div className="relative shrink-0 w-full">
@@ -679,6 +679,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onAddList={addNewList}
           onUpdateList={updateList}
           onDeleteList={deleteList}
+          onBack={() => setCurrentPage("today")}
         />
       ) : currentPage === "listDetail" && selectedList ? (
         <ListDetail 
@@ -692,11 +693,12 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onAddTask={(taskText) => addNewTaskToList(taskText, selectedList.id)}
           onUpdateList={updateList}
           onDeleteList={deleteList}
+          onTaskClick={handleTaskClick}
         />
       ) : null}
 
       {/* Bottom Navigation */}
-      <div className="box-border content-stretch flex gap-[80px] items-center justify-center pb-[60px] pt-[20px] px-0 relative shrink-0 w-full">
+      <div className="box-border content-stretch flex gap-[80px] items-center justify-center pb-[60px] pt-[20px] px-0 fixed bottom-0 left-0 right-0 w-full bg-[#110c10] z-[1000]">
         <div
           aria-hidden="true"
           className="absolute border-[1px_0px_0px] border-[rgba(225,230,238,0.1)] border-solid inset-0 pointer-events-none"

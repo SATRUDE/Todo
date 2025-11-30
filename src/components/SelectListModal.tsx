@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import svgPaths from "../imports/svg-p3zv31caxs";
 
 interface ListItem {
   id: number;
@@ -19,12 +20,28 @@ interface SelectListModalProps {
 export function SelectListModal({ isOpen, onClose, lists, selectedListId, onSelectList }: SelectListModalProps) {
   if (!isOpen) return null;
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   return (
-    <div className="fixed inset-0 z-[10000] pointer-events-none">
+    <div className="fixed inset-0 z-[10002] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black bg-opacity-50 pointer-events-auto"
+        className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
         onClick={onClose}
+        style={{ 
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)'
+        }}
       />
       
       {/* Bottom Sheet */}
@@ -69,6 +86,14 @@ export function SelectListModal({ isOpen, onClose, lists, selectedListId, onSele
                             )}
                           </svg>
                         </div>
+                      </div>
+                      {/* Hashtag Icon */}
+                      <div className="relative shrink-0 size-[20px]">
+                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
+                          <g>
+                            <path d={svgPaths.p1dfd6800} stroke={list.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+                          </g>
+                        </svg>
                       </div>
                       <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{list.name}</p>
                     </div>

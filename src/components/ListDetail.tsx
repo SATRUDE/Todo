@@ -29,9 +29,10 @@ interface ListDetailProps {
   onAddTask: (taskText: string) => void;
   onUpdateList: (listId: number, listName: string, isShared: boolean, color: string) => void;
   onDeleteList: (listId: number) => void;
+  onTaskClick?: (task: Todo) => void;
 }
 
-export function ListDetail({ listId, listName, listColor, isShared, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList }: ListDetailProps) {
+export function ListDetail({ listId, listName, listColor, isShared, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList, onTaskClick }: ListDetailProps) {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
 
@@ -68,13 +69,31 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
           <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
             {/* Header */}
             <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-              <div 
-                className="content-stretch flex flex-col items-start relative shrink-0 cursor-pointer"
-                onClick={() => !isCompletedList && setIsEditListModalOpen(true)}
-              >
-                <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">
-                  {listName}
-                </p>
+              <div className="content-stretch flex gap-[16px] items-center relative shrink-0">
+                <div 
+                  className="relative shrink-0 size-[32px] cursor-pointer"
+                  onClick={onBack}
+                >
+                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
+                    <g>
+                      <path 
+                        d="M20 8L12 16L20 24" 
+                        stroke="#E1E6EE" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth="2" 
+                      />
+                    </g>
+                  </svg>
+                </div>
+                <div 
+                  className="content-stretch flex flex-col items-start relative shrink-0 cursor-pointer"
+                  onClick={() => !isCompletedList && setIsEditListModalOpen(true)}
+                >
+                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">
+                    {listName}
+                  </p>
+                </div>
               </div>
               {!isCompletedList && (
                 <div 
@@ -95,13 +114,17 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
               {tasks.map((todo) => (
                 <div
                   key={todo.id}
-                  className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full"
+                  className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+                  onClick={() => onTaskClick && onTaskClick(todo)}
                 >
                   {/* Task Name Row */}
                   <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full">
                     <div 
                       className="relative shrink-0 size-[24px] cursor-pointer"
-                      onClick={() => onToggleTask(todo.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleTask(todo.id);
+                      }}
                     >
                       <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                         <circle 

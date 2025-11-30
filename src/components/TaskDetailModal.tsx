@@ -95,7 +95,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] pointer-events-none">
+    <div className="fixed inset-0 z-[10001] pointer-events-none">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black bg-opacity-50 pointer-events-auto"

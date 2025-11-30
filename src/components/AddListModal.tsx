@@ -1,4 +1,5 @@
 import { useState, KeyboardEvent, useEffect } from "react";
+import { createPortal } from "react-dom";
 import svgPaths from "../imports/svg-5oexr7g1cf";
 import checkIconPaths from "../imports/svg-230yvpiryj";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
@@ -61,14 +62,30 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
     }
   };
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[9999] pointer-events-none">
+  return createPortal(
+    <div className="fixed inset-0 z-[10001] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10001 }}>
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black bg-opacity-50 pointer-events-auto"
+        className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
         onClick={onClose}
+        style={{ 
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)'
+        }}
       />
       
       {/* Bottom Sheet */}
@@ -150,11 +167,64 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
                     </div>
                   ))}
                 </div>
+
+                {/* Submit Button Row */}
+                <div className="flex gap-[10px] items-end justify-end w-full" style={{ justifyContent: 'flex-end', width: '100%' }}>
+                  <div 
+                    className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
+                    style={{
+                      width: '35px',
+                      height: '35px',
+                      padding: '3px',
+                      flexShrink: 0,
+                      backgroundColor: listInput.trim() ? '#0b64f9' : '#5b5d62'
+                    }}
+                    onClick={() => {
+                      if (listInput.trim() !== "") {
+                        if (editingList && onUpdateList) {
+                          onUpdateList(editingList.id, listInput, isShared, selectedColor);
+                        } else {
+                          onAddList(listInput, isShared, selectedColor);
+                        }
+                        setListInput("");
+                        setIsShared(false);
+                        setSelectedColor("#0B64F9");
+                        onClose();
+                      }
+                    }}
+                  >
+                    <div className="relative" style={{ width: '24px', height: '24px' }}>
+                      <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '24px', height: '24px' }}>
+                        <g>
+                          <line
+                            x1="12"
+                            y1="6"
+                            x2="12"
+                            y2="18"
+                            stroke="#E1E6EE"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                          <line
+                            x1="6"
+                            y1="12"
+                            x2="18"
+                            y2="12"
+                            stroke="#E1E6EE"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                        </g>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

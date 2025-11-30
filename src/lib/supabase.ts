@@ -30,7 +30,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
 let supabase: ReturnType<typeof createClient>
 
 if (supabaseUrl && supabaseAnonKey && isValidUrl(supabaseUrl)) {
-  supabase = createClient(supabaseUrl, supabaseAnonKey)
+  supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    db: {
+      schema: 'public'
+    },
+    auth: {
+      persistSession: false
+    }
+  })
 } else {
   // Create a dummy client to prevent crashes, but it won't work
   // The app will show an error message

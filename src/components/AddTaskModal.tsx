@@ -22,7 +22,7 @@ interface AddTaskModalProps {
 export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [] }: AddTaskModalProps) {
   const getDefaultDeadline = () => {
     const today = new Date();
-    return { date: today, time: "5:00 PM" };
+    return { date: today, time: "", recurring: undefined };
   };
 
   const [taskInput, setTaskInput] = useState("");
@@ -32,13 +32,23 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [] }: AddTask
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(getDefaultDeadline());
   const [isBulkAddMode, setIsBulkAddMode] = useState(false);
 
+  const handleSubmit = async () => {
+    if (taskInput.trim() !== "") {
+      if (isBulkAddMode) {
+        await handleBulkAdd();
+      } else {
+        await onAddTask(taskInput, selectedListId || undefined, deadline || undefined);
+        setTaskInput("");
+        setSelectedListId(null);
+        setDeadline(getDefaultDeadline());
+        onClose();
+      }
+    }
+  };
+
   const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && taskInput.trim() !== "") {
-      onAddTask(taskInput, selectedListId || undefined, deadline || undefined);
-      setTaskInput("");
-      setSelectedListId(null);
-      setDeadline(getDefaultDeadline());
-      onClose();
+      handleSubmit();
     }
   };
 
@@ -60,12 +70,15 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [] }: AddTask
     const isToday = deadline.date.toDateString() === today.toDateString();
     const isTomorrow = deadline.date.toDateString() === tomorrow.toDateString();
     
-    if (isToday) return `Today ${deadline.time}`;
-    if (isTomorrow) return `Tomorrow ${deadline.time}`;
+    const dateText = isToday ? "Today" : isTomorrow ? "Tomorrow" : 
+      `${deadline.date.toLocaleDateString('en-US', { month: 'short' })} ${deadline.date.getDate()}`;
     
-    const month = deadline.date.toLocaleDateString('en-US', { month: 'short' });
-    const day = deadline.date.getDate();
-    return `${month} ${day} ${deadline.time}`;
+    // If no time is set, just show the date
+    if (!deadline.time || deadline.time.trim() === "") {
+      return dateText;
+    }
+    
+    return `${dateText} ${deadline.time}`;
   };
 
   const getSelectedListName = () => {
@@ -99,11 +112,16 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [] }: AddTask
     setTaskInput(""); // Clear input when toggling
   };
 
-  const handleBulkAdd = () => {
+  const handleBulkAdd = async () => {
     const lines = taskInput.split('\n').filter(line => line.trim() !== "");
-    lines.forEach(line => {
-      onAddTask(line.trim(), selectedListId || undefined, deadline || undefined);
-    });
+    
+    // Add all tasks sequentially to ensure they all get added
+    for (const line of lines) {
+      if (line.trim()) {
+        await onAddTask(line.trim(), selectedListId || undefined, deadline || undefined);
+      }
+    }
+    
     setTaskInput("");
     setSelectedListId(null);
     setDeadline(getDefaultDeadline());
@@ -126,11 +144,15 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [] }: AddTask
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+    <div className="fixed inset-0 z-[10001] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/60 pointer-events-auto backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
         onClick={onClose}
+        style={{ 
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)'
+        }}
       />
       
       {/* Bottom Sheet */}
@@ -172,79 +194,114 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [] }: AddTask
                     autoFocus
                   />
                 )}
-
-                {/* Add Button (only visible in bulk add mode) */}
-                {isBulkAddMode && (
-                  <div 
-                    className="bg-[#e1e6ee] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[#d0d5dd]"
-                    onClick={handleBulkAdd}
-                  >
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#110c10] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Add</p>
-                  </div>
-                )}
-
-                {/* Buttons */}
-                <div className="content-center flex flex-wrap gap-[8px] items-center relative shrink-0 w-full">
-                  {/* Deadline Button */}
-                  <div 
-                    className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
-                    onClick={() => setIsDeadlineOpen(true)}
-                  >
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-                        <g>
-                          <path d={svgPaths.p186add80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
-                        </g>
-                      </svg>
+                
+                {/* Buttons Container */}
+                <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+                  {/* Button Row */}
+                  <div className="content-center flex flex-wrap gap-[8px] items-center relative shrink-0 w-full">
+                    {/* Deadline Button */}
+                    <div 
+                      className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                      onClick={() => setIsDeadlineOpen(true)}
+                    >
+                      <div className="relative shrink-0 size-[20px]">
+                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
+                          <g>
+                            <path d={svgPaths.p186add80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+                          </g>
+                        </svg>
+                      </div>
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getDeadlineText()}</p>
                     </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getDeadlineText()}</p>
+
+                    {/* List Button */}
+                    <div 
+                      className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                      onClick={() => setIsSelectListOpen(true)}
+                    >
+                      <div className="relative shrink-0 size-[20px]">
+                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
+                          <g>
+                            <path d={svgPaths.p1dfd6800} stroke={getSelectedListColor()} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+                          </g>
+                        </svg>
+                      </div>
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getSelectedListName()}</p>
+                    </div>
+
+                    {/* Generate Task Button */}
+                    <div 
+                      className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                      onClick={handleGenerateTask}
+                    >
+                      <div className="relative shrink-0 size-[20px]">
+                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
+                          <g>
+                            <path d={generateSvgPaths.p3df19b00} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+                          </g>
+                        </svg>
+                      </div>
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Generate task</p>
+                    </div>
+
+                    {/* Bulk Add Button */}
+                    <div 
+                      className={`${isBulkAddMode ? 'bg-[#0b64f9]' : 'bg-[rgba(225,230,238,0.1)]'} box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:opacity-90`}
+                      onClick={handleBulkAddToggle}
+                    >
+                      <div className="relative shrink-0 size-[20px]">
+                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
+                          <g>
+                            <path d={svgPaths.p247c5b00} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+                          </g>
+                        </svg>
+                      </div>
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Bulk add</p>
+                    </div>
+
                   </div>
 
-                  {/* List Button */}
-                  <div 
-                    className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
-                    onClick={() => setIsSelectListOpen(true)}
-                  >
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-                        <g>
-                          <path d={svgPaths.p1dfd6800} stroke={getSelectedListColor()} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
-                        </g>
-                      </svg>
+                  {/* Submit Button Row */}
+                  <div className="flex gap-[10px] items-end justify-end w-full" style={{ justifyContent: 'flex-end', width: '100%' }}>
+                    <div 
+                      className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
+                      style={{
+                        width: '35px',
+                        height: '35px',
+                        padding: '3px',
+                        flexShrink: 0,
+                        backgroundColor: taskInput.trim() ? '#0b64f9' : '#5b5d62'
+                      }}
+                      onClick={handleSubmit}
+                    >
+                      <div className="relative" style={{ width: '24px', height: '24px' }}>
+                        <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '24px', height: '24px' }}>
+                          <g>
+                            <line
+                              x1="12"
+                              y1="6"
+                              x2="12"
+                              y2="18"
+                              stroke="#E1E6EE"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                            />
+                            <line
+                              x1="6"
+                              y1="12"
+                              x2="18"
+                              y2="12"
+                              stroke="#E1E6EE"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                            />
+                          </g>
+                        </svg>
+                      </div>
                     </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getSelectedListName()}</p>
-                  </div>
-
-                  {/* Generate Task Button */}
-                  <div 
-                    className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
-                    onClick={handleGenerateTask}
-                  >
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-                        <g>
-                          <path d={generateSvgPaths.p3df19b00} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
-                        </g>
-                      </svg>
-                    </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Generate task</p>
-                  </div>
-
-                  {/* Bulk Add Button */}
-                  <div 
-                    className={`${isBulkAddMode ? 'bg-[#0b64f9]' : 'bg-[rgba(225,230,238,0.1)]'} box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:opacity-90`}
-                    onClick={handleBulkAddToggle}
-                  >
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-                        <g>
-                          <path d={svgPaths.p247c5b00} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
-                        </g>
-                      </svg>
-                    </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Bulk add</p>
                   </div>
                 </div>
+
               </div>
             </div>
           </div>
@@ -265,6 +322,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [] }: AddTask
         isOpen={isDeadlineOpen}
         onClose={() => setIsDeadlineOpen(false)}
         onSetDeadline={handleSetDeadline}
+        onClearDeadline={() => setDeadline(null)}
         currentDeadline={deadline}
       />
     </div>

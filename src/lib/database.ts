@@ -104,6 +104,7 @@ export async function fetchTasks(): Promise<Todo[]> {
 
   if (error) {
     console.error('Error fetching tasks:', error)
+    console.error('Error details:', JSON.stringify(error, null, 2))
     throw error
   }
 
@@ -164,6 +165,7 @@ export async function fetchLists(): Promise<ListItem[]> {
 
   if (error) {
     console.error('Error fetching lists:', error)
+    console.error('Error details:', JSON.stringify(error, null, 2))
     throw error
   }
 

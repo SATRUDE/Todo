@@ -6,12 +6,13 @@ interface DeadlineModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSetDeadline: (date: Date, time: string, recurring?: string) => void;
+  onClearDeadline?: () => void;
   currentDeadline?: { date: Date; time: string; recurring?: string } | null;
 }
 
-export function DeadlineModal({ isOpen, onClose, onSetDeadline, currentDeadline }: DeadlineModalProps) {
+export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline, currentDeadline }: DeadlineModalProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(currentDeadline?.date || new Date());
-  const [selectedTime, setSelectedTime] = useState(currentDeadline?.time || "12:00");
+  const [selectedTime, setSelectedTime] = useState(currentDeadline?.time || "");
   const [recurring, setRecurring] = useState(currentDeadline?.recurring || "none");
 
   const getDayOfWeek = (date: Date) => {
@@ -31,7 +32,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, currentDeadline 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[10000] pointer-events-none">
+    <div className="fixed inset-0 z-[10002] pointer-events-none">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black bg-opacity-50 pointer-events-auto"
@@ -71,15 +72,30 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, currentDeadline 
 
           {/* Time Picker */}
           <div className="px-[20px] w-full">
-            <label className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#e1e6ee] text-[18px] tracking-[-0.198px] mb-2 block">
-              Time
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#e1e6ee] text-[18px] tracking-[-0.198px] block">
+                Time
+              </label>
+              {selectedTime && (
+                <button
+                  onClick={() => setSelectedTime("")}
+                  className="text-[#5b5d62] hover:text-[#e1e6ee] text-sm font-['Inter:Regular',sans-serif]"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <input
               type="time"
               value={selectedTime}
               onChange={(e) => setSelectedTime(e.target.value)}
               className="w-full bg-[rgba(225,230,238,0.1)] border border-[rgba(225,230,238,0.1)] rounded-[12px] px-[16px] py-[12px] text-white font-['Inter:Regular',sans-serif] font-normal text-[18px] outline-none focus:border-[rgba(225,230,238,0.3)]"
             />
+            {!selectedTime && (
+              <p className="text-[#5b5d62] text-sm mt-1 font-['Inter:Regular',sans-serif]">
+                No time set - task will appear on the selected date
+              </p>
+            )}
           </div>
 
           {/* Recurring Dropdown */}
@@ -102,6 +118,17 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, currentDeadline 
 
           {/* Buttons */}
           <div className="px-[20px] w-full flex gap-[12px]">
+            {onClearDeadline && currentDeadline && (
+              <button
+                onClick={() => {
+                  onClearDeadline();
+                  onClose();
+                }}
+                className="flex-1 bg-[rgba(239,65,35,0.1)] hover:bg-[rgba(239,65,35,0.15)] rounded-[12px] px-[24px] py-[12px] font-['Inter:Regular',sans-serif] font-normal text-[#EF4123] text-[18px] tracking-[-0.198px]"
+              >
+                Clear
+              </button>
+            )}
             <button
               onClick={onClose}
               className="flex-1 bg-[rgba(225,230,238,0.1)] hover:bg-[rgba(225,230,238,0.15)] rounded-[12px] px-[24px] py-[12px] font-['Inter:Regular',sans-serif] font-normal text-[#e1e6ee] text-[18px] tracking-[-0.198px]"
