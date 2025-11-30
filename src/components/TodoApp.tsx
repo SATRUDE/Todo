@@ -65,11 +65,23 @@ export function TodoApp() {
         setConnectionError(null);
         
         // Check if Supabase is configured
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+        const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
         
         if (!supabaseUrl || !supabaseKey) {
-          setConnectionError('Supabase not configured. Please create a .env file with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+          setConnectionError('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Vercel project settings.');
+          setLoading(false);
+          return;
+        }
+        
+        // Validate URL format
+        try {
+          const url = new URL(supabaseUrl);
+          if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            throw new Error('Invalid protocol');
+          }
+        } catch {
+          setConnectionError(`Invalid Supabase URL format. URL must start with http:// or https://. Current value: "${supabaseUrl || '(empty)'}"`);
           setLoading(false);
           return;
         }
