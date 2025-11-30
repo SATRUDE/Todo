@@ -21,6 +21,7 @@ interface Todo {
 }
 
 const COMPLETED_LIST_ID = -1;
+const ALL_TASKS_LIST_ID = -2;
 
 interface ListsProps {
   onSelectList: (list: ListItem) => void;
@@ -70,6 +71,16 @@ export function Lists({ onSelectList, todos, lists, onAddList, onUpdateList, onD
   };
 
   const completedCount = todos.filter(todo => todo.listId === COMPLETED_LIST_ID).length;
+  const allTasksCount = todos.filter(todo => !todo.completed).length;
+
+  // All tasks list
+  const allTasksList: ListItem = {
+    id: ALL_TASKS_LIST_ID,
+    name: "All tasks",
+    color: "#FF6D00",
+    count: allTasksCount,
+    isShared: false,
+  };
 
   // Completed tasks list
   const completedList: ListItem = {
@@ -167,6 +178,27 @@ export function Lists({ onSelectList, todos, lists, onAddList, onUpdateList, onD
                 </div>
               );
             })}
+
+            {/* All Tasks List */}
+            <div
+              className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+              onClick={() => onSelectList(allTasksList)}
+            >
+              {/* List Name Row */}
+              <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
+                <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
+                  <div className="relative shrink-0 size-[24px]">
+                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                      <g>
+                        <path d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" stroke={allTasksList.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                      </g>
+                    </svg>
+                  </div>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">{allTasksList.name}</p>
+                </div>
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{allTasksList.count}</p>
+              </div>
+            </div>
 
             {/* Completed List */}
             <div

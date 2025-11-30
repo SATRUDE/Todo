@@ -8,6 +8,11 @@ interface Todo {
   text: string;
   completed: boolean;
   time?: string;
+  deadline?: {
+    date: Date;
+    time: string;
+    recurring?: string;
+  };
 }
 
 interface ListItem {
@@ -64,6 +69,7 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
   };
 
   const isCompletedList = listId === -1;
+  const isAllTasksList = listId === -2;
 
   const currentList: ListItem = {
     id: listId,
@@ -99,14 +105,14 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                 </div>
                 <div 
                   className="content-stretch flex flex-col items-start relative shrink-0 cursor-pointer"
-                  onClick={() => !isCompletedList && setIsEditListModalOpen(true)}
+                  onClick={() => !isCompletedList && !isAllTasksList && setIsEditListModalOpen(true)}
                 >
                   <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">
                     {listName}
                   </p>
                 </div>
               </div>
-              {!isCompletedList && (
+              {!isCompletedList && !isAllTasksList && (
                 <div 
                   className="relative shrink-0 size-[32px] cursor-pointer"
                   onClick={() => setIsAddTaskModalOpen(true)}
@@ -164,8 +170,8 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                     </p>
                   </div>
 
-                  {/* Time */}
-                  {todo.time && (
+                  {/* Deadline/Time */}
+                  {(todo.deadline || todo.time) && (
                     <div className="content-stretch flex gap-[8px] items-start relative shrink-0">
                       <div className="box-border content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
                         <div className="relative shrink-0 size-[24px]">
@@ -176,7 +182,27 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                           </svg>
                         </div>
                         <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                          {todo.time}
+                          {(() => {
+                            if (todo.deadline) {
+                              const today = new Date();
+                              const tomorrow = new Date(today);
+                              tomorrow.setDate(tomorrow.getDate() + 1);
+                              
+                              const isToday = todo.deadline.date.toDateString() === today.toDateString();
+                              const isTomorrow = todo.deadline.date.toDateString() === tomorrow.toDateString();
+                              
+                              const dateText = isToday ? "Today" : isTomorrow ? "Tomorrow" : 
+                                `${todo.deadline.date.toLocaleDateString('en-US', { month: 'short' })} ${todo.deadline.date.getDate()}`;
+                              
+                              // If no time is set, just show the date
+                              if (!todo.deadline.time || todo.deadline.time.trim() === "") {
+                                return dateText;
+                              }
+                              
+                              return `${dateText} ${todo.deadline.time}`;
+                            }
+                            return todo.time;
+                          })()}
                         </p>
                       </div>
                     </div>
@@ -188,7 +214,7 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
         </div>
       </div>
 
-      {!isCompletedList && (
+      {!isCompletedList && !isAllTasksList && (
         <>
           <AddTaskModal
             isOpen={isAddTaskModalOpen}

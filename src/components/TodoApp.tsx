@@ -43,6 +43,7 @@ type Page = "today" | "lists" | "listDetail";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
+const ALL_TASKS_LIST_ID = -2;
 
 const listColors = ["#0B64F9", "#00C853", "#EF4123", "#FF6D00", "#FA8072"];
 
@@ -425,6 +426,10 @@ export function TodoApp() {
   };
 
   const getTasksForList = (listId: number) => {
+    if (listId === ALL_TASKS_LIST_ID) {
+      // Return all tasks (excluding completed ones that are in the completed list)
+      return todos.filter(todo => todo.listId !== COMPLETED_LIST_ID);
+    }
     return todos.filter(todo => todo.listId === listId);
   };
 
@@ -690,9 +695,9 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onBack={handleBackFromList}
           tasks={getTasksForList(selectedList.id)}
           onToggleTask={toggleTodo}
-          onAddTask={(taskText) => addNewTaskToList(taskText, selectedList.id)}
-          onUpdateList={updateList}
-          onDeleteList={deleteList}
+          onAddTask={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : (taskText) => addNewTaskToList(taskText, selectedList.id)}
+          onUpdateList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : updateList}
+          onDeleteList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : deleteList}
           onTaskClick={handleTaskClick}
           lists={lists}
         />
