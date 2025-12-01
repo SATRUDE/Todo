@@ -1,0 +1,18 @@
+VAPID Keys for Push Notifications
+==================================
+
+IMPORTANT: Keep the private key secure! Only use it on your backend server.
+
+Public Key (already added to .env):
+VITE_VAPID_PUBLIC_KEY=BDJ7TIDnLub_PRAIaCLV0Lq2_7B879nLZfVcA5bz3BF86p7uyiNRURiN28XATbUtkJY0NIZYCUHXES5hZa46Mp4
+
+Private Key (use this on your backend only):
+pbaPnvtnpo-J8UlIAtU_v1FIj4Qxru8JcnPj-L8lV6A
+
+==================================
+Next Steps:
+1. The public key is already in your .env file
+2. Add the public key to Vercel environment variables as VITE_VAPID_PUBLIC_KEY
+3. Use the private key on your backend server to send push notifications
+4. Restart your dev server to load the new environment variable
+

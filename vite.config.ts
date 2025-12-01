@@ -51,8 +51,17 @@ export default defineConfig({
               }
             }
           }
-        ]
-      }
+        ],
+        // Add push notification event listeners
+        navigateFallback: null,
+      },
+      // Use injectManifest to add push notification handlers
+      strategies: 'injectManifest',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+      },
+      srcDir: 'public',
+      filename: 'sw.js',
     })
   ],
     resolve: {

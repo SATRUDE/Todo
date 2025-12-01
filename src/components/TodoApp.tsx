@@ -16,6 +16,11 @@ import {
   deleteList as deleteListDb,
   dbTodoToDisplayTodo
 } from "../lib/database";
+import { 
+  requestNotificationPermission, 
+  subscribeToPushNotifications,
+  sendSubscriptionToServer 
+} from "../lib/notifications";
 
 interface Todo {
   id: number;
