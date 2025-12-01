@@ -34,6 +34,13 @@ export default defineConfig({
           }
         ]
       },
+      // Use injectManifest to add custom push notification handlers
+      strategies: 'injectManifest',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+      },
+      srcDir: 'public',
+      filename: 'sw.js',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
@@ -52,16 +59,8 @@ export default defineConfig({
             }
           }
         ],
-        // Add push notification event listeners
         navigateFallback: null,
       },
-      // Use injectManifest to add push notification handlers
-      strategies: 'injectManifest',
-      injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-      },
-      srcDir: 'public',
-      filename: 'sw.js',
     })
   ],
     resolve: {

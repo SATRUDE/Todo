@@ -1,6 +1,13 @@
-// Service Worker for Push Notifications
-// This file will be served from the public directory
+// Service worker source file for injectManifest
+// This file will be processed by workbox to inject the manifest
 
+// Import workbox precaching
+import { precacheAndRoute } from 'workbox-precaching';
+
+// This will be replaced by workbox with the actual manifest
+precacheAndRoute(self.__WB_MANIFEST);
+
+// Push notification event listener
 self.addEventListener('push', function(event) {
   console.log('Push notification received:', event);
 
@@ -85,4 +92,3 @@ self.addEventListener('notificationclick', function(event) {
 self.addEventListener('notificationclose', function(event) {
   console.log('Notification closed:', event);
 });
-
