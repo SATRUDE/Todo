@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import svgPaths from "../imports/svg-y4ms3lw2z2";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { AddTaskModal } from "./AddTaskModal";
@@ -64,6 +64,8 @@ export function TodoApp() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
   const completionTimeouts = useRef<Map<number, NodeJS.Timeout>>(new Map());
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const notificationTimeouts = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -134,8 +136,151 @@ export function TodoApp() {
     return () => {
       completionTimeouts.current.forEach(timeout => clearTimeout(timeout));
       completionTimeouts.current.clear();
+      notificationTimeouts.current.forEach(timeout => clearTimeout(timeout));
+      notificationTimeouts.current.clear();
     };
   }, []);
+
+  // Initialize notification permission status
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
+
+  // Handle enabling notifications
+  const handleEnableNotifications = useCallback(async () => {
+    try {
+      const permission = await requestNotificationPermission();
+      setNotificationPermission(permission);
+      
+      if (permission === 'granted') {
+        const subscription = await subscribeToPushNotifications();
+        if (subscription) {
+          await sendSubscriptionToServer(subscription);
+        }
+      }
+    } catch (error) {
+      console.error('Error enabling notifications:', error);
+    }
+  }, []);
+
+  // Handle test notification
+  const handleTestNotification = useCallback(async () => {
+    if (notificationPermission !== 'granted') {
+      return;
+    }
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification('Test Notification', {
+          body: 'This is a test notification from your Todo app!',
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          tag: 'test-notification',
+        });
+      } else if ('Notification' in window) {
+        new Notification('Test Notification', {
+          body: 'This is a test notification from your Todo app!',
+          icon: '/icon-192.png',
+          tag: 'test-notification',
+        });
+      }
+    } catch (error) {
+      console.error('Error showing test notification:', error);
+    }
+  }, [notificationPermission]);
+
+  // Schedule deadline notifications
+  useEffect(() => {
+    // Clear existing notification timeouts
+    notificationTimeouts.current.forEach(timeout => clearTimeout(timeout));
+    notificationTimeouts.current.clear();
+
+    if (notificationPermission !== 'granted') {
+      return;
+    }
+
+    const now = new Date();
+    const scheduleNotification = async (todo: Todo) => {
+      // Only schedule for tasks with deadline, time, and not completed
+      if (!todo.deadline || !todo.deadline.time || todo.deadline.time.trim() === '' || todo.completed) {
+        return;
+      }
+
+      try {
+        const deadlineDate = new Date(todo.deadline.date);
+        const [hours, minutes] = todo.deadline.time.split(':').map(Number);
+        
+        // Validate time format
+        if (isNaN(hours) || isNaN(minutes)) {
+          return;
+        }
+        
+        deadlineDate.setHours(hours, minutes, 0, 0);
+
+        // Only schedule if the deadline is in the future
+        if (deadlineDate <= now) {
+          return;
+        }
+
+        const delay = deadlineDate.getTime() - now.getTime();
+        
+        // Don't schedule if delay is too large (more than 24 hours)
+        // This prevents issues with very far future dates
+        if (delay > 24 * 60 * 60 * 1000) {
+          return;
+        }
+
+        const timeout = setTimeout(async () => {
+          try {
+            // Check if task is still not completed
+            const currentTodo = todos.find(t => t.id === todo.id);
+            if (currentTodo && currentTodo.completed) {
+              return;
+            }
+
+            if ('serviceWorker' in navigator) {
+              const registration = await navigator.serviceWorker.ready;
+              await registration.showNotification('Task Reminder', {
+                body: `${todo.text} - ${todo.deadline.time}`,
+                icon: '/icon-192.png',
+                badge: '/icon-192.png',
+                tag: `task-${todo.id}`,
+              });
+            } else if ('Notification' in window) {
+              new Notification('Task Reminder', {
+                body: `${todo.text} - ${todo.deadline.time}`,
+                icon: '/icon-192.png',
+                tag: `task-${todo.id}`,
+              });
+            }
+          } catch (error) {
+            console.error('Error showing deadline notification:', error);
+          }
+          notificationTimeouts.current.delete(todo.id);
+        }, delay);
+
+        notificationTimeouts.current.set(todo.id, timeout);
+      } catch (error) {
+        console.error('Error scheduling notification for task:', todo.id, error);
+      }
+    };
+
+    // Schedule notifications for all tasks with deadlines
+    todos.forEach(todo => {
+      if (todo.deadline && todo.deadline.time && todo.deadline.time.trim() !== '' && !todo.completed) {
+        scheduleNotification(todo);
+      }
+    });
+
+    // Cleanup function
+    return () => {
+      notificationTimeouts.current.forEach(timeout => clearTimeout(timeout));
+      notificationTimeouts.current.clear();
+    };
+  }, [todos, notificationPermission]);
 
   const handleSelectList = (list: ListItem) => {
     setSelectedList(list);
@@ -690,6 +835,9 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onUpdateList={updateList}
           onDeleteList={deleteList}
           onBack={() => setCurrentPage("today")}
+          onEnableNotifications={handleEnableNotifications}
+          notificationPermission={notificationPermission}
+          onTestNotification={handleTestNotification}
         />
       ) : currentPage === "listDetail" && selectedList ? (
         <ListDetail 
