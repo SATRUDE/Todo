@@ -1,5 +1,33 @@
 import { supabase } from './supabase'
 
+// Convert a Date to YYYY-MM-DD using the local calendar date.
+const formatLocalDate = (date: Date | undefined | null): string | null => {
+  if (!date || isNaN(date.getTime())) {
+    return null
+  }
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// Parse a YYYY-MM-DD string into a Date anchored to the local timezone.
+const parseLocalDate = (dateString: string | undefined | null): Date | undefined => {
+  if (!dateString) {
+    return undefined
+  }
+  const [yearStr, monthStr, dayStr] = dateString.split('-')
+  const year = Number(yearStr)
+  const month = Number(monthStr)
+  const day = Number(dayStr)
+
+  if ([year, month, day].some((value) => Number.isNaN(value))) {
+    return undefined
+  }
+
+  return new Date(year, month - 1, day)
+}
+
 export interface Todo {
   id: number
   text: string
@@ -7,7 +35,7 @@ export interface Todo {
   time?: string
   group?: string
   list_id?: number // -1 for completed, 0 for today, positive numbers for custom lists
-  deadline_date?: string // ISO date string
+  deadline_date?: string // YYYY-MM-DD string
   deadline_time?: string
   deadline_recurring?: string
   created_at?: string
@@ -52,7 +80,7 @@ export function appTodoToDbTodo(todo: any): any {
   }
   
   if (todo.deadline) {
-    dbTodo.deadline_date = todo.deadline.date ? todo.deadline.date.toISOString().split('T')[0] : null
+    dbTodo.deadline_date = formatLocalDate(todo.deadline.date)
     dbTodo.deadline_time = todo.deadline.time || null
     dbTodo.deadline_recurring = todo.deadline.recurring || null
   } else {
@@ -66,8 +94,9 @@ export function appTodoToDbTodo(todo: any): any {
 
 // Convert app Todo format to display format (with deadline object)
 export function dbTodoToDisplayTodo(dbTodo: Todo): any {
-  const deadline = dbTodo.deadline_date ? {
-    date: new Date(dbTodo.deadline_date),
+  const parsedDeadlineDate = parseLocalDate(dbTodo.deadline_date)
+  const deadline = parsedDeadlineDate ? {
+    date: parsedDeadlineDate,
     time: dbTodo.deadline_time || '',
     recurring: dbTodo.deadline_recurring,
   } : undefined
