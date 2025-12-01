@@ -19,7 +19,9 @@ import {
 import { 
   requestNotificationPermission, 
   subscribeToPushNotifications,
-  sendSubscriptionToServer 
+  sendSubscriptionToServer,
+  getPushSubscription,
+  sendTestPushNotification
 } from "../lib/notifications";
 
 interface Todo {
@@ -173,7 +175,22 @@ export function TodoApp() {
     }
 
     try {
-      // First, try direct Notification API (simpler and more reliable for testing)
+      let subscription = await getPushSubscription();
+      if (!subscription) {
+        subscription = await subscribeToPushNotifications();
+      }
+
+      if (subscription) {
+        const pushTriggered = await sendTestPushNotification(subscription);
+        if (pushTriggered) {
+          alert('Push notification triggered! It may take a few seconds to arrive.');
+          return;
+        }
+      } else {
+        console.warn('Unable to trigger push notification because no subscription was found.');
+      }
+
+      // Fallback to showing a notification directly if the push request failed
       if ('Notification' in window) {
         try {
           const notification = new Notification('Test Notification', {
@@ -188,10 +205,8 @@ export function TodoApp() {
         }
       }
       
-      // Fallback to service worker if direct API fails
       if ('serviceWorker' in navigator) {
         try {
-          // Wait for service worker to be ready (with timeout)
           const readyPromise = navigator.serviceWorker.ready;
           const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Service worker ready timeout')), 5000)
