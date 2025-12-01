@@ -168,27 +168,63 @@ export function TodoApp() {
   // Handle test notification
   const handleTestNotification = useCallback(async () => {
     if (notificationPermission !== 'granted') {
+      alert('Notification permission not granted. Please enable notifications first.');
       return;
     }
 
     try {
-      if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.ready;
-        await registration.showNotification('Test Notification', {
-          body: 'This is a test notification from your Todo app!',
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
-          tag: 'test-notification',
-        });
-      } else if ('Notification' in window) {
-        new Notification('Test Notification', {
-          body: 'This is a test notification from your Todo app!',
-          icon: '/icon-192.png',
-          tag: 'test-notification',
-        });
+      // First, try direct Notification API (simpler and more reliable for testing)
+      if ('Notification' in window) {
+        try {
+          const notification = new Notification('Test Notification', {
+            body: 'This is a test notification from your Todo app!',
+            icon: '/icon-192.png',
+            tag: 'test-notification',
+          });
+          console.log('Test notification shown via Notification API');
+          return;
+        } catch (directError) {
+          console.warn('Direct Notification API failed:', directError);
+        }
       }
+      
+      // Fallback to service worker if direct API fails
+      if ('serviceWorker' in navigator) {
+        try {
+          // Wait for service worker to be ready (with timeout)
+          const readyPromise = navigator.serviceWorker.ready;
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Service worker ready timeout')), 5000)
+          );
+          
+          await Promise.race([readyPromise, timeoutPromise]);
+          
+          const registration = await navigator.serviceWorker.getRegistration();
+          
+          if (!registration) {
+            throw new Error('Service worker not registered');
+          }
+          
+          await registration.showNotification('Test Notification', {
+            body: 'This is a test notification from your Todo app!',
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            tag: 'test-notification',
+            requireInteraction: false,
+          });
+          console.log('Test notification shown via service worker');
+          return;
+        } catch (swError) {
+          console.error('Service worker notification failed:', swError);
+          alert('Failed to show notification via service worker. Check console for details.');
+        }
+      }
+      
+      console.error('Neither service worker nor Notification API is available');
+      alert('Notifications are not supported in this browser.');
     } catch (error) {
       console.error('Error showing test notification:', error);
+      alert('Failed to show notification. Check console for details.');
     }
   }, [notificationPermission]);
 
