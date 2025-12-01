@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import svgPaths from "../imports/svg-y4ms3lw2z2";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { AddTaskModal } from "./AddTaskModal";
@@ -16,6 +16,7 @@ import {
   deleteList as deleteListDb,
   dbTodoToDisplayTodo
 } from "../lib/database";
+import { useDeadlineNotifications } from "../hooks/useDeadlineNotifications";
 
 interface Todo {
   id: number;
@@ -47,6 +48,17 @@ const ALL_TASKS_LIST_ID = -2;
 
 const listColors = ["#0B64F9", "#00C853", "#EF4123", "#FF6D00", "#FA8072"];
 
+const getInitialTaskIdFromUrl = (): number | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("openTaskId");
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 export function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [lists, setLists] = useState<ListItem[]>([]);
@@ -59,6 +71,7 @@ export function TodoApp() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
   const completionTimeouts = useRef<Map<number, NodeJS.Timeout>>(new Map());
+  const [pendingTaskId, setPendingTaskId] = useState<number | null>(() => getInitialTaskIdFromUrl());
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -420,10 +433,60 @@ export function TodoApp() {
     }
   };
 
-  const handleTaskClick = (task: Todo) => {
+  const handleTaskClick = useCallback((task: Todo) => {
     setSelectedTask(task);
     setIsTaskDetailOpen(true);
-  };
+  }, []);
+
+  const openTaskById = useCallback(
+    (taskId: number) => {
+      const task = todos.find((t) => t.id === taskId);
+      if (!task) {
+        return false;
+      }
+
+      setCurrentPage("today");
+      setSelectedList(null);
+      handleTaskClick(task);
+      return true;
+    },
+    [todos, handleTaskClick]
+  );
+
+  useDeadlineNotifications(todos, (taskId) => {
+    openTaskById(taskId);
+  });
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+
+    const handler = (event: MessageEvent) => {
+      if (
+        event.data &&
+        event.data.type === "OPEN_TASK" &&
+        typeof event.data.taskId === "number"
+      ) {
+        openTaskById(event.data.taskId);
+      }
+    };
+
+    navigator.serviceWorker.addEventListener("message", handler);
+    return () => navigator.serviceWorker.removeEventListener("message", handler);
+  }, [openTaskById]);
+
+  useEffect(() => {
+    if (pendingTaskId === null) return;
+    const didOpen = openTaskById(pendingTaskId);
+
+    if (didOpen) {
+      setPendingTaskId(null);
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("openTaskId");
+        window.history.replaceState(window.history.state, "", url.toString());
+      }
+    }
+  }, [pendingTaskId, openTaskById]);
 
   const getTasksForList = (listId: number) => {
     if (listId === ALL_TASKS_LIST_ID) {
