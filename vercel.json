@@ -7,7 +7,7 @@
   "crons": [
     {
       "path": "/api/reminders",
-      "schedule": "*/5 * * * *"
+      "schedule": "* * * * *"
     }
   ],
   "rewrites": [

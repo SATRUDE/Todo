@@ -11,11 +11,11 @@ interface DeadlineModalProps {
 }
 
 export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline, currentDeadline }: DeadlineModalProps) {
-  // Round time to 15-minute intervals helper
-  const roundTimeTo15Minutes = (time: string): string => {
+  // Round time to 5-minute intervals helper
+  const roundTimeTo5Minutes = (time: string): string => {
     if (!time) return "";
     const [hours, minutes] = time.split(':').map(Number);
-    const roundedMinutes = Math.round(minutes / 15) * 15;
+    const roundedMinutes = Math.round(minutes / 5) * 5;
     if (roundedMinutes === 60) {
       return `${(hours + 1).toString().padStart(2, '0')}:00`;
     }
@@ -23,7 +23,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
   };
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(currentDeadline?.date || new Date());
-  const [selectedTime, setSelectedTime] = useState(currentDeadline?.time ? roundTimeTo15Minutes(currentDeadline.time) : "");
+  const [selectedTime, setSelectedTime] = useState(currentDeadline?.time ? roundTimeTo5Minutes(currentDeadline.time) : "");
   const [recurring, setRecurring] = useState(currentDeadline?.recurring || "none");
 
   const getDayOfWeek = (date: Date) => {
@@ -33,11 +33,11 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
 
   const currentDayOfWeek = selectedDate ? getDayOfWeek(selectedDate) : "Friday";
 
-  // Generate time options in 15-minute intervals
+  // Generate time options in 5-minute intervals
   const generateTimeOptions = () => {
     const options = [];
     for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
+      for (let minute = 0; minute < 60; minute += 5) {
         const hourStr = hour.toString().padStart(2, '0');
         const minuteStr = minute.toString().padStart(2, '0');
         const timeValue = `${hourStr}:${minuteStr}`;
@@ -107,7 +107,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
           <div className="px-[20px] w-full">
             <div className="flex items-center justify-between mb-2">
               <label className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#e1e6ee] text-[18px] tracking-[-0.198px] block">
-                Time (15-minute intervals)
+                Time (5-minute intervals)
               </label>
               {selectedTime && (
                 <button
@@ -119,7 +119,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
               )}
             </div>
             <select
-              value={selectedTime ? roundTimeTo15Minutes(selectedTime) : ""}
+              value={selectedTime ? roundTimeTo5Minutes(selectedTime) : ""}
               onChange={(e) => setSelectedTime(e.target.value)}
               className="w-full bg-[rgba(225,230,238,0.1)] border border-[rgba(225,230,238,0.1)] rounded-[12px] px-[16px] py-[12px] text-white font-['Inter:Regular',sans-serif] font-normal text-[18px] outline-none focus:border-[rgba(225,230,238,0.3)] cursor-pointer"
             >
@@ -137,7 +137,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
             )}
             {selectedTime && (
               <p className="text-[#5b5d62] text-sm mt-1 font-['Inter:Regular',sans-serif]">
-                Times are set to 15-minute intervals to align with notification schedule
+                Notifications will be sent at the exact time you set
               </p>
             )}
           </div>

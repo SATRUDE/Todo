@@ -34,9 +34,8 @@ function isTodoDue(todo) {
     return deadlineDate <= today;
   }
 
-  // If deadline_time is set, check if current time is within ±5 minutes of deadline
-  // This window accounts for the cron schedule to ensure notifications are sent
-  // even if the cron job is delayed slightly
+  // If deadline_time is set, check if current time is within ±1 minute of deadline
+  // With cron running every minute, this ensures notifications are sent at the exact deadline time
   const [hours, minutes] = todo.deadline_time.split(':').map(Number);
   if (isNaN(hours) || isNaN(minutes)) {
     // Invalid time format, treat as due if date matches
@@ -46,11 +45,12 @@ function isTodoDue(todo) {
   const deadlineDateTime = new Date(deadlineDate);
   deadlineDateTime.setHours(hours, minutes, 0, 0);
 
-  // Check if current time is within ±5 minutes of deadline
+  // Check if current time is within ±1 minute of deadline
+  // With 1-minute cron schedule, this ensures notifications are sent at the exact time
   const timeDiff = Math.abs(now - deadlineDateTime);
-  const fiveMinutes = 5 * 60 * 1000;
+  const oneMinute = 1 * 60 * 1000;
 
-  return timeDiff <= fiveMinutes;
+  return timeDiff <= oneMinute;
 }
 
 /**
