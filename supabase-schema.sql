@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS todos (
   deadline_date DATE,
   deadline_time TEXT,
   deadline_recurring TEXT, -- 'daily', 'weekly', 'weekday', 'monthly'
+  deadline_notified_at TIMESTAMP WITH TIME ZONE, -- Track when notification was sent for this deadline
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

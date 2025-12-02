@@ -205,13 +205,34 @@ async function main() {
     for (const todo of dueTodos) {
       console.log(`\n📝 Processing todo #${todo.id}: "${todo.text.substring(0, 50)}${todo.text.length > 50 ? '...' : ''}"`);
 
+      let todoNotificationSent = false;
       for (const subscription of subscriptions) {
         const success = await sendNotification(subscription, todo);
         if (success) {
           successCount++;
+          todoNotificationSent = true;
         } else {
           failureCount++;
         }
+      }
+
+      // Mark this todo as notified after successfully sending to at least one subscription
+      if (todoNotificationSent) {
+        const deadlineDateTime = todo.deadline_time 
+          ? (() => {
+              const [hours, minutes] = todo.deadline_time.split(':').map(Number);
+              const deadlineDate = new Date(todo.deadline_date);
+              deadlineDate.setHours(hours, minutes, 0, 0);
+              return deadlineDate.toISOString();
+            })()
+          : new Date(todo.deadline_date).toISOString();
+
+        await supabase
+          .from('todos')
+          .update({ deadline_notified_at: deadlineDateTime })
+          .eq('id', todo.id);
+        
+        console.log(`✅ Marked todo #${todo.id} as notified`);
       }
     }
 
