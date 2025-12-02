@@ -15,42 +15,63 @@ const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
 /**
  * Check if a todo is due based on deadline_date and deadline_time
  */
-function isTodoDue(todo) {
+function isTodoDue(todo, logContext = '') {
   if (!todo.deadline_date) {
+    if (logContext) console.log(`${logContext} - No deadline_date`);
     return false;
   }
 
   const now = new Date();
+  // Create today's date in local timezone (midnight local time)
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const deadlineDate = new Date(todo.deadline_date);
+  
+  // Parse deadline_date as local date (YYYY-MM-DD format)
+  // Split and create date in local timezone to avoid UTC issues
+  const [year, month, day] = todo.deadline_date.split('-').map(Number);
+  const deadlineDate = new Date(year, month - 1, day); // month is 0-indexed
 
   // Check if deadline_date is today or in the past
   if (deadlineDate > today) {
+    if (logContext) {
+      console.log(`${logContext} - Deadline date ${todo.deadline_date} is in the future (today: ${today.toISOString().split('T')[0]})`);
+    }
     return false;
   }
 
   // If no deadline_time, consider it due if deadline_date is today or past
-  if (!todo.deadline_time) {
-    return deadlineDate <= today;
+  if (!todo.deadline_time || todo.deadline_time.trim() === '') {
+    const isDue = deadlineDate <= today;
+    if (logContext) {
+      console.log(`${logContext} - No time set, date check: ${isDue ? 'DUE' : 'NOT DUE'}`);
+    }
+    return isDue;
   }
 
-  // If deadline_time is set, check if current time is within ±1 minute of deadline
-  // With cron running every minute, this ensures notifications are sent at the exact deadline time
+  // If deadline_time is set, check if current time is within ±2 minutes of deadline
+  // Using ±2 minutes to account for cron timing and potential delays
   const [hours, minutes] = todo.deadline_time.split(':').map(Number);
   if (isNaN(hours) || isNaN(minutes)) {
     // Invalid time format, treat as due if date matches
+    if (logContext) {
+      console.log(`${logContext} - Invalid time format: ${todo.deadline_time}`);
+    }
     return deadlineDate <= today;
   }
 
-  const deadlineDateTime = new Date(deadlineDate);
-  deadlineDateTime.setHours(hours, minutes, 0, 0);
+  // Create deadline datetime in local timezone
+  const deadlineDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
 
-  // Check if current time is within ±1 minute of deadline
-  // With 1-minute cron schedule, this ensures notifications are sent at the exact time
+  // Check if current time is within ±2 minutes of deadline
+  // Using ±2 minutes instead of ±1 to be more forgiving
   const timeDiff = Math.abs(now - deadlineDateTime);
-  const oneMinute = 1 * 60 * 1000;
+  const twoMinutes = 2 * 60 * 1000;
+  const isDue = timeDiff <= twoMinutes;
 
-  return timeDiff <= oneMinute;
+  if (logContext) {
+    console.log(`${logContext} - Deadline: ${deadlineDateTime.toISOString()}, Now: ${now.toISOString()}, Diff: ${Math.round(timeDiff / 1000)}s, Due: ${isDue}`);
+  }
+
+  return isDue;
 }
 
 /**
@@ -158,26 +179,38 @@ module.exports = async function handler(req, res) {
     }
 
     console.log(`📋 Found ${todos.length} todos with deadlines`);
+    
+    // Log all todos with deadlines for debugging
+    todos.forEach(todo => {
+      console.log(`  - Todo #${todo.id}: "${todo.text.substring(0, 30)}..." | Date: ${todo.deadline_date} | Time: ${todo.deadline_time || 'none'} | Completed: ${todo.completed} | Notified: ${todo.deadline_notified_at || 'never'}`);
+    });
 
     // Filter todos that are due and haven't been notified
     const dueTodos = todos.filter(todo => {
+      const logPrefix = `Todo #${todo.id} "${todo.text.substring(0, 30)}..."`;
+      
+      // Check if already notified
       if (todo.deadline_notified_at) {
-        // Check if we've already notified for this deadline
+        // Parse deadline date and time to create ISO string for comparison
+        const [year, month, day] = todo.deadline_date.split('-').map(Number);
         const deadlineDateTime = todo.deadline_time 
           ? (() => {
               const [hours, minutes] = todo.deadline_time.split(':').map(Number);
-              const deadlineDate = new Date(todo.deadline_date);
-              deadlineDate.setHours(hours, minutes, 0, 0);
-              return deadlineDate.toISOString();
+              const dt = new Date(year, month - 1, day, hours, minutes, 0, 0);
+              return dt.toISOString();
             })()
-          : new Date(todo.deadline_date).toISOString();
+          : new Date(year, month - 1, day).toISOString();
         
         // If already notified for this exact deadline, skip
         if (todo.deadline_notified_at === deadlineDateTime) {
+          console.log(`${logPrefix} - Already notified at ${todo.deadline_notified_at}`);
           return false;
         }
       }
-      return isTodoDue(todo);
+      
+      // Check if due
+      const isDue = isTodoDue(todo, logPrefix);
+      return isDue;
     });
 
     if (dueTodos.length === 0) {
