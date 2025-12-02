@@ -24,14 +24,27 @@ self.addEventListener('push', function(event) {
   // Parse push data if available
   if (event.data) {
     try {
-      const data = event.data.json();
-      notificationData = {
-        ...notificationData,
-        ...data,
-      };
+      // webpush sends data as text (JSON string)
+      const text = event.data.text();
+      if (text) {
+        const data = JSON.parse(text);
+        notificationData = {
+          ...notificationData,
+          ...data,
+        };
+      }
     } catch (e) {
-      // If not JSON, try text
-      notificationData.body = event.data.text() || notificationData.body;
+      // If parsing fails, try json() method (for other formats)
+      try {
+        const data = event.data.json();
+        notificationData = {
+          ...notificationData,
+          ...data,
+        };
+      } catch (e2) {
+        // If both fail, use default notification data
+        console.error('Failed to parse push notification data:', e2);
+      }
     }
   }
 

@@ -67,7 +67,6 @@ export function TodoApp() {
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
   const completionTimeouts = useRef<Map<number, NodeJS.Timeout>>(new Map());
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
-  const notificationTimeouts = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -138,8 +137,6 @@ export function TodoApp() {
     return () => {
       completionTimeouts.current.forEach(timeout => clearTimeout(timeout));
       completionTimeouts.current.clear();
-      notificationTimeouts.current.forEach(timeout => clearTimeout(timeout));
-      notificationTimeouts.current.clear();
     };
   }, []);
 
@@ -254,95 +251,9 @@ export function TodoApp() {
     }
   }, [notificationPermission]);
 
-  // Schedule deadline notifications
-  useEffect(() => {
-    // Clear existing notification timeouts
-    notificationTimeouts.current.forEach(timeout => clearTimeout(timeout));
-    notificationTimeouts.current.clear();
-
-    if (notificationPermission !== 'granted') {
-      return;
-    }
-
-    const now = new Date();
-    const scheduleNotification = async (todo: Todo) => {
-      // Only schedule for tasks with deadline, time, and not completed
-      if (!todo.deadline || !todo.deadline.time || todo.deadline.time.trim() === '' || todo.completed) {
-        return;
-      }
-
-      try {
-        const deadlineDate = new Date(todo.deadline.date);
-        const [hours, minutes] = todo.deadline.time.split(':').map(Number);
-        
-        // Validate time format
-        if (isNaN(hours) || isNaN(minutes)) {
-          return;
-        }
-        
-        deadlineDate.setHours(hours, minutes, 0, 0);
-
-        // Only schedule if the deadline is in the future
-        if (deadlineDate <= now) {
-          return;
-        }
-
-        const delay = deadlineDate.getTime() - now.getTime();
-        
-        // Don't schedule if delay is too large (more than 24 hours)
-        // This prevents issues with very far future dates
-        if (delay > 24 * 60 * 60 * 1000) {
-          return;
-        }
-
-        const timeout = setTimeout(async () => {
-          try {
-            // Check if task is still not completed
-            const currentTodo = todos.find(t => t.id === todo.id);
-            if (currentTodo && currentTodo.completed) {
-              return;
-            }
-
-            if ('serviceWorker' in navigator) {
-              const registration = await navigator.serviceWorker.ready;
-              await registration.showNotification('Task Reminder', {
-                body: `${todo.text} - ${todo.deadline.time}`,
-                icon: '/icon-192.png',
-                badge: '/icon-192.png',
-                tag: `task-${todo.id}`,
-              });
-            } else if ('Notification' in window) {
-              new Notification('Task Reminder', {
-                body: `${todo.text} - ${todo.deadline.time}`,
-                icon: '/icon-192.png',
-                tag: `task-${todo.id}`,
-              });
-            }
-          } catch (error) {
-            console.error('Error showing deadline notification:', error);
-          }
-          notificationTimeouts.current.delete(todo.id);
-        }, delay);
-
-        notificationTimeouts.current.set(todo.id, timeout);
-      } catch (error) {
-        console.error('Error scheduling notification for task:', todo.id, error);
-      }
-    };
-
-    // Schedule notifications for all tasks with deadlines
-    todos.forEach(todo => {
-      if (todo.deadline && todo.deadline.time && todo.deadline.time.trim() !== '' && !todo.completed) {
-        scheduleNotification(todo);
-      }
-    });
-
-    // Cleanup function
-    return () => {
-      notificationTimeouts.current.forEach(timeout => clearTimeout(timeout));
-      notificationTimeouts.current.clear();
-    };
-  }, [todos, notificationPermission]);
+  // Note: Deadline notifications are handled by the backend cron job (/api/reminders)
+  // which runs every minute and sends push notifications via the service worker.
+  // This ensures notifications work even when the app is closed.
 
   const handleSelectList = (list: ListItem) => {
     setSelectedList(list);
