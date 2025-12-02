@@ -2,10 +2,10 @@ name: Send Todo Reminders
 
 on:
   schedule:
-    # Run every minute to check for exact deadline times
-    # Note: GitHub Actions scheduled workflows can have delays, but running every minute
-    # ensures we catch deadlines at the correct time (within ±1 minute window)
-    - cron: '* * * * *'
+    # Run every 5 minutes to check for due deadlines
+    # Note: GitHub Actions scheduled workflows can have delays, but running every 5 minutes
+    # ensures we catch deadlines within ±2-3 minutes of the scheduled time
+    - cron: '*/5 * * * *'
   workflow_dispatch: # Allow manual triggering
 
 jobs:
