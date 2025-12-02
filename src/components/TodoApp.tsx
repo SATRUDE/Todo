@@ -159,11 +159,22 @@ export function TodoApp() {
       if (permission === 'granted') {
         const subscription = await subscribeToPushNotifications();
         if (subscription) {
-          await sendSubscriptionToServer(subscription);
+          console.log('📱 Push subscription created, sending to server...');
+          const success = await sendSubscriptionToServer(subscription);
+          if (success) {
+            console.log('✅ Subscription saved to server successfully');
+            alert('Notifications enabled! You will receive reminders for due todos.');
+          } else {
+            console.error('❌ Failed to save subscription to server');
+            alert('Notifications enabled locally, but failed to save to server. Check console for details.');
+          }
+        } else {
+          console.error('❌ Failed to create push subscription');
         }
       }
     } catch (error) {
       console.error('Error enabling notifications:', error);
+      alert('Error enabling notifications: ' + (error as Error).message);
     }
   }, []);
 

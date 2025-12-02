@@ -123,7 +123,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 // Send subscription to your backend
 export async function sendSubscriptionToServer(subscription: PushSubscription): Promise<boolean> {
   try {
-    // Replace with your actual backend endpoint
+    console.log('📤 Sending subscription to /api/push/subscribe...');
     const response = await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: {
@@ -141,13 +141,16 @@ export async function sendSubscriptionToServer(subscription: PushSubscription): 
     });
 
     if (!response.ok) {
-      throw new Error('Failed to send subscription to server');
+      const errorText = await response.text();
+      console.error('❌ Server responded with error:', response.status, errorText);
+      throw new Error(`Failed to send subscription to server: ${response.status} ${errorText}`);
     }
 
-    console.log('Subscription sent to server successfully');
+    const result = await response.json();
+    console.log('✅ Subscription sent to server successfully:', result);
     return true;
   } catch (error) {
-    console.error('Error sending subscription to server:', error);
+    console.error('❌ Error sending subscription to server:', error);
     return false;
   }
 }
