@@ -152,6 +152,28 @@ export async function sendSubscriptionToServer(subscription: PushSubscription): 
   }
 }
 
+export async function sendTestPushNotification(subscription: PushSubscription): Promise<boolean> {
+  try {
+    const response = await fetch('/api/push/test', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ subscription }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to trigger test push notification');
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error sending test push notification:', error);
+    return false;
+  }
+}
+
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
