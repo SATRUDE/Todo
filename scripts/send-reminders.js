@@ -5,6 +5,16 @@
  * This script is run by GitHub Actions on a cron schedule
  */
 
+// Check if dependencies are available
+try {
+  require.resolve('@supabase/supabase-js');
+  require.resolve('web-push');
+} catch (error) {
+  console.error('❌ Missing required dependencies. Please run: npm install');
+  console.error('Error:', error.message);
+  process.exit(1);
+}
+
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
 
