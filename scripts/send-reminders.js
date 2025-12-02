@@ -76,8 +76,10 @@ function isTodoDue(todo) {
     return deadlineDate <= today;
   }
 
-  // If deadline_time is set, check if current time is within ±2 minutes of deadline
+  // If deadline_time is set, check if current time is within ±5 minutes of deadline
   // This window accounts for the 5-minute workflow schedule to ensure notifications are sent
+  // even if the workflow is delayed. With 15-minute deadline intervals and 5-minute schedule,
+  // a ±5 minute window ensures no deadlines are missed.
   const [hours, minutes] = todo.deadline_time.split(':').map(Number);
   if (isNaN(hours) || isNaN(minutes)) {
     // Invalid time format, treat as due if date matches
@@ -87,12 +89,12 @@ function isTodoDue(todo) {
   const deadlineDateTime = new Date(deadlineDate);
   deadlineDateTime.setHours(hours, minutes, 0, 0);
 
-  // Check if current time is within ±2 minutes of deadline
-  // This ensures notifications are sent even if the workflow runs slightly before or after the deadline
+  // Check if current time is within ±5 minutes of deadline
+  // This ensures notifications are sent even if the workflow is delayed by up to 5 minutes
   const timeDiff = Math.abs(now - deadlineDateTime);
-  const twoMinutes = 2 * 60 * 1000;
+  const fiveMinutes = 5 * 60 * 1000;
 
-  return timeDiff <= twoMinutes;
+  return timeDiff <= fiveMinutes;
 }
 
 /**
