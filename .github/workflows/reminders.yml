@@ -1,12 +1,17 @@
 name: Send Todo Reminders
 
+# NOTE: This workflow has been replaced by Vercel cron jobs
+# The cron job is now configured in vercel.json and runs at /api/reminders
+# This workflow is kept for reference but is disabled
+# To re-enable, uncomment the schedule below and remove this note
+
 on:
-  schedule:
-    # Run every 5 minutes to check for due deadlines
-    # Note: GitHub Actions scheduled workflows can have delays, but running every 5 minutes
-    # ensures we catch deadlines within ±2-3 minutes of the scheduled time
-    - cron: '*/5 * * * *'
-  workflow_dispatch: # Allow manual triggering
+  # schedule:
+  #   # Run every 5 minutes to check for due deadlines
+  #   # Note: GitHub Actions scheduled workflows can have delays, but running every 5 minutes
+  #   # ensures we catch deadlines within ±2-3 minutes of the scheduled time
+  #   - cron: '*/5 * * * *'
+  workflow_dispatch: # Allow manual triggering (for testing only)
 
 jobs:
   send-reminders:
