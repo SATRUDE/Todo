@@ -2,7 +2,8 @@ name: Send Todo Reminders
 
 on:
   schedule:
-    # Run every 5 minutes
+    # Run every 5 minutes (UTC time)
+    # Note: GitHub Actions can delay scheduled workflows, especially for frequent schedules
     - cron: '*/5 * * * *'
   workflow_dispatch: # Allow manual triggering
 
