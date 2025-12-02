@@ -2,10 +2,10 @@ name: Send Todo Reminders
 
 on:
   schedule:
-    # Run every 15 minutes (UTC time) - more reliable than every 5 minutes
-    # GitHub Actions scheduled workflows can be delayed, especially for frequent schedules
-    # Using 15 minutes provides better reliability while still being frequent enough for reminders
-    - cron: '*/15 * * * *'
+    # Run every minute to check for exact deadline times
+    # Note: GitHub Actions scheduled workflows can have delays, but running every minute
+    # ensures we catch deadlines at the correct time (within ±1 minute window)
+    - cron: '* * * * *'
   workflow_dispatch: # Allow manual triggering
 
 jobs:
