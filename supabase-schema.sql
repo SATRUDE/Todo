@@ -28,9 +28,22 @@ CREATE INDEX IF NOT EXISTS idx_todos_list_id ON todos(list_id);
 CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed);
 CREATE INDEX IF NOT EXISTS idx_todos_deadline_date ON todos(deadline_date);
 
+-- Create push_subscriptions table
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id BIGSERIAL PRIMARY KEY,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create index on endpoint for fast lookups
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint ON push_subscriptions(endpoint);
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE lists ENABLE ROW LEVEL SECURITY;
 ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- Create policies to allow all operations (you can restrict these later based on your auth needs)
 -- For now, we'll allow public read/write access. In production, you should add authentication.
@@ -43,6 +56,12 @@ CREATE POLICY "Allow all operations on lists" ON lists
 
 -- Todos policies
 CREATE POLICY "Allow all operations on todos" ON todos
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- Push subscriptions policies
+CREATE POLICY "Allow all operations on push_subscriptions" ON push_subscriptions
   FOR ALL
   USING (true)
   WITH CHECK (true);

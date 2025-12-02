@@ -55,6 +55,7 @@
       },
       "scripts": {
             "dev": "vite",
-            "build": "vite build"
+            "build": "vite build",
+            "send-reminders": "node scripts/send-reminders.js"
       }
 }
