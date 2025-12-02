@@ -81,7 +81,36 @@ export function appTodoToDbTodo(todo: any): any {
   
   if (todo.deadline) {
     dbTodo.deadline_date = formatLocalDate(todo.deadline.date)
-    dbTodo.deadline_time = todo.deadline.time || null
+    
+    // Convert local time to UTC for storage
+    // The user sets a time in their local timezone (e.g., 21:20 in Norway UTC+1)
+    // We need to convert it to UTC so the backend can work in UTC
+    if (todo.deadline.time && todo.deadline.time.trim() !== '') {
+      // Parse the local date and time
+      const localDate = todo.deadline.date
+      const [hours, minutes] = todo.deadline.time.split(':').map(Number)
+      
+      // Create a date object in the user's local timezone
+      const localDateTime = new Date(
+        localDate.getFullYear(),
+        localDate.getMonth(),
+        localDate.getDate(),
+        hours,
+        minutes,
+        0,
+        0
+      )
+      
+      // Convert to UTC
+      const utcHours = localDateTime.getUTCHours()
+      const utcMinutes = localDateTime.getUTCMinutes()
+      
+      // Format as HH:MM in UTC
+      dbTodo.deadline_time = `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`
+    } else {
+      dbTodo.deadline_time = null
+    }
+    
     dbTodo.deadline_recurring = todo.deadline.recurring || null
   } else {
     dbTodo.deadline_date = null
@@ -95,9 +124,35 @@ export function appTodoToDbTodo(todo: any): any {
 // Convert app Todo format to display format (with deadline object)
 export function dbTodoToDisplayTodo(dbTodo: Todo): any {
   const parsedDeadlineDate = parseLocalDate(dbTodo.deadline_date)
+  
+  // Convert UTC time back to local time for display
+  let displayTime = dbTodo.deadline_time || ''
+  if (parsedDeadlineDate && dbTodo.deadline_time && dbTodo.deadline_time.trim() !== '') {
+    // Parse UTC time
+    const [utcHours, utcMinutes] = dbTodo.deadline_time.split(':').map(Number)
+    
+    // Create a UTC date object
+    const utcDate = new Date(Date.UTC(
+      parsedDeadlineDate.getFullYear(),
+      parsedDeadlineDate.getMonth(),
+      parsedDeadlineDate.getDate(),
+      utcHours,
+      utcMinutes,
+      0,
+      0
+    ))
+    
+    // Convert to local time
+    const localHours = utcDate.getHours()
+    const localMinutes = utcDate.getMinutes()
+    
+    // Format as HH:MM in local time
+    displayTime = `${String(localHours).padStart(2, '0')}:${String(localMinutes).padStart(2, '0')}`
+  }
+  
   const deadline = parsedDeadlineDate ? {
     date: parsedDeadlineDate,
-    time: dbTodo.deadline_time || '',
+    time: displayTime,
     recurring: dbTodo.deadline_recurring,
   } : undefined
 

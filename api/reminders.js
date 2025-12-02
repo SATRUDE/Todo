@@ -22,53 +22,69 @@ function isTodoDue(todo, logContext = '') {
   }
 
   const now = new Date();
-  // Create today's date in local timezone (midnight local time)
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   
-  // Parse deadline_date as local date (YYYY-MM-DD format)
-  // Split and create date in local timezone to avoid UTC issues
+  // Parse deadline_date (YYYY-MM-DD format)
   const [year, month, day] = todo.deadline_date.split('-').map(Number);
-  const deadlineDate = new Date(year, month - 1, day); // month is 0-indexed
+  
+  // Create today's date in UTC (midnight UTC)
+  const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  
+  // Create deadline date in UTC (midnight UTC)
+  const deadlineDateUTC = new Date(Date.UTC(year, month - 1, day));
 
-  // Check if deadline_date is today or in the past
-  if (deadlineDate > today) {
+  // Check if deadline_date is today or in the past (in UTC)
+  if (deadlineDateUTC > todayUTC) {
     if (logContext) {
-      console.log(`${logContext} - Deadline date ${todo.deadline_date} is in the future (today: ${today.toISOString().split('T')[0]})`);
+      console.log(`${logContext} - Deadline date ${todo.deadline_date} is in the future (today UTC: ${todayUTC.toISOString().split('T')[0]})`);
     }
     return false;
   }
 
   // If no deadline_time, consider it due if deadline_date is today or past
   if (!todo.deadline_time || todo.deadline_time.trim() === '') {
-    const isDue = deadlineDate <= today;
+    const isDue = deadlineDateUTC <= todayUTC;
     if (logContext) {
       console.log(`${logContext} - No time set, date check: ${isDue ? 'DUE' : 'NOT DUE'}`);
     }
     return isDue;
   }
 
-  // If deadline_time is set, check if current time is within ±2 minutes of deadline
-  // Using ±2 minutes to account for cron timing and potential delays
+  // If deadline_time is set, check if current time is at or past the deadline
+  // We check if the deadline has passed (not just within a window) to ensure we catch it
   const [hours, minutes] = todo.deadline_time.split(':').map(Number);
   if (isNaN(hours) || isNaN(minutes)) {
     // Invalid time format, treat as due if date matches
     if (logContext) {
       console.log(`${logContext} - Invalid time format: ${todo.deadline_time}`);
     }
-    return deadlineDate <= today;
+    return deadlineDateUTC <= todayUTC;
   }
 
-  // Create deadline datetime in local timezone
-  const deadlineDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
-
-  // Check if current time is within ±2 minutes of deadline
-  // Using ±2 minutes instead of ±1 to be more forgiving
-  const timeDiff = Math.abs(now - deadlineDateTime);
-  const twoMinutes = 2 * 60 * 1000;
-  const isDue = timeDiff <= twoMinutes;
+  // Create deadline datetime in UTC (Vercel servers run in UTC)
+  // The deadline_time is stored as HH:MM and should be interpreted as UTC
+  // Use Date.UTC to ensure we're creating the date in UTC timezone
+  const deadlineDateTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
+  
+  // Calculate time difference (positive = deadline has passed, negative = deadline is in future)
+  const timeDiff = now - deadlineDateTime;
+  const fiveMinutes = 5 * 60 * 1000;
+  
+  // Due if:
+  // 1. Deadline has passed (even if hours/days ago, as long as it hasn't been notified)
+  // 2. OR deadline is within the next 5 minutes (to catch it even if cron runs slightly early)
+  // This ensures we catch deadlines even if cron runs slightly before the exact time
+  // and also catches deadlines that were missed due to cron failures
+  const isDue = timeDiff >= -fiveMinutes;
 
   if (logContext) {
-    console.log(`${logContext} - Deadline: ${deadlineDateTime.toISOString()}, Now: ${now.toISOString()}, Diff: ${Math.round(timeDiff / 1000)}s, Due: ${isDue}`);
+    const diffSeconds = Math.round(timeDiff / 1000);
+    const diffMinutes = Math.round(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const remainingMinutes = diffMinutes % 60;
+    const timeStr = diffHours > 0 
+      ? `${diffHours}h ${remainingMinutes}m ${diffSeconds % 60}s`
+      : `${remainingMinutes}m ${diffSeconds % 60}s`;
+    console.log(`${logContext} - Deadline: ${deadlineDateTime.toISOString()}, Now: ${now.toISOString()}, Diff: ${timeStr}, Due: ${isDue}`);
   }
 
   return isDue;
@@ -215,10 +231,13 @@ module.exports = async function handler(req, res) {
 
     if (dueTodos.length === 0) {
       console.log('ℹ️ No todos are due at this time');
+      console.log(`📊 Summary: Checked ${todos.length} todos with deadlines, ${todos.length - dueTodos.length} were filtered out`);
       return res.status(200).json({ 
         success: true, 
         message: 'No todos are due at this time',
-        checked: new Date().toISOString()
+        checked: new Date().toISOString(),
+        todosChecked: todos.length,
+        todosFiltered: todos.length - dueTodos.length
       });
     }
 
