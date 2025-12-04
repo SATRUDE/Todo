@@ -8,6 +8,7 @@ interface Todo {
   text: string;
   completed: boolean;
   time?: string;
+  description?: string | null;
   deadline?: {
     date: Date;
     time: string;
@@ -39,7 +40,7 @@ interface ListDetailProps {
   onBack: () => void;
   tasks: Todo[];
   onToggleTask: (id: number) => void;
-  onAddTask: (taskText: string) => void;
+  onAddTask: (taskText: string, description?: string) => void;
   onUpdateList: (listId: number, listName: string, isShared: boolean, color: string) => void;
   onDeleteList: (listId: number) => void;
   onTaskClick?: (task: Todo) => void;
@@ -50,10 +51,10 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
 
-  const handleAddTask = (taskText: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => {
+  const handleAddTask = (taskText: string, description?: string, _listId?: number, _deadline?: { date: Date; time: string; recurring?: string }) => {
     // onAddTask from parent expects just taskText and already knows the listId
     // The listId from the modal will be the current list (via defaultListId)
-    onAddTask(taskText);
+    onAddTask(taskText, description);
     setIsAddTaskModalOpen(false);
   };
 

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS lists (
 CREATE TABLE IF NOT EXISTS todos (
   id BIGSERIAL PRIMARY KEY,
   text TEXT NOT NULL,
+  description TEXT,
   completed BOOLEAN DEFAULT FALSE,
   time TEXT,
   "group" TEXT,
