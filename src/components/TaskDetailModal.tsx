@@ -110,6 +110,70 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     return list ? list.color : "#E1E6EE";
   };
 
+  const formatTaskDetailsForChat = () => {
+    const pieces: string[] = [
+      "Aim: Solve the following task.",
+      `Title: ${taskInput || "Untitled task"}`,
+    ];
+
+    if (taskDescription.trim()) {
+      pieces.push(`Description: ${taskDescription.trim()}`);
+    }
+
+    const listName = getSelectedListName();
+    if (listName && listName !== "List") {
+      pieces.push(`List: ${listName}`);
+    }
+
+    if (deadline) {
+      const date = deadline.date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+      const recurringSuffix = deadline.recurring ? ` (${deadline.recurring})` : "";
+      pieces.push(`Deadline: ${date} ${deadline.time}${recurringSuffix}`);
+    }
+
+    pieces.push(`Task ID: ${task.id}`);
+    return pieces.join("\n");
+  };
+
+  const copyTaskDetailsToClipboard = async (details: string) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(details);
+        return true;
+      }
+    } catch (error) {
+      console.error("Clipboard API copy failed", error);
+    }
+
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = details;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const success = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return success;
+    } catch (error) {
+      console.error("Fallback clipboard copy failed", error);
+      return false;
+    }
+  };
+
+  const handleSolveTask = async () => {
+    const details = formatTaskDetailsForChat();
+    await copyTaskDetailsToClipboard(details);
+    if (typeof window !== "undefined") {
+      window.open("https://chat.openai.com/", "_blank", "noopener,noreferrer");
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -215,7 +279,14 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                 </div>
 
                 {/* Save Button */}
-                <div className="flex w-full justify-end">
+                <div className="flex w-full flex-wrap items-center justify-end gap-[12px]">
+                  <button
+                    type="button"
+                    onClick={handleSolveTask}
+                    className="border border-[rgba(225,230,238,0.2)] hover:border-[rgba(225,230,238,0.4)] box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer transition-colors px-[24px] py-[10px] font-['Inter:Medium',sans-serif] font-medium leading-[1.5] text-white text-[16px] tracking-[-0.176px]"
+                  >
+                    Solve task
+                  </button>
                   <button
                     type="button"
                     onClick={handleSave}
