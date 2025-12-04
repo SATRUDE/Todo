@@ -44,6 +44,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<number | null>(task.listId !== undefined && task.listId !== 0 && task.listId !== -1 ? task.listId : null);
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(task.deadline || null);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -52,6 +53,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     setIsDescriptionExpanded(Boolean(task.description));
     setSelectedListId(task.listId !== undefined && task.listId !== 0 && task.listId !== -1 ? task.listId : null);
     setDeadline(task.deadline || null);
+    setCopyStatus("idle");
   }, [task, isOpen]);
 
   const handleSave = () => {
@@ -108,6 +110,61 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     if (selectedListId === null) return "#E1E6EE";
     const list = lists.find(l => l.id === selectedListId);
     return list ? list.color : "#E1E6EE";
+  };
+
+  const formatDeadlineForClipboard = () => {
+    if (!deadline) return null;
+    const dateString = deadline.date.toLocaleDateString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const timeString = deadline.time ? ` at ${deadline.time}` : "";
+    const recurringString = deadline.recurring ? ` (${deadline.recurring})` : "";
+    return `Deadline: ${dateString}${timeString}${recurringString}`;
+  };
+
+  const copyTextToClipboard = async (text: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    if (typeof document === "undefined") {
+      throw new Error("Clipboard API is not available");
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  };
+
+  const handleCopyDetails = async () => {
+    const listName = getSelectedListName();
+    const lines = [
+      `Task: ${taskInput.trim() || "Untitled task"}`,
+      taskDescription.trim() ? `Description: ${taskDescription.trim()}` : null,
+      selectedListId !== null ? `List: ${listName}` : null,
+      `Status: ${task.completed ? "Completed" : "Pending"}`,
+      formatDeadlineForClipboard(),
+    ].filter(Boolean) as string[];
+
+    try {
+      await copyTextToClipboard(lines.join("\n"));
+      setCopyStatus("copied");
+      setTimeout(() => setCopyStatus("idle"), 2000);
+    } catch (error) {
+      setCopyStatus("error");
+      console.error("Failed to copy task details", error);
+      setTimeout(() => setCopyStatus("idle"), 2500);
+    }
   };
 
   if (!isOpen) return null;
@@ -185,6 +242,15 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                     </div>
                     <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getDeadlineText()}</p>
                   </div>
+
+                  {/* Copy Details Button */}
+                  <button
+                    type="button"
+                    onClick={handleCopyDetails}
+                    className="bg-[rgba(225,230,238,0.1)] hover:bg-[rgba(225,230,238,0.15)] box-border content-stretch flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer transition-colors text-[#e1e6ee] text-[16px] tracking-[-0.176px]"
+                  >
+                    {copyStatus === "copied" ? "Copied!" : copyStatus === "error" ? "Retry copy" : "Copy details"}
+                  </button>
 
                   {/* List Button */}
                   <div 
