@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent } from "react";
+import { useState, useEffect, KeyboardEvent } from "react";
 import svgPaths from "../imports/svg-e51h379o38";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
 import { SelectListModal } from "./SelectListModal";
@@ -19,6 +19,7 @@ interface Todo {
   time?: string;
   group?: string;
   listId?: number;
+  description?: string | null;
   deadline?: {
     date: Date;
     time: string;
@@ -30,22 +31,39 @@ interface TaskDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   task: Todo;
-  onUpdateTask: (taskId: number, text: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => void;
+  onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => void;
   onDeleteTask: (taskId: number) => void;
   lists?: ListItem[];
 }
 
 export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, lists = [] }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
+  const [taskDescription, setTaskDescription] = useState(task.description || "");
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(Boolean(task.description));
   const [isSelectListOpen, setIsSelectListOpen] = useState(false);
   const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<number | null>(task.listId !== undefined && task.listId !== 0 && task.listId !== -1 ? task.listId : null);
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(task.deadline || null);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    setTaskInput(task.text);
+    setTaskDescription(task.description || "");
+    setIsDescriptionExpanded(Boolean(task.description));
+    setSelectedListId(task.listId !== undefined && task.listId !== 0 && task.listId !== -1 ? task.listId : null);
+    setDeadline(task.deadline || null);
+  }, [task, isOpen]);
+
+  const handleSave = () => {
+    if (taskInput.trim() === "") return;
+    onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, deadline === null ? null : deadline);
+    onClose();
+  };
+
   const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && taskInput.trim() !== "") {
-      onUpdateTask(task.id, taskInput, selectedListId || undefined, deadline || undefined);
-      onClose();
+      e.preventDefault();
+      handleSave();
     }
   };
 
@@ -121,15 +139,35 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
             <div className="size-full">
               <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
                 {/* Input Field */}
-                <input
-                  type="text"
-                  value={taskInput}
-                  onChange={(e) => setTaskInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Task name"
-                  className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62]"
-                  autoFocus
-                />
+                <div className="flex w-full flex-col gap-[12px]">
+                  <input
+                    type="text"
+                    value={taskInput}
+                    onChange={(e) => setTaskInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Task name"
+                    className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62]"
+                    autoFocus
+                  />
+
+                  {(isDescriptionExpanded || taskDescription) ? (
+                    <textarea
+                      value={taskDescription}
+                      onChange={(e) => setTaskDescription(e.target.value)}
+                      placeholder="Task description"
+                      autoFocus={isDescriptionExpanded && taskDescription === ""}
+                      className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-white text-[14px] tracking-[-0.154px] bg-transparent border border-[rgba(225,230,238,0.1)] rounded-[16px] outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[96px] px-[16px] py-[12px]"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsDescriptionExpanded(true)}
+                      className="text-left font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[14px] tracking-[-0.154px] text-[#5b5d62] hover:text-[#e1e6ee] transition-colors"
+                    >
+                      Task description
+                    </button>
+                  )}
+                </div>
 
                 {/* Buttons */}
                 <div className="content-stretch flex gap-[8px] items-start relative shrink-0 flex-wrap">
@@ -175,6 +213,18 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                     </svg>
                   </div>
                 </div>
+
+                {/* Save Button */}
+                <div className="flex w-full justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={taskInput.trim() === ""}
+                    className="bg-[#0b64f9] hover:bg-[#0a58d8] disabled:opacity-50 disabled:cursor-not-allowed box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer transition-opacity px-[24px] py-[10px] font-['Inter:Medium',sans-serif] font-medium leading-[1.5] text-white text-[16px] tracking-[-0.176px]"
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -195,6 +245,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
         isOpen={isDeadlineOpen}
         onClose={() => setIsDeadlineOpen(false)}
         onSetDeadline={handleSetDeadline}
+        onClearDeadline={() => setDeadline(null)}
         currentDeadline={deadline}
       />
     </div>

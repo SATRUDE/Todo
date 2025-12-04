@@ -30,6 +30,7 @@ interface Todo {
   completed: boolean;
   time?: string;
   group?: string;
+  description?: string | null;
   listId?: number; // -1 for completed, 0 for today, positive numbers for custom lists
   deadline?: {
     date: Date;
@@ -411,7 +412,7 @@ export function TodoApp() {
     }
   };
 
-  const addNewTask = async (taskText: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => {
+  const addNewTask = async (taskText: string, description?: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => {
     const newTodo: Todo = {
       id: Date.now(), // Temporary ID
       text: taskText,
@@ -420,6 +421,7 @@ export function TodoApp() {
       group: deadline ? undefined : "Group",
       listId: listId !== undefined ? listId : TODAY_LIST_ID,
       deadline: deadline,
+      description: description ?? null,
     };
     
     try {
@@ -432,12 +434,13 @@ export function TodoApp() {
     }
   };
 
-  const addNewTaskToList = async (taskText: string, listId: number) => {
+  const addNewTaskToList = async (taskText: string, description: string | undefined, listId: number) => {
     const newTodo: Todo = {
       id: Date.now(), // Temporary ID
       text: taskText,
       completed: false,
       listId: listId,
+      description: description ?? null,
     };
     
     try {
@@ -504,7 +507,7 @@ export function TodoApp() {
     }
   };
 
-  const updateTask = async (taskId: number, text: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => {
+  const updateTask = async (taskId: number, text: string, description?: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => {
     try {
       const todo = todos.find(t => t.id === taskId);
       if (!todo) return;
@@ -514,9 +517,13 @@ export function TodoApp() {
         text,
         listId: listId !== undefined ? listId : todo.listId,
       };
+
+      if (description !== undefined) {
+        updateData.description = description;
+      }
       
       if (deadline !== undefined) {
-        updateData.deadline = deadline;
+        updateData.deadline = deadline ?? null;
         updateData.time = deadline?.time;
         updateData.group = deadline ? undefined : todo.group;
       }
@@ -821,7 +828,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onBack={handleBackFromList}
           tasks={getTasksForList(selectedList.id)}
           onToggleTask={toggleTodo}
-          onAddTask={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : (taskText) => addNewTaskToList(taskText, selectedList.id)}
+          onAddTask={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : (taskText, description) => addNewTaskToList(taskText, description, selectedList.id)}
           onUpdateList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : updateList}
           onDeleteList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : deleteList}
           onTaskClick={handleTaskClick}

@@ -16,7 +16,7 @@ interface ListItem {
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddTask: (task: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => void;
+  onAddTask: (task: string, description?: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => void;
   lists?: ListItem[];
   defaultListId?: number;
 }
@@ -55,7 +55,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
       if (isBulkAddMode) {
         await handleBulkAdd();
       } else {
-        await onAddTask(taskInput, selectedListId || undefined, deadline || undefined);
+        await onAddTask(taskInput, taskDescription, selectedListId || undefined, deadline || undefined);
         setTaskInput("");
         setSelectedListId(null);
         setDeadline(getDefaultDeadline());
@@ -140,7 +140,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
     // Add all tasks sequentially to ensure they all get added
     for (const line of lines) {
       if (line.trim()) {
-        await onAddTask(line.trim(), selectedListId || undefined, deadline || undefined);
+        await onAddTask(line.trim(), "", selectedListId || undefined, deadline || undefined);
       }
     }
     

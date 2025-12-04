@@ -19,6 +19,7 @@ interface Todo {
   time?: string;
   group?: string;
   listId?: number;
+  description?: string | null;
 }
 
 const COMPLETED_LIST_ID = -1;

@@ -34,6 +34,7 @@ export interface Todo {
   completed: boolean
   time?: string
   group?: string
+  description?: string | null
   list_id?: number // -1 for completed, 0 for today, positive numbers for custom lists
   deadline_date?: string // YYYY-MM-DD string
   deadline_time?: string
@@ -60,6 +61,7 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     completed: dbTodo.completed,
     time: dbTodo.time,
     group: dbTodo.group,
+    description: dbTodo.description,
     list_id: dbTodo.list_id,
     deadline_date: dbTodo.deadline_date,
     deadline_time: dbTodo.deadline_time,
@@ -77,6 +79,12 @@ export function appTodoToDbTodo(todo: any): any {
     time: todo.time || null,
     group: todo.group || null,
     list_id: todo.listId !== undefined ? todo.listId : (todo.list_id !== undefined ? todo.list_id : 0),
+  }
+
+  if (typeof todo.description === 'string') {
+    dbTodo.description = todo.description.trim() === '' ? null : todo.description
+  } else {
+    dbTodo.description = todo.description ?? null
   }
   
   if (todo.deadline) {
@@ -162,6 +170,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     completed: dbTodo.completed,
     time: dbTodo.time,
     group: dbTodo.group,
+    description: dbTodo.description || undefined,
     listId: dbTodo.list_id,
     deadline,
   }
