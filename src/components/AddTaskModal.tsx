@@ -22,18 +22,13 @@ interface AddTaskModalProps {
 }
 
 export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultListId }: AddTaskModalProps) {
-  const getDefaultDeadline = () => {
-    const today = new Date();
-    return { date: today, time: "", recurring: undefined };
-  };
-
   const [taskInput, setTaskInput] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isSelectListOpen, setIsSelectListOpen] = useState(false);
   const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<number | null>(defaultListId || null);
-  const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(getDefaultDeadline());
+  const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(null);
   const [isBulkAddMode, setIsBulkAddMode] = useState(false);
 
   // Update selectedListId when defaultListId changes or modal opens
@@ -44,7 +39,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
       // Reset when modal closes
       setSelectedListId(defaultListId || null);
       setTaskInput("");
-      setDeadline(getDefaultDeadline());
+      setDeadline(null);
       setTaskDescription("");
       setIsDescriptionExpanded(false);
     }
@@ -55,10 +50,10 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
       if (isBulkAddMode) {
         await handleBulkAdd();
       } else {
-        await onAddTask(taskInput, taskDescription, selectedListId || undefined, deadline || undefined);
+        await onAddTask(taskInput, taskDescription, selectedListId || undefined, deadline ?? undefined);
         setTaskInput("");
         setSelectedListId(null);
-        setDeadline(getDefaultDeadline());
+        setDeadline(null);
         setTaskDescription("");
         setIsDescriptionExpanded(false);
         onClose();
@@ -140,13 +135,13 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
     // Add all tasks sequentially to ensure they all get added
     for (const line of lines) {
       if (line.trim()) {
-        await onAddTask(line.trim(), "", selectedListId || undefined, deadline || undefined);
+        await onAddTask(line.trim(), "", selectedListId || undefined, deadline ?? undefined);
       }
     }
     
     setTaskInput("");
     setSelectedListId(null);
-    setDeadline(getDefaultDeadline());
+    setDeadline(null);
     setIsBulkAddMode(false);
     setTaskDescription("");
     setIsDescriptionExpanded(false);
