@@ -112,19 +112,6 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     return list ? list.color : "#E1E6EE";
   };
 
-  const formatDeadlineForClipboard = () => {
-    if (!deadline) return null;
-    const dateString = deadline.date.toLocaleDateString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-    const timeString = deadline.time ? ` at ${deadline.time}` : "";
-    const recurringString = deadline.recurring ? ` (${deadline.recurring})` : "";
-    return `Deadline: ${dateString}${timeString}${recurringString}`;
-  };
-
   const copyTextToClipboard = async (text: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
@@ -146,18 +133,28 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     document.body.removeChild(textarea);
   };
 
-  const handleCopyDetails = async () => {
+  const buildChatGptPrompt = () => {
     const listName = getSelectedListName();
-    const lines = [
+    const taskLines = [
       `Task: ${taskInput.trim() || "Untitled task"}`,
       taskDescription.trim() ? `Description: ${taskDescription.trim()}` : null,
       selectedListId !== null ? `List: ${listName}` : null,
       `Status: ${task.completed ? "Completed" : "Pending"}`,
-      formatDeadlineForClipboard(),
     ].filter(Boolean) as string[];
 
+    return [
+      "You are ChatGPT, an assistant that solves tasks end-to-end.",
+      "Produce a clear, actionable solution for the task described below.",
+      "",
+      ...taskLines,
+    ].join("\n");
+  };
+
+  const handleCopyDetails = async () => {
+    const payload = buildChatGptPrompt();
+
     try {
-      await copyTextToClipboard(lines.join("\n"));
+      await copyTextToClipboard(payload);
       setCopyStatus("copied");
       setTimeout(() => setCopyStatus("idle"), 2000);
     } catch (error) {
