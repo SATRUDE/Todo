@@ -2,7 +2,6 @@ import { useState } from "react";
 import svgPaths from "../imports/svg-4ile2zv366";
 import completedSvgPaths from "../imports/svg-qfhtru23ul";
 import { AddListModal } from "./AddListModal";
-import { APP_VERSION } from "../lib/version";
 
 interface ListItem {
   id: number;
@@ -222,13 +221,6 @@ export function Lists({ onSelectList, todos, lists, onAddList, onUpdateList, onD
                 <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{completedList.count}</p>
               </div>
             </div>
-          </div>
-
-          {/* Version Number */}
-          <div className="content-stretch flex items-center justify-center relative shrink-0 w-full pt-[32px] pb-[20px]">
-            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.154px] whitespace-pre">
-              Version {APP_VERSION}
-            </p>
           </div>
         </div>
       </div>

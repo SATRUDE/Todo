@@ -13,79 +13,73 @@ interface SettingsProps {
 
 export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, isChecking, onEnableNotifications, notificationPermission = 'default', onTestNotification }: SettingsProps) {
   return (
-    <div className="bg-[#110c10] box-border content-stretch flex flex-col items-start justify-start pb-[120px] pt-[60px] px-0 relative size-full min-h-screen">
-      {/* Back Button */}
-      <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full px-[20px] mb-[32px]">
-        <div 
-          className="relative shrink-0 size-[24px] cursor-pointer"
-          onClick={onBack}
-        >
-          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-            <g>
-              <path
-                d="M15 18L9 12L15 6"
-                stroke="#E1E6EE"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
-            </g>
-          </svg>
-        </div>
-        <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-white text-[28px] tracking-[-0.308px]">
-          Settings
-        </p>
-      </div>
-
-      {/* Settings Content */}
-      <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
-        {/* Check for Update Section */}
-        <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
-          <div 
-            className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full cursor-pointer"
-            onClick={updateAvailable ? onReload : onCheckForUpdate}
-          >
-            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
-              {isChecking ? 'Checking for update...' : updateAvailable ? 'Update available - Tap to reload' : 'Check for update'}
-            </p>
+    <div className="w-full h-full flex flex-col">
+      {/* Main Content Container - frameParent equivalent */}
+      <div className="flex-1 flex flex-col justify-between px-[20px] pb-[24px]">
+        {/* Top Section - frameGroup equivalent */}
+        <div className="flex flex-col gap-[32px]">
+          {/* Header */}
+          <div className="flex gap-[32px] items-center">
+            <div className="flex gap-[16px] items-center">
+              <div 
+                className="relative shrink-0 size-[32px] cursor-pointer"
+                onClick={onBack}
+              >
+                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
+                  <g>
+                    <path 
+                      d="M20 8L12 16L20 24" 
+                      stroke="#E1E6EE" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth="2" 
+                    />
+                  </g>
+                </svg>
+              </div>
+              <div className="flex flex-col items-start">
+                <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">Settings</p>
+              </div>
+            </div>
           </div>
-          
-          {updateAvailable && (
-            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[14px] text-nowrap text-[#5b5d62] tracking-[-0.154px] whitespace-pre">
-                A new version is available. Tap above to reload and apply the update.
+
+          {/* Settings Content - frameContainer equivalent */}
+          <div className="flex flex-col gap-[16px] items-start">
+            {/* Enable Notifications */}
+            <div 
+              className="flex gap-[8px] items-center cursor-pointer"
+              onClick={notificationPermission !== 'granted' ? onEnableNotifications : undefined}
+            >
+              <div className="relative shrink-0 size-[24px]">
+                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#E1E6EE" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                </svg>
+              </div>
+              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
+                Enable notifications
               </p>
             </div>
-          )}
+
+            {/* Check for Update */}
+            <div 
+              className="flex gap-[8px] items-center cursor-pointer"
+              onClick={updateAvailable ? onReload : onCheckForUpdate}
+            >
+              <div className="relative shrink-0 size-[24px]">
+                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#E1E6EE" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+              </div>
+              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
+                Check for update
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Notification Buttons */}
-        <div className="content-stretch flex flex-col gap-[16px] items-stretch relative shrink-0 w-full">
-          {notificationPermission !== 'granted' && onEnableNotifications && (
-            <button
-              onClick={onEnableNotifications}
-              className="content-stretch flex items-center justify-center relative shrink-0 w-full py-[12px] px-[20px] bg-[#0B64F9] rounded-[8px] cursor-pointer"
-            >
-              <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[16px] text-nowrap tracking-[-0.176px] whitespace-pre">
-                Enable Notifications
-              </p>
-            </button>
-          )}
-          {notificationPermission === 'granted' && onTestNotification && (
-            <button
-              onClick={onTestNotification}
-              className="content-stretch flex items-center justify-center relative shrink-0 w-full py-[12px] px-[20px] bg-[#0B64F9] rounded-[8px] cursor-pointer"
-            >
-              <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[16px] text-nowrap tracking-[-0.176px] whitespace-pre">
-                Test Notification
-              </p>
-            </button>
-          )}
-        </div>
-
-        {/* Version Info */}
-        <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[14px] text-nowrap text-[#5b5d62] tracking-[-0.154px] whitespace-pre">
+        {/* Version Info - version1014Wrapper equivalent */}
+        <div className="flex items-center justify-center">
+          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
             Version {APP_VERSION}
           </p>
         </div>
