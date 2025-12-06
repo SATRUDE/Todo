@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent, useEffect } from "react";
+import { useState, KeyboardEvent, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import svgPaths from "../imports/svg-p3zv31caxs";
 import generateSvgPaths from "../imports/svg-gf1ry58lrd";
@@ -29,12 +29,13 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
 
   const [taskInput, setTaskInput] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isSelectListOpen, setIsSelectListOpen] = useState(false);
   const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<number | null>(defaultListId || null);
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(getDefaultDeadline());
   const [isBulkAddMode, setIsBulkAddMode] = useState(false);
+  const taskInputRef = useRef<HTMLTextAreaElement>(null);
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Update selectedListId when defaultListId changes or modal opens
   useEffect(() => {
@@ -46,7 +47,6 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
       setTaskInput("");
       setDeadline(getDefaultDeadline());
       setTaskDescription("");
-      setIsDescriptionExpanded(false);
     }
   }, [isOpen, defaultListId]);
 
@@ -60,7 +60,6 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
         setSelectedListId(null);
         setDeadline(getDefaultDeadline());
         setTaskDescription("");
-        setIsDescriptionExpanded(false);
         onClose();
       }
     }
@@ -129,9 +128,8 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
 
   const handleBulkAddToggle = () => {
     setIsBulkAddMode(!isBulkAddMode);
-    setTaskInput(""); // Clear input when toggling
-    setTaskDescription("");
-    setIsDescriptionExpanded(false);
+      setTaskInput(""); // Clear input when toggling
+      setTaskDescription("");
   };
 
   const handleBulkAdd = async () => {
@@ -149,7 +147,6 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
     setDeadline(getDefaultDeadline());
     setIsBulkAddMode(false);
     setTaskDescription("");
-    setIsDescriptionExpanded(false);
     onClose();
   };
 
@@ -197,8 +194,8 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
           <div className="relative shrink-0 w-full">
             <div className="size-full">
               <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
-                {/* Input Field or Textarea */}
-                <div className="flex w-full flex-col gap-[12px]">
+                {/* Title and Description Section */}
+                <div className="content-stretch flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
                   {isBulkAddMode ? (
                     <textarea
                       value={taskInput}
@@ -209,36 +206,47 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
                       rows={3}
                     />
                   ) : (
-                    <input
-                      type="text"
-                      value={taskInput}
-                      onChange={(e) => setTaskInput(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Add task"
-                      className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62]"
-                      autoFocus
-                    />
-                  )}
-
-                  {!isBulkAddMode && (
                     <>
-                      {(isDescriptionExpanded || taskDescription) ? (
-                        <textarea
-                          value={taskDescription}
-                          onChange={(e) => setTaskDescription(e.target.value)}
-                          placeholder="Task description"
-                          className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-white text-[14px] tracking-[-0.154px] bg-transparent border border-[rgba(225,230,238,0.1)] rounded-[16px] outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[96px] px-[16px] py-[12px]"
-                          autoFocus={isDescriptionExpanded && taskDescription === ""}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setIsDescriptionExpanded(true)}
-                          className="text-left font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[14px] tracking-[-0.154px] text-[#5b5d62] hover:text-[#e1e6ee] transition-colors"
-                        >
-                          Task description
-                        </button>
-                      )}
+                      {/* Task Name Input */}
+                      <textarea
+                        ref={taskInputRef}
+                        value={taskInput}
+                        onChange={(e) => {
+                          setTaskInput(e.target.value);
+                          // Auto-resize
+                          if (taskInputRef.current) {
+                            taskInputRef.current.style.height = 'auto';
+                            taskInputRef.current.style.height = taskInputRef.current.scrollHeight + 'px';
+                          }
+                        }}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Add task"
+                        className={`font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[42px] ${
+                          taskInput.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                        }`}
+                        autoFocus
+                        rows={1}
+                        style={{ overflow: 'hidden' }}
+                      />
+                      {/* Description Input - Always visible */}
+                      <textarea
+                        ref={descriptionInputRef}
+                        value={taskDescription}
+                        onChange={(e) => {
+                          setTaskDescription(e.target.value);
+                          // Auto-resize
+                          if (descriptionInputRef.current) {
+                            descriptionInputRef.current.style.height = 'auto';
+                            descriptionInputRef.current.style.height = descriptionInputRef.current.scrollHeight + 'px';
+                          }
+                        }}
+                        placeholder="Description"
+                        className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] tracking-[-0.198px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[28px] ${
+                          taskDescription.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                        }`}
+                        rows={1}
+                        style={{ overflow: 'hidden' }}
+                      />
                     </>
                   )}
                 </div>

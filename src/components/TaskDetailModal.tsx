@@ -1,4 +1,5 @@
-import { useState, useEffect, KeyboardEvent } from "react";
+import { useState, useEffect, KeyboardEvent, useRef } from "react";
+import { createPortal } from "react-dom";
 import svgPaths from "../imports/svg-e51h379o38";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
 import { SelectListModal } from "./SelectListModal";
@@ -39,21 +40,31 @@ interface TaskDetailModalProps {
 export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, lists = [] }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
   const [taskDescription, setTaskDescription] = useState(task.description || "");
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(Boolean(task.description));
   const [isSelectListOpen, setIsSelectListOpen] = useState(false);
   const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<number | null>(task.listId !== undefined && task.listId !== 0 && task.listId !== -1 ? task.listId : null);
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(task.deadline || null);
-  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
+  const taskInputRef = useRef<HTMLTextAreaElement>(null);
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setTaskInput(task.text);
     setTaskDescription(task.description || "");
-    setIsDescriptionExpanded(Boolean(task.description));
     setSelectedListId(task.listId !== undefined && task.listId !== 0 && task.listId !== -1 ? task.listId : null);
     setDeadline(task.deadline || null);
-    setCopyStatus("idle");
+    
+    // Auto-resize textareas when task changes
+    setTimeout(() => {
+      if (taskInputRef.current) {
+        taskInputRef.current.style.height = 'auto';
+        taskInputRef.current.style.height = taskInputRef.current.scrollHeight + 'px';
+      }
+      if (descriptionInputRef.current) {
+        descriptionInputRef.current.style.height = 'auto';
+        descriptionInputRef.current.style.height = descriptionInputRef.current.scrollHeight + 'px';
+      }
+    }, 0);
   }, [task, isOpen]);
 
   const handleSave = () => {
@@ -62,8 +73,8 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     onClose();
   };
 
-  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && taskInput.trim() !== "") {
+  const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && e.ctrlKey && taskInput.trim() !== "") {
       e.preventDefault();
       handleSave();
     }
@@ -112,66 +123,40 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     return list ? list.color : "#E1E6EE";
   };
 
-  const copyTextToClipboard = async (text: string) => {
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return;
-    }
-
-    if (typeof document === "undefined") {
-      throw new Error("Clipboard API is not available");
-    }
-
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.style.position = "fixed";
-    textarea.style.opacity = "0";
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-    document.execCommand("copy");
-    document.body.removeChild(textarea);
-  };
-
-  const buildChatGptPrompt = () => {
-    const listName = getSelectedListName();
-    const taskLines = [
-      `Task: ${taskInput.trim() || "Untitled task"}`,
-      taskDescription.trim() ? `Description: ${taskDescription.trim()}` : null,
-      selectedListId !== null ? `List: ${listName}` : null,
-      `Status: ${task.completed ? "Completed" : "Pending"}`,
-    ].filter(Boolean) as string[];
-
-    return [
-      "You are ChatGPT, an assistant that solves tasks end-to-end.",
-      "Produce a clear, actionable solution for the task described below.",
-      "",
-      ...taskLines,
-    ].join("\n");
-  };
-
-  const handleCopyDetails = async () => {
-    const payload = buildChatGptPrompt();
-
+  const handleCopyTask = async () => {
+    // Copy just the task text, similar to AddTaskModal
+    const textToCopy = taskInput.trim();
+    if (!textToCopy) return;
+    
     try {
-      await copyTextToClipboard(payload);
-      setCopyStatus("copied");
-      setTimeout(() => setCopyStatus("idle"), 2000);
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = textToCopy;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
     } catch (error) {
-      setCopyStatus("error");
-      console.error("Failed to copy task details", error);
-      setTimeout(() => setCopyStatus("idle"), 2500);
+      console.error("Failed to copy task", error);
     }
   };
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[10001] pointer-events-none">
+  return createPortal(
+    <div className="fixed inset-0 z-[10001] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10001 }}>
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black bg-opacity-50 pointer-events-auto"
+        className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
         onClick={onClose}
+        style={{ 
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)'
+        }}
       />
       
       {/* Bottom Sheet */}
@@ -189,104 +174,150 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
           </div>
 
           {/* Content */}
-          <div className="relative shrink-0 w-full">
-            <div className="size-full">
-              <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
-                {/* Input Field */}
-                <div className="flex w-full flex-col gap-[12px]">
-                  <input
-                    type="text"
-                    value={taskInput}
-                    onChange={(e) => setTaskInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Task name"
-                    className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62]"
-                    autoFocus
-                  />
+          <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full">
+            {/* Title and Description Section */}
+            <div className="content-stretch flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
+              {/* Task Name Input */}
+              <textarea
+                ref={taskInputRef}
+                value={taskInput}
+                onChange={(e) => {
+                  setTaskInput(e.target.value);
+                  // Auto-resize
+                  if (taskInputRef.current) {
+                    taskInputRef.current.style.height = 'auto';
+                    taskInputRef.current.style.height = taskInputRef.current.scrollHeight + 'px';
+                  }
+                }}
+                onKeyPress={handleKeyPress}
+                placeholder="Task name"
+                className={`font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[42px] ${
+                  taskInput.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                }`}
+                autoFocus
+                rows={1}
+                style={{ overflow: 'hidden' }}
+              />
+              {/* Description Input - Always visible */}
+              <textarea
+                ref={descriptionInputRef}
+                value={taskDescription}
+                onChange={(e) => {
+                  setTaskDescription(e.target.value);
+                  // Auto-resize
+                  if (descriptionInputRef.current) {
+                    descriptionInputRef.current.style.height = 'auto';
+                    descriptionInputRef.current.style.height = descriptionInputRef.current.scrollHeight + 'px';
+                  }
+                }}
+                placeholder="Description"
+                className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] tracking-[-0.198px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[28px] ${
+                  taskDescription.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                }`}
+                rows={1}
+                style={{ overflow: 'hidden' }}
+              />
+            </div>
 
-                  {(isDescriptionExpanded || taskDescription) ? (
-                    <textarea
-                      value={taskDescription}
-                      onChange={(e) => setTaskDescription(e.target.value)}
-                      placeholder="Task description"
-                      autoFocus={isDescriptionExpanded && taskDescription === ""}
-                      className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-white text-[14px] tracking-[-0.154px] bg-transparent border border-[rgba(225,230,238,0.1)] rounded-[16px] outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[96px] px-[16px] py-[12px]"
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setIsDescriptionExpanded(true)}
-                      className="text-left font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[14px] tracking-[-0.154px] text-[#5b5d62] hover:text-[#e1e6ee] transition-colors"
-                    >
-                      Task description
-                    </button>
-                  )}
-                </div>
-
-                {/* Buttons */}
-                <div className="content-stretch flex gap-[8px] items-start relative shrink-0 flex-wrap">
-                  {/* Deadline Button */}
-                  <div 
-                    className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
-                    onClick={() => setIsDeadlineOpen(true)}
-                  >
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-                        <g>
-                          <path d={svgPaths.p186add80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
-                        </g>
-                      </svg>
-                    </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getDeadlineText()}</p>
-                  </div>
-
-                  {/* Copy Details Button */}
-                  <button
-                    type="button"
-                    onClick={handleCopyDetails}
-                    className="bg-[rgba(225,230,238,0.1)] hover:bg-[rgba(225,230,238,0.15)] box-border content-stretch flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer transition-colors text-[#e1e6ee] text-[16px] tracking-[-0.176px]"
-                  >
-                    {copyStatus === "copied" ? "Copied!" : copyStatus === "error" ? "Retry copy" : "Copy details"}
-                  </button>
-
-                  {/* List Button */}
-                  <div 
-                    className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
-                    onClick={() => setIsSelectListOpen(true)}
-                  >
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-                        <g>
-                          <path d={svgPaths.p1dfd6800} stroke={getSelectedListColor()} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
-                        </g>
-                      </svg>
-                    </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getSelectedListName()}</p>
-                  </div>
-
-                  {/* Delete Button */}
-                  <div 
-                    className="relative shrink-0 size-[24px] cursor-pointer opacity-100 hover:opacity-70"
-                    onClick={handleDelete}
-                  >
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+            {/* Buttons Container */}
+            <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+              {/* Button Row */}
+              <div className="content-center flex flex-wrap gap-[8px] items-center relative shrink-0 w-full">
+                {/* Deadline Button */}
+                <div 
+                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                  onClick={() => setIsDeadlineOpen(true)}
+                >
+                  <div className="relative shrink-0 size-[20px]">
+                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
                       <g>
-                        <path d={deleteIconPaths.pf5e3c80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                        <path d={svgPaths.p186add80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
                       </g>
                     </svg>
                   </div>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getDeadlineText()}</p>
                 </div>
 
-                {/* Save Button */}
-                <div className="flex w-full justify-end">
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={taskInput.trim() === ""}
-                    className="bg-[#0b64f9] hover:bg-[#0a58d8] disabled:opacity-50 disabled:cursor-not-allowed box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer transition-opacity px-[24px] py-[10px] font-['Inter:Medium',sans-serif] font-medium leading-[1.5] text-white text-[16px] tracking-[-0.176px]"
-                  >
-                    Save
-                  </button>
+                {/* List Button */}
+                <div 
+                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                  onClick={() => setIsSelectListOpen(true)}
+                >
+                  <div className="relative shrink-0 size-[20px]">
+                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
+                      <g>
+                        <path d={svgPaths.p1dfd6800} stroke={getSelectedListColor()} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+                      </g>
+                    </svg>
+                  </div>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getSelectedListName()}</p>
+                </div>
+
+                {/* Copy Button */}
+                <div 
+                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                  onClick={handleCopyTask}
+                >
+                  <div className="relative shrink-0 size-[20px]">
+                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
+                      <g>
+                        <path d="M13.3333 10.75V14.25C13.3333 15.2165 12.5498 16 11.5833 16H5.75C4.7835 16 4 15.2165 4 14.25V8.41667C4 7.45018 4.7835 6.66667 5.75 6.66667H9.25M13.3333 10.75H10.5833C9.61683 10.75 8.83333 9.9665 8.83333 9V6.25C8.83333 5.2835 9.61683 4.5 10.5833 4.5H14.25C15.2165 4.5 16 5.2835 16 6.25V9C16 9.9665 15.2165 10.75 14.25 10.75H13.3333Z" stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+                      </g>
+                    </svg>
+                  </div>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Copy</p>
+                </div>
+
+                {/* Trash Icon */}
+                <div 
+                  className="relative shrink-0 size-[24px] cursor-pointer hover:opacity-70"
+                  onClick={handleDelete}
+                >
+                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                    <g>
+                      <path d={deleteIconPaths.pf5e3c80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                    </g>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Submit Button Row */}
+              <div className="flex gap-[10px] items-end justify-end w-full" style={{ justifyContent: 'flex-end', width: '100%' }}>
+                <div 
+                  className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
+                  style={{
+                    width: '35px',
+                    height: '35px',
+                    padding: '3px',
+                    flexShrink: 0,
+                    backgroundColor: taskInput.trim() ? '#0b64f9' : '#5b5d62'
+                  }}
+                  onClick={handleSave}
+                >
+                  <div className="relative" style={{ width: '24px', height: '24px' }}>
+                    <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '24px', height: '24px' }}>
+                      <g>
+                        <line
+                          x1="12"
+                          y1="6"
+                          x2="12"
+                          y2="18"
+                          stroke="#E1E6EE"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                        />
+                        <line
+                          x1="6"
+                          y1="12"
+                          x2="18"
+                          y2="12"
+                          stroke="#E1E6EE"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                        />
+                      </g>
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>
@@ -311,6 +342,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
         onClearDeadline={() => setDeadline(null)}
         currentDeadline={deadline}
       />
-    </div>
+    </div>,
+    document.body
   );
 }

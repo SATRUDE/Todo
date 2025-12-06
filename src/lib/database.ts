@@ -81,11 +81,15 @@ export function appTodoToDbTodo(todo: any): any {
     list_id: todo.listId !== undefined ? todo.listId : (todo.list_id !== undefined ? todo.list_id : 0),
   }
 
-  if (typeof todo.description === 'string') {
-    dbTodo.description = todo.description.trim() === '' ? null : todo.description
-  } else {
-    dbTodo.description = todo.description ?? null
+  // Handle description - only include if it has a value
+  // Note: If the description column doesn't exist in your database, 
+  // you need to run: ALTER TABLE todos ADD COLUMN IF NOT EXISTS description TEXT;
+  if (typeof todo.description === 'string' && todo.description.trim() !== '') {
+    dbTodo.description = todo.description.trim()
+  } else if (todo.description !== undefined && todo.description !== null && todo.description !== '') {
+    dbTodo.description = todo.description
   }
+  // If description is null/undefined/empty, we don't include it in the insert
   
   if (todo.deadline) {
     dbTodo.deadline_date = formatLocalDate(todo.deadline.date)
@@ -205,7 +209,10 @@ export async function fetchTasks(): Promise<Todo[]> {
 }
 
 export async function createTask(todo: any): Promise<Todo> {
+  console.log('createTask called with:', todo)
   const dbTodo = appTodoToDbTodo(todo)
+  console.log('Converted to DB format:', dbTodo)
+  
   const { data, error } = await supabase
     .from('todos')
     .insert(dbTodo)
@@ -214,10 +221,14 @@ export async function createTask(todo: any): Promise<Todo> {
 
   if (error) {
     console.error('Error creating task:', error)
+    console.error('Error details:', JSON.stringify(error, null, 2))
     throw error
   }
 
-  return dbTodoToAppTodo(data)
+  console.log('Task inserted successfully, data:', data)
+  const appTodo = dbTodoToAppTodo(data)
+  console.log('Converted to app format:', appTodo)
+  return appTodo
 }
 
 export async function updateTask(id: number, todo: any): Promise<Todo> {

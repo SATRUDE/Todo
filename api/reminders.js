@@ -67,14 +67,12 @@ function isTodoDue(todo, logContext = '') {
   
   // Calculate time difference (positive = deadline has passed, negative = deadline is in future)
   const timeDiff = now - deadlineDateTime;
-  const twoMinutes = 2 * 60 * 1000;
   
-  // Due if:
-  // 1. Deadline has passed (even if hours/days ago, as long as it hasn't been notified)
-  // 2. OR deadline is within the next 2 minutes (to catch it even if cron runs slightly early)
-  // This ensures we catch deadlines even if cron runs slightly before the exact time
-  // and also catches deadlines that were missed due to cron failures
-  const isDue = timeDiff >= -twoMinutes;
+  // Due ONLY if deadline has passed (timeDiff >= 0)
+  // This ensures notifications only go off when the deadline time has actually been reached
+  // Since cron runs every minute, we don't need a window for future deadlines
+  // If the deadline time has passed (even by milliseconds), it's due
+  const isDue = timeDiff >= 0;
 
   if (logContext) {
     const diffSeconds = Math.round(timeDiff / 1000);

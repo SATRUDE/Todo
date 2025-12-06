@@ -425,12 +425,21 @@ export function TodoApp() {
     };
     
     try {
+      console.log('Adding new task:', { taskText, description, listId, deadline });
       const createdTask = await createTask(newTodo);
+      console.log('Task created successfully:', createdTask);
       const appTodo = dbTodoToDisplayTodo(createdTask);
+      console.log('Converted to app format:', appTodo);
       // Use functional update to ensure we get the latest state
-      setTodos(prevTodos => [...prevTodos, appTodo]);
+      setTodos(prevTodos => {
+        const updated = [...prevTodos, appTodo];
+        console.log('Updated todos array, new length:', updated.length);
+        return updated;
+      });
     } catch (error) {
       console.error('Error adding task:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      alert(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -444,11 +453,21 @@ export function TodoApp() {
     };
     
     try {
+      console.log('Adding new task to list:', { taskText, description, listId });
       const createdTask = await createTask(newTodo);
+      console.log('Task created successfully:', createdTask);
       const appTodo = dbTodoToDisplayTodo(createdTask);
-      setTodos([...todos, appTodo]);
+      console.log('Converted to app format:', appTodo);
+      // Use functional update to ensure we get the latest state
+      setTodos(prevTodos => {
+        const updated = [...prevTodos, appTodo];
+        console.log('Updated todos array, new length:', updated.length);
+        return updated;
+      });
     } catch (error) {
       console.error('Error adding task to list:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      alert(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -507,7 +526,7 @@ export function TodoApp() {
     }
   };
 
-  const updateTask = async (taskId: number, text: string, description?: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => {
+  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => {
     try {
       const todo = todos.find(t => t.id === taskId);
       if (!todo) return;
@@ -557,8 +576,31 @@ export function TodoApp() {
 
   const getTasksForList = (listId: number) => {
     if (listId === ALL_TASKS_LIST_ID) {
-      // Return all tasks (excluding completed ones that are in the completed list)
-      return todos.filter(todo => todo.listId !== COMPLETED_LIST_ID);
+      // Return all non-completed tasks (regardless of listId, deadline, or any other property)
+      // This includes tasks with no deadline, tasks in custom lists, and tasks in Today
+      // Only exclude tasks that are explicitly in the completed list
+      const allTasks = todos.filter(todo => {
+        const isNotCompleted = !todo.completed;
+        const isNotInCompletedList = todo.listId !== COMPLETED_LIST_ID;
+        return isNotCompleted && isNotInCompletedList;
+      });
+      
+      // Debug logging to help diagnose issues
+      if (allTasks.length === 0 && todos.length > 0) {
+        console.warn('All tasks is empty but todos exist:', {
+          totalTodos: todos.length,
+          completedTodos: todos.filter(t => t.completed).length,
+          todosInCompletedList: todos.filter(t => t.listId === COMPLETED_LIST_ID).length,
+          todosWithoutDeadline: todos.filter(t => !t.deadline).map(t => ({
+            id: t.id,
+            text: t.text.substring(0, 30),
+            completed: t.completed,
+            listId: t.listId
+          }))
+        });
+      }
+      
+      return allTasks;
     }
     return todos.filter(todo => todo.listId === listId);
   };
