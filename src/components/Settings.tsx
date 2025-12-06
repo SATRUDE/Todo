@@ -6,9 +6,12 @@ interface SettingsProps {
   onCheckForUpdate: () => void;
   onReload: () => void;
   isChecking: boolean;
+  onEnableNotifications?: () => void;
+  notificationPermission?: NotificationPermission;
+  onTestNotification?: () => void;
 }
 
-export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, isChecking }: SettingsProps) {
+export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, isChecking, onEnableNotifications, notificationPermission = 'default', onTestNotification }: SettingsProps) {
   return (
     <div className="bg-[#110c10] box-border content-stretch flex flex-col items-start justify-start pb-[120px] pt-[60px] px-0 relative size-full min-h-screen">
       {/* Back Button */}
@@ -53,6 +56,30 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
                 A new version is available. Tap above to reload and apply the update.
               </p>
             </div>
+          )}
+        </div>
+
+        {/* Notification Buttons */}
+        <div className="content-stretch flex flex-col gap-[16px] items-stretch relative shrink-0 w-full">
+          {notificationPermission !== 'granted' && onEnableNotifications && (
+            <button
+              onClick={onEnableNotifications}
+              className="content-stretch flex items-center justify-center relative shrink-0 w-full py-[12px] px-[20px] bg-[#0B64F9] rounded-[8px] cursor-pointer"
+            >
+              <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[16px] text-nowrap tracking-[-0.176px] whitespace-pre">
+                Enable Notifications
+              </p>
+            </button>
+          )}
+          {notificationPermission === 'granted' && onTestNotification && (
+            <button
+              onClick={onTestNotification}
+              className="content-stretch flex items-center justify-center relative shrink-0 w-full py-[12px] px-[20px] bg-[#0B64F9] rounded-[8px] cursor-pointer"
+            >
+              <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[16px] text-nowrap tracking-[-0.176px] whitespace-pre">
+                Test Notification
+              </p>
+            </button>
           )}
         </div>
 

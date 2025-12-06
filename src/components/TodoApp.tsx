@@ -996,9 +996,6 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onUpdateList={updateList}
           onDeleteList={deleteList}
           onBack={() => setCurrentPage("today")}
-          onEnableNotifications={handleEnableNotifications}
-          notificationPermission={notificationPermission}
-          onTestNotification={handleTestNotification}
         />
       ) : currentPage === "listDetail" && selectedList ? (
         <ListDetail 
@@ -1022,6 +1019,9 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onCheckForUpdate={handleCheckForUpdate}
           onReload={handleReload}
           isChecking={isCheckingUpdate}
+          onEnableNotifications={handleEnableNotifications}
+          notificationPermission={notificationPermission}
+          onTestNotification={handleTestNotification}
         />
       ) : null}
 

@@ -33,12 +33,9 @@ interface ListsProps {
   onUpdateList: (listId: number, listName: string, isShared: boolean, color: string) => void;
   onDeleteList: (listId: number) => void;
   onBack?: () => void;
-  onEnableNotifications?: () => void;
-  notificationPermission?: NotificationPermission;
-  onTestNotification?: () => void;
 }
 
-export function Lists({ onSelectList, todos, lists, onAddList, onUpdateList, onDeleteList, onBack, onEnableNotifications, notificationPermission = 'default', onTestNotification }: ListsProps) {
+export function Lists({ onSelectList, todos, lists, onAddList, onUpdateList, onDeleteList, onBack }: ListsProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingList, setEditingList] = useState<ListItem | null>(null);
 
@@ -225,30 +222,6 @@ export function Lists({ onSelectList, todos, lists, onAddList, onUpdateList, onD
                 <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{completedList.count}</p>
               </div>
             </div>
-          </div>
-
-          {/* Notification Buttons */}
-          <div className="content-stretch flex flex-col gap-[16px] items-stretch relative shrink-0 w-full pt-[32px]">
-            {notificationPermission !== 'granted' && onEnableNotifications && (
-              <button
-                onClick={onEnableNotifications}
-                className="content-stretch flex items-center justify-center relative shrink-0 w-full py-[12px] px-[20px] bg-[#0B64F9] rounded-[8px] cursor-pointer"
-              >
-                <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[16px] text-nowrap tracking-[-0.176px] whitespace-pre">
-                  Enable Notifications
-                </p>
-              </button>
-            )}
-            {notificationPermission === 'granted' && onTestNotification && (
-              <button
-                onClick={onTestNotification}
-                className="content-stretch flex items-center justify-center relative shrink-0 w-full py-[12px] px-[20px] bg-[#0B64F9] rounded-[8px] cursor-pointer"
-              >
-                <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[16px] text-nowrap tracking-[-0.176px] whitespace-pre">
-                  Test Notification
-                </p>
-              </button>
-            )}
           </div>
 
           {/* Version Number */}
