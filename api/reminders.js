@@ -32,7 +32,16 @@ function isTodoDue(todo, logContext = '') {
   // Create deadline date in UTC (midnight UTC)
   const deadlineDateUTC = new Date(Date.UTC(year, month - 1, day));
 
-  // Check if deadline_date is today or in the past (in UTC)
+  // REQUIRE both date AND time to be set for notifications
+  // If no deadline_time, do NOT send notification (return false)
+  if (!todo.deadline_time || todo.deadline_time.trim() === '') {
+    if (logContext) {
+      console.log(`${logContext} - No time set, skipping notification (notifications require both date and time)`);
+    }
+    return false;
+  }
+
+  // Check if deadline_date is in the future (if so, don't send notification)
   if (deadlineDateUTC > todayUTC) {
     if (logContext) {
       console.log(`${logContext} - Deadline date ${todo.deadline_date} is in the future (today UTC: ${todayUTC.toISOString().split('T')[0]})`);
@@ -40,24 +49,15 @@ function isTodoDue(todo, logContext = '') {
     return false;
   }
 
-  // If no deadline_time, consider it due if deadline_date is today or past
-  if (!todo.deadline_time || todo.deadline_time.trim() === '') {
-    const isDue = deadlineDateUTC <= todayUTC;
-    if (logContext) {
-      console.log(`${logContext} - No time set, date check: ${isDue ? 'DUE' : 'NOT DUE'}`);
-    }
-    return isDue;
-  }
-
   // If deadline_time is set, check if current time is at or past the deadline
   // We check if the deadline has passed (not just within a window) to ensure we catch it
   const [hours, minutes] = todo.deadline_time.split(':').map(Number);
   if (isNaN(hours) || isNaN(minutes)) {
-    // Invalid time format, treat as due if date matches
+    // Invalid time format, do NOT send notification
     if (logContext) {
-      console.log(`${logContext} - Invalid time format: ${todo.deadline_time}`);
+      console.log(`${logContext} - Invalid time format: ${todo.deadline_time}, skipping notification`);
     }
-    return deadlineDateUTC <= todayUTC;
+    return false;
   }
 
   // Create deadline datetime in UTC (Vercel servers run in UTC)
