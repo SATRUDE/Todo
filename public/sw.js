@@ -105,3 +105,30 @@ self.addEventListener('notificationclick', function(event) {
 self.addEventListener('notificationclose', function(event) {
   console.log('Notification closed:', event);
 });
+
+// Handle skipWaiting message from client
+self.addEventListener('message', function(event) {
+  console.log('Service worker received message:', event.data);
+  
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('Skipping waiting and activating new service worker');
+    self.skipWaiting();
+  }
+});
+
+// Activate event - claim clients immediately when new service worker activates
+self.addEventListener('activate', function(event) {
+  console.log('Service worker activating, claiming clients...');
+  
+  event.waitUntil(
+    self.clients.claim().then(function() {
+      console.log('Service worker activated and claimed all clients');
+      // Notify all clients that update is ready
+      return self.clients.matchAll().then(function(clients) {
+        clients.forEach(function(client) {
+          client.postMessage({ type: 'SW_UPDATED' });
+        });
+      });
+    })
+  );
+});

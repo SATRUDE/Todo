@@ -5,6 +5,8 @@ import { AddTaskModal } from "./AddTaskModal";
 import { TaskDetailModal } from "./TaskDetailModal";
 import { Lists } from "./Lists";
 import { ListDetail } from "./ListDetail";
+import { UpdateNotification } from "./UpdateNotification";
+import { APP_VERSION } from "../lib/version";
 import { 
   fetchTasks, 
   createTask, 
@@ -68,6 +70,9 @@ export function TodoApp() {
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
   const completionTimeouts = useRef<Map<number, NodeJS.Timeout>>(new Map());
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
+  const updateCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -255,6 +260,123 @@ export function TodoApp() {
   // Note: Deadline notifications are handled by the backend cron job (/api/reminders)
   // which runs every minute and sends push notifications via the service worker.
   // This ensures notifications work even when the app is closed.
+
+  // Check for service worker updates
+  const checkForUpdates = useCallback(async () => {
+    if (!('serviceWorker' in navigator)) return;
+
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) return;
+
+      swRegistrationRef.current = registration;
+
+      // Check for version mismatch
+      const cachedVersion = localStorage.getItem('app_version');
+      if (cachedVersion && cachedVersion !== APP_VERSION) {
+        console.log(`Update available: cached version ${cachedVersion}, current version ${APP_VERSION}`);
+        setUpdateAvailable(true);
+        return;
+      }
+
+      // Check for service worker update
+      await registration.update();
+
+      // Listen for new service worker
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+
+        console.log('New service worker found, waiting for it to install...');
+
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed') {
+            // New service worker is installed but waiting
+            if (navigator.serviceWorker.controller) {
+              // There's a new service worker available
+              console.log('New service worker installed and waiting');
+              setUpdateAvailable(true);
+            }
+          }
+        });
+      });
+
+      // Listen for controller change (service worker activated)
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('Service worker controller changed, reloading...');
+        // Update version in localStorage
+        localStorage.setItem('app_version', APP_VERSION);
+        setUpdateAvailable(false);
+      });
+    } catch (error) {
+      console.error('Error checking for updates:', error);
+    }
+  }, []);
+
+  // Check for updates on mount and periodically
+  useEffect(() => {
+    // Initial check
+    checkForUpdates();
+
+    // Check every 5 minutes
+    updateCheckIntervalRef.current = setInterval(() => {
+      checkForUpdates();
+    }, 5 * 60 * 1000);
+
+    // Check when app becomes visible (iOS-specific)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkForUpdates();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Store current version
+    const currentVersion = localStorage.getItem('app_version');
+    if (!currentVersion || currentVersion !== APP_VERSION) {
+      // Version changed, update available
+      if (currentVersion) {
+        setUpdateAvailable(true);
+      }
+      localStorage.setItem('app_version', APP_VERSION);
+    }
+
+    return () => {
+      if (updateCheckIntervalRef.current) {
+        clearInterval(updateCheckIntervalRef.current);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [checkForUpdates]);
+
+  // Handle reload to apply update
+  const handleReload = useCallback(async () => {
+    if (!swRegistrationRef.current) {
+      window.location.reload();
+      return;
+    }
+
+    try {
+      // Send skipWaiting message to service worker
+      const controller = navigator.serviceWorker.controller;
+      if (controller) {
+        controller.postMessage({ type: 'SKIP_WAITING' });
+      }
+
+      // Force update
+      await swRegistrationRef.current.update();
+
+      // Wait a bit for service worker to activate
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Reload the page
+      window.location.reload();
+    } catch (error) {
+      console.error('Error reloading for update:', error);
+      // Fallback to simple reload
+      window.location.reload();
+    }
+  }, []);
 
   const handleSelectList = (list: ListItem) => {
     setSelectedList(list);
@@ -688,6 +810,12 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
 
   return (
     <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-between pb-[120px] pt-[60px] px-0 relative size-full min-h-screen">
+      {updateAvailable && (
+        <UpdateNotification
+          onReload={handleReload}
+          onDismiss={() => setUpdateAvailable(false)}
+        />
+      )}
       {/* Main Content */}
       {currentPage === "today" ? (
         <div className="relative shrink-0 w-full">
