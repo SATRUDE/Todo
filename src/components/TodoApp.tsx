@@ -175,6 +175,11 @@ export function TodoApp() {
         } else {
           console.error('❌ Failed to create push subscription');
         }
+      } else if (permission === 'denied') {
+        alert('Notification permission was previously denied. Please enable notifications in your browser settings to receive reminders.');
+      } else {
+        // Permission is 'default' - user dismissed the prompt
+        console.log('Notification permission prompt was dismissed');
       }
     } catch (error) {
       console.error('Error enabling notifications:', error);
@@ -264,7 +269,15 @@ export function TodoApp() {
 
   // Check for service worker updates
   const checkForUpdates = useCallback(async (showChecking = false) => {
-    if (!('serviceWorker' in navigator)) return;
+    console.log('🔍 Checking for updates...', { showChecking });
+    
+    if (!('serviceWorker' in navigator)) {
+      console.log('Service workers not supported');
+      if (showChecking) {
+        alert('Service workers are not supported in this browser.');
+      }
+      return;
+    }
 
     if (showChecking) {
       setIsCheckingUpdate(true);
@@ -273,7 +286,11 @@ export function TodoApp() {
     try {
       const registration = await navigator.serviceWorker.getRegistration();
       if (!registration) {
-        if (showChecking) setIsCheckingUpdate(false);
+        console.log('No service worker registration found');
+        if (showChecking) {
+          setIsCheckingUpdate(false);
+          alert('No service worker found. The app may not be installed as a PWA.');
+        }
         return;
       }
 
@@ -282,28 +299,38 @@ export function TodoApp() {
       // Check for version mismatch
       const cachedVersion = localStorage.getItem('app_version');
       if (cachedVersion && cachedVersion !== APP_VERSION) {
-        console.log(`Update available: cached version ${cachedVersion}, current version ${APP_VERSION}`);
+        console.log(`✅ Update available: cached version ${cachedVersion}, current version ${APP_VERSION}`);
         setUpdateAvailable(true);
+        if (showChecking) {
+          setIsCheckingUpdate(false);
+          alert('Update available! Click "Check for update" again to reload and apply the update.');
+        }
         return;
       }
 
+      console.log('Checking service worker for updates...');
       // Check for service worker update
       await registration.update();
+      console.log('Service worker update check completed');
 
       // Listen for new service worker
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
         if (!newWorker) return;
 
-        console.log('New service worker found, waiting for it to install...');
+        console.log('🆕 New service worker found, waiting for it to install...');
 
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed') {
             // New service worker is installed but waiting
             if (navigator.serviceWorker.controller) {
               // There's a new service worker available
-              console.log('New service worker installed and waiting');
+              console.log('✅ New service worker installed and waiting');
               setUpdateAvailable(true);
+              if (showChecking) {
+                setIsCheckingUpdate(false);
+                alert('Update available! Click "Check for update" again to reload and apply the update.');
+              }
             }
           }
         });
@@ -316,11 +343,25 @@ export function TodoApp() {
         localStorage.setItem('app_version', APP_VERSION);
         setUpdateAvailable(false);
       });
+
+      // If we're manually checking and no update was found, show feedback
+      if (showChecking) {
+        // Wait a moment to see if an update is found
+        setTimeout(() => {
+          setIsCheckingUpdate(false);
+          // Check if update became available during the check
+          const currentUpdateAvailable = localStorage.getItem('app_version') !== APP_VERSION;
+          if (!currentUpdateAvailable) {
+            console.log('✅ App is up to date');
+            alert('You are using the latest version of the app.');
+          }
+        }, 1500);
+      }
     } catch (error) {
-      console.error('Error checking for updates:', error);
-    } finally {
+      console.error('❌ Error checking for updates:', error);
       if (showChecking) {
         setIsCheckingUpdate(false);
+        alert('Error checking for updates: ' + (error as Error).message);
       }
     }
   }, []);

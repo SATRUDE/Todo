@@ -12,10 +12,19 @@ interface SettingsProps {
 }
 
 export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, isChecking, onEnableNotifications, notificationPermission = 'default', onTestNotification }: SettingsProps) {
+  // Debug: Log props on mount
+  console.log('Settings component rendered with:', {
+    hasOnEnableNotifications: !!onEnableNotifications,
+    hasOnCheckForUpdate: !!onCheckForUpdate,
+    hasOnReload: !!onReload,
+    notificationPermission,
+    updateAvailable
+  });
+
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col" style={{ pointerEvents: 'auto', minHeight: '100%' }}>
       {/* Main Content Container - frameParent equivalent */}
-      <div className="flex-1 flex flex-col justify-between px-[20px] pb-[24px]">
+      <div className="flex-1 flex flex-col justify-between px-[20px] pb-[24px]" style={{ pointerEvents: 'auto', minHeight: '100%' }}>
         {/* Top Section - frameGroup equivalent */}
         <div className="flex flex-col gap-[32px]">
           {/* Header */}
@@ -46,9 +55,20 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
           {/* Settings Content - frameContainer equivalent */}
           <div className="flex flex-col gap-[16px] items-start">
             {/* Enable Notifications */}
-            <div 
-              className="flex gap-[8px] items-center cursor-pointer"
-              onClick={notificationPermission !== 'granted' ? onEnableNotifications : undefined}
+            <button
+              type="button"
+              className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left w-auto"
+              style={{ pointerEvents: 'auto', zIndex: 1, color: 'inherit', font: 'inherit' }}
+              onClick={(e) => {
+                console.log('Enable notifications clicked', { notificationPermission, hasHandler: !!onEnableNotifications });
+                e.stopPropagation();
+                if (onEnableNotifications) {
+                  console.log('Calling onEnableNotifications');
+                  onEnableNotifications();
+                } else {
+                  console.error('onEnableNotifications handler is not defined!');
+                }
+              }}
             >
               <div className="relative shrink-0 size-[24px]">
                 <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
@@ -56,14 +76,26 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
                 </svg>
               </div>
               <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
-                Enable notifications
+                {notificationPermission === 'granted' ? 'Notifications enabled' : 'Enable notifications'}
               </p>
-            </div>
+            </button>
 
             {/* Check for Update */}
-            <div 
-              className="flex gap-[8px] items-center cursor-pointer"
-              onClick={updateAvailable ? onReload : onCheckForUpdate}
+            <button
+              type="button"
+              className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left w-auto"
+              style={{ pointerEvents: 'auto', zIndex: 1, userSelect: 'none', color: 'inherit', font: 'inherit' }}
+              onClick={(e) => {
+                console.log('Check for update clicked', { updateAvailable, hasReload: !!onReload, hasCheck: !!onCheckForUpdate });
+                e.stopPropagation();
+                if (updateAvailable) {
+                  console.log('Calling onReload');
+                  onReload();
+                } else {
+                  console.log('Calling onCheckForUpdate');
+                  onCheckForUpdate();
+                }
+              }}
             >
               <div className="relative shrink-0 size-[24px]">
                 <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
@@ -73,7 +105,7 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
               <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
                 Check for update
               </p>
-            </div>
+            </button>
           </div>
         </div>
 
