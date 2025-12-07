@@ -53,68 +53,83 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
           </div>
 
           {/* Settings Content - frameContainer equivalent */}
-          <div className="flex flex-col gap-[16px] items-start">
+          <div className="flex flex-col gap-[16px] items-start w-full">
             {/* Enable Notifications */}
-            <button
-              type="button"
-              className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left w-auto"
-              style={{ pointerEvents: 'auto', zIndex: 1, color: 'inherit', font: 'inherit' }}
-              onClick={(e) => {
-                console.log('Enable notifications clicked', { notificationPermission, hasHandler: !!onEnableNotifications });
-                e.stopPropagation();
-                if (onEnableNotifications) {
-                  console.log('Calling onEnableNotifications');
-                  onEnableNotifications();
-                } else {
-                  console.error('onEnableNotifications handler is not defined!');
-                }
-              }}
-            >
-              <div className="relative shrink-0 size-[24px]">
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#E1E6EE" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                </svg>
-              </div>
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
-                {notificationPermission === 'granted' ? 'Notifications enabled' : 'Enable notifications'}
-              </p>
-            </button>
+            <div className="flex items-center justify-between w-full">
+              <button
+                type="button"
+                className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left"
+                style={{ pointerEvents: 'auto', zIndex: 1, color: 'inherit', font: 'inherit' }}
+                onClick={(e) => {
+                  console.log('Enable notifications clicked', { notificationPermission, hasHandler: !!onEnableNotifications });
+                  e.stopPropagation();
+                  if (onEnableNotifications) {
+                    console.log('Calling onEnableNotifications');
+                    onEnableNotifications();
+                  } else {
+                    console.error('onEnableNotifications handler is not defined!');
+                  }
+                }}
+              >
+                <div className="relative shrink-0 size-[24px]">
+                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#E1E6EE" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                  </svg>
+                </div>
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
+                  Enable notifications
+                </p>
+              </button>
+              {notificationPermission === 'granted' && onTestNotification && (
+                <button
+                  type="button"
+                  className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#0b64f9] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre bg-transparent border-none p-0 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onTestNotification) {
+                      onTestNotification();
+                    }
+                  }}
+                >
+                  Test
+                </button>
+              )}
+            </div>
 
             {/* Check for Update */}
-            <button
-              type="button"
-              className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left w-auto"
-              style={{ pointerEvents: 'auto', zIndex: 1, userSelect: 'none', color: 'inherit', font: 'inherit' }}
-              onClick={(e) => {
-                console.log('Check for update clicked', { updateAvailable, hasReload: !!onReload, hasCheck: !!onCheckForUpdate });
-                e.stopPropagation();
-                if (updateAvailable) {
-                  console.log('Calling onReload');
-                  onReload();
-                } else {
-                  console.log('Calling onCheckForUpdate');
-                  onCheckForUpdate();
-                }
-              }}
-            >
-              <div className="relative shrink-0 size-[24px]">
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#E1E6EE" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                </svg>
-              </div>
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
-                {updateAvailable ? 'Update now' : 'No updates needed'}
+            <div className="flex items-center justify-between w-full">
+              <button
+                type="button"
+                className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left"
+                style={{ pointerEvents: 'auto', zIndex: 1, userSelect: 'none', color: 'inherit', font: 'inherit' }}
+                onClick={(e) => {
+                  console.log('Check for update clicked', { updateAvailable, hasReload: !!onReload, hasCheck: !!onCheckForUpdate });
+                  e.stopPropagation();
+                  if (updateAvailable) {
+                    console.log('Calling onReload');
+                    onReload();
+                  } else {
+                    console.log('Calling onCheckForUpdate');
+                    onCheckForUpdate();
+                  }
+                }}
+              >
+                <div className="relative shrink-0 size-[24px]">
+                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#E1E6EE" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                </div>
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
+                  Check for update
+                </p>
+              </button>
+              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                {APP_VERSION}
               </p>
-            </button>
+            </div>
           </div>
         </div>
 
-        {/* Version Info - version1014Wrapper equivalent */}
-        <div className="flex items-center justify-center">
-          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
-            Version {APP_VERSION}
-          </p>
-        </div>
       </div>
     </div>
   );
