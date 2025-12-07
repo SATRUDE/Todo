@@ -12,13 +12,15 @@ interface SettingsProps {
 }
 
 export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, isChecking, onEnableNotifications, notificationPermission = 'default', onTestNotification }: SettingsProps) {
-  // Debug: Log props on mount
+  // Debug: Log props on mount and when permission changes
   console.log('Settings component rendered with:', {
     hasOnEnableNotifications: !!onEnableNotifications,
     hasOnCheckForUpdate: !!onCheckForUpdate,
     hasOnReload: !!onReload,
+    hasOnTestNotification: !!onTestNotification,
     notificationPermission,
-    updateAvailable
+    updateAvailable,
+    shouldShowTestButton: notificationPermission === 'granted'
   });
 
   return (
@@ -77,17 +79,20 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
                   </svg>
                 </div>
                 <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
-                  Enable notifications
+                  {notificationPermission === 'granted' ? 'Notifications enabled' : 'Enable notifications'}
                 </p>
               </button>
-              {notificationPermission === 'granted' && onTestNotification && (
+              {notificationPermission === 'granted' && (
                 <button
                   type="button"
                   className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#0b64f9] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre bg-transparent border-none p-0 cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
+                    console.log('Test notification clicked', { hasHandler: !!onTestNotification });
                     if (onTestNotification) {
                       onTestNotification();
+                    } else {
+                      console.error('onTestNotification handler is not defined!');
                     }
                   }}
                 >
