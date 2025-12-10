@@ -57,6 +57,15 @@ const ALL_TASKS_LIST_ID = -2;
 
 const listColors = ["#0B64F9", "#00C853", "#EF4123", "#FF6D00", "#FA8072"];
 
+// Lists that should always exist so new installs have useful defaults
+const REQUIRED_LISTS = [
+  {
+    name: "Shopping list",
+    color: "#EF4123",
+    isShared: false,
+  },
+];
+
 export function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [lists, setLists] = useState<ListItem[]>([]);
@@ -104,14 +113,32 @@ export function TodoApp() {
           return;
         }
         
-        const [tasksData, listsData] = await Promise.all([
+        const [tasksData, fetchedLists] = await Promise.all([
           fetchTasks(),
           fetchLists()
         ]);
+
+        let ensuredLists = [...fetchedLists];
+        const existingListNames = new Set(
+          ensuredLists.map((list) => list.name.trim().toLowerCase())
+        );
+        
+        for (const requiredList of REQUIRED_LISTS) {
+          const normalizedName = requiredList.name.trim().toLowerCase();
+          if (!existingListNames.has(normalizedName)) {
+            try {
+              const createdList = await createList(requiredList);
+              ensuredLists = [...ensuredLists, createdList];
+              existingListNames.add(normalizedName);
+            } catch (creationError) {
+              console.error(`Error ensuring default list "${requiredList.name}":`, creationError);
+            }
+          }
+        }
         
         // Convert database format to app format
         const appTodos = tasksData.map(dbTodoToDisplayTodo);
-        const appLists = listsData.map(list => ({
+        const appLists = ensuredLists.map(list => ({
           id: list.id,
           name: list.name,
           color: list.color,
