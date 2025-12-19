@@ -80,6 +80,16 @@ export function TodoApp() {
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const updateCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every minute to check for overdue tasks
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -813,10 +823,11 @@ export function TodoApp() {
   });
 
   // Calculate missed deadlines (tasks with deadlines that have passed and are not completed)
+  // Use currentTime state to trigger re-renders when time passes
   const missedDeadlines = todos.filter(todo => {
     if (!todo.deadline || todo.completed) return false;
     
-    const now = new Date();
+    const now = currentTime; // Use state instead of new Date() to trigger re-renders
     const deadlineDate = todo.deadline.date;
     
     // If there's a time, create a full datetime for comparison
