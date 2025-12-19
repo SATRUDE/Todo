@@ -9,9 +9,10 @@ interface SettingsProps {
   onEnableNotifications?: () => void;
   notificationPermission?: NotificationPermission;
   onTestNotification?: () => void;
+  onCreateOverdueTask?: () => void;
 }
 
-export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, isChecking, onEnableNotifications, notificationPermission = 'default', onTestNotification }: SettingsProps) {
+export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, isChecking, onEnableNotifications, notificationPermission = 'default', onTestNotification, onCreateOverdueTask }: SettingsProps) {
   // Debug: Log props on mount and when permission changes
   console.log('Settings component rendered with:', {
     hasOnEnableNotifications: !!onEnableNotifications,
@@ -132,6 +133,32 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
                 {APP_VERSION}
               </p>
             </div>
+
+            {/* Create Overdue Task (Test) */}
+            {onCreateOverdueTask && (
+              <div className="flex items-center justify-between w-full">
+                <button
+                  type="button"
+                  className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left"
+                  style={{ pointerEvents: 'auto', zIndex: 1, color: 'inherit', font: 'inherit' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onCreateOverdueTask) {
+                      onCreateOverdueTask();
+                    }
+                  }}
+                >
+                  <div className="relative shrink-0 size-[24px]">
+                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#EF4123" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3" />
+                    </svg>
+                  </div>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
+                    Create overdue test task
+                  </p>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

@@ -203,23 +203,11 @@ module.exports = async function handler(req, res) {
     const dueTodos = todos.filter(todo => {
       const logPrefix = `Todo #${todo.id} "${todo.text.substring(0, 30)}..."`;
       
-      // Check if already notified
+      // Check if already notified - if deadline_notified_at exists, skip entirely
+      // This ensures we only send notification once when the deadline is first hit
       if (todo.deadline_notified_at) {
-        // Parse deadline date and time to create ISO string for comparison
-        const [year, month, day] = todo.deadline_date.split('-').map(Number);
-        const deadlineDateTime = todo.deadline_time 
-          ? (() => {
-              const [hours, minutes] = todo.deadline_time.split(':').map(Number);
-              const dt = new Date(year, month - 1, day, hours, minutes, 0, 0);
-              return dt.toISOString();
-            })()
-          : new Date(year, month - 1, day).toISOString();
-        
-        // If already notified for this exact deadline, skip
-        if (todo.deadline_notified_at === deadlineDateTime) {
-          console.log(`${logPrefix} - Already notified at ${todo.deadline_notified_at}`);
-          return false;
-        }
+        console.log(`${logPrefix} - Already notified at ${todo.deadline_notified_at}, skipping`);
+        return false;
       }
       
       // Check if due
@@ -281,21 +269,23 @@ module.exports = async function handler(req, res) {
 
       // Mark this todo as notified after successfully sending to at least one subscription
       if (todoNotificationSent) {
+        // Use UTC to match the isTodoDue function logic
+        const [year, month, day] = todo.deadline_date.split('-').map(Number);
         const deadlineDateTime = todo.deadline_time 
           ? (() => {
               const [hours, minutes] = todo.deadline_time.split(':').map(Number);
-              const deadlineDate = new Date(todo.deadline_date);
-              deadlineDate.setHours(hours, minutes, 0, 0);
-              return deadlineDate.toISOString();
+              // Create deadline datetime in UTC to match isTodoDue function
+              const dt = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
+              return dt.toISOString();
             })()
-          : new Date(todo.deadline_date).toISOString();
+          : new Date(Date.UTC(year, month - 1, day)).toISOString();
 
         await supabase
           .from('todos')
           .update({ deadline_notified_at: deadlineDateTime })
           .eq('id', todo.id);
         
-        console.log(`✅ Marked todo #${todo.id} as notified`);
+        console.log(`✅ Marked todo #${todo.id} as notified at ${deadlineDateTime}`);
       }
     }
 

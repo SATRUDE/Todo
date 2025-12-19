@@ -6,6 +6,9 @@ import { TaskDetailModal } from "./TaskDetailModal";
 import { Lists } from "./Lists";
 import { ListDetail } from "./ListDetail";
 import { Settings } from "./Settings";
+import { ReviewMissedDeadlinesBox } from "./ReviewMissedDeadlinesBox";
+import { ReviewMissedDeadlinesModal } from "./ReviewMissedDeadlinesModal";
+import { DeadlineModal } from "./DeadlineModal";
 import { APP_VERSION } from "../lib/version";
 import { 
   fetchTasks, 
@@ -62,6 +65,9 @@ export function TodoApp() {
   const [lists, setLists] = useState<ListItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
+  const [isReviewMissedDeadlinesOpen, setIsReviewMissedDeadlinesOpen] = useState(false);
+  const [isDeadlineModalOpen, setIsDeadlineModalOpen] = useState(false);
+  const [taskForDeadlineUpdate, setTaskForDeadlineUpdate] = useState<Todo | null>(null);
   const [selectedTask, setSelectedTask] = useState<Todo | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("today");
   const [selectedList, setSelectedList] = useState<ListItem | null>(null);
@@ -749,6 +755,21 @@ export function TodoApp() {
     }
   };
 
+  const handleUpdateDeadline = async (taskId: number, deadline: { date: Date; time: string; recurring?: string }) => {
+    const todo = todos.find(t => t.id === taskId);
+    if (!todo) return;
+    
+    await updateTask(taskId, todo.text, todo.description, todo.listId, deadline);
+    setIsDeadlineModalOpen(false);
+    setTaskForDeadlineUpdate(null);
+  };
+
+  const handleNewDeadlineClick = (task: Todo) => {
+    setTaskForDeadlineUpdate(task);
+    setIsReviewMissedDeadlinesOpen(false);
+    setIsDeadlineModalOpen(true);
+  };
+
   const handleTaskClick = (task: Todo) => {
     setSelectedTask(task);
     setIsTaskDetailOpen(true);
@@ -797,6 +818,41 @@ export function TodoApp() {
     // 1. It's not completed, OR
     // 2. It was recently completed (within 1 second)
     return !todo.completed || recentlyCompleted.has(todo.id);
+  });
+
+  // Calculate missed deadlines (tasks with deadlines that have passed and are not completed)
+  const missedDeadlines = todos.filter(todo => {
+    if (!todo.deadline || todo.completed) return false;
+    
+    const now = new Date();
+    const deadlineDate = todo.deadline.date;
+    
+    // If there's a time, create a full datetime for comparison
+    if (todo.deadline.time && todo.deadline.time.trim() !== "") {
+      const [hours, minutes] = todo.deadline.time.split(':').map(Number);
+      const deadlineDateTime = new Date(
+        deadlineDate.getFullYear(),
+        deadlineDate.getMonth(),
+        deadlineDate.getDate(),
+        hours,
+        minutes,
+        0,
+        0
+      );
+      return deadlineDateTime < now;
+    }
+    
+    // If no time, compare just the date (end of day)
+    const endOfDeadlineDay = new Date(
+      deadlineDate.getFullYear(),
+      deadlineDate.getMonth(),
+      deadlineDate.getDate(),
+      23,
+      59,
+      59,
+      999
+    );
+    return endOfDeadlineDay < now;
   });
 
   const getListById = (listId?: number) => {
@@ -878,6 +934,16 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Today</p>
                 <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">{getFormattedDate()}</p>
               </div>
+
+              {/* Review Missed Deadlines Box */}
+              {missedDeadlines.length > 0 && (
+                <ReviewMissedDeadlinesBox
+                  missedCount={missedDeadlines.length}
+                  onClick={() => {
+                    setIsReviewMissedDeadlinesOpen(true);
+                  }}
+                />
+              )}
             
             {/* Todo List */}
             <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
@@ -1063,6 +1129,31 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onEnableNotifications={handleEnableNotifications}
           notificationPermission={notificationPermission}
           onTestNotification={handleTestNotification}
+          onCreateOverdueTask={async () => {
+            // Create a test task with a deadline from yesterday
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const overdueTask = {
+              text: "Test overdue task",
+              description: "This is a test task with an overdue deadline",
+              completed: false,
+              listId: TODAY_LIST_ID,
+              deadline: {
+                date: yesterday,
+                time: "09:00", // 9 AM yesterday
+                recurring: undefined
+              }
+            };
+            try {
+              const createdTask = await createTask(overdueTask);
+              const appTodo = dbTodoToDisplayTodo(createdTask);
+              setTodos(prevTodos => [...prevTodos, appTodo]);
+              alert("Overdue test task created! Go to Today page to see it.");
+            } catch (error) {
+              console.error('Error creating overdue task:', error);
+              alert("Failed to create overdue task. Check console for details.");
+            }
+          }}
         />
       ) : null}
 
@@ -1202,6 +1293,38 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onUpdateTask={updateTask}
           onDeleteTask={deleteTask}
           lists={lists}
+        />
+      )}
+
+      {/* Review Missed Deadlines Modal */}
+      <ReviewMissedDeadlinesModal
+        isOpen={isReviewMissedDeadlinesOpen}
+        onClose={() => setIsReviewMissedDeadlinesOpen(false)}
+        missedDeadlines={missedDeadlines}
+        lists={lists}
+        onToggleTask={toggleTodo}
+        onUpdateDeadline={handleUpdateDeadline}
+        onDeleteTask={deleteTask}
+        onTaskClick={(task) => {
+          setSelectedTask(task);
+          setIsReviewMissedDeadlinesOpen(false);
+          setIsTaskDetailOpen(true);
+        }}
+        onNewDeadlineClick={handleNewDeadlineClick}
+      />
+
+      {/* Deadline Modal for updating missed deadlines */}
+      {taskForDeadlineUpdate && (
+        <DeadlineModal
+          isOpen={isDeadlineModalOpen}
+          onClose={() => {
+            setIsDeadlineModalOpen(false);
+            setTaskForDeadlineUpdate(null);
+          }}
+          onSetDeadline={(date, time, recurring) => {
+            handleUpdateDeadline(taskForDeadlineUpdate.id, { date, time, recurring });
+          }}
+          currentDeadline={taskForDeadlineUpdate.deadline || undefined}
         />
       )}
     </div>
