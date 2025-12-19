@@ -4,9 +4,9 @@ This project uses Vercel cron jobs to send push notifications for due/overdue to
 
 ## How It Works
 
-Vercel cron jobs run a scheduled workflow every 5 minutes that:
+Vercel cron jobs run a scheduled workflow every minute that:
 1. Fetches all incomplete todos with deadlines
-2. Checks which todos are due (within ±5 minutes of their deadline time)
+2. Checks which todos are due (deadline was hit within the last 2 minutes)
 3. Sends push notifications to all registered subscriptions
 4. Marks todos as notified to prevent duplicate notifications
 
@@ -19,14 +19,14 @@ The cron job is configured in `vercel.json`:
   "crons": [
     {
       "path": "/api/reminders",
-      "schedule": "*/5 * * * *"
+      "schedule": "* * * * *"
     }
   ]
 }
 ```
 
 - **Path**: `/api/reminders` - The Vercel serverless function endpoint
-- **Schedule**: `*/5 * * * *` - Runs every 5 minutes
+- **Schedule**: `* * * * *` - Runs every minute for accurate deadline notifications
 
 ## Required Environment Variables
 
@@ -82,7 +82,8 @@ Edit the `schedule` field in `vercel.json`:
 ```
 
 Common schedules:
-- `*/5 * * * *` - Every 5 minutes (current)
+- `* * * * *` - Every minute (current - ensures accurate deadline notifications)
+- `*/5 * * * *` - Every 5 minutes
 - `*/15 * * * *` - Every 15 minutes
 - `0 * * * *` - Every hour
 - `0 9 * * *` - Every day at 9 AM UTC
