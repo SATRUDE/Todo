@@ -23,15 +23,18 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(currentDeadline?.date || new Date());
   const [selectedTime, setSelectedTime] = useState(currentDeadline?.time || "");
   const [recurring, setRecurring] = useState(currentDeadline?.recurring || "none");
+  const [noTime, setNoTime] = useState(!currentDeadline?.time || currentDeadline.time.trim() === "");
 
-  // Set default time to current time when modal opens
+  // Set default time when modal opens
   useEffect(() => {
     if (isOpen) {
-      if (currentDeadline?.time) {
+      if (currentDeadline?.time && currentDeadline.time.trim() !== "") {
         setSelectedTime(currentDeadline.time);
+        setNoTime(false);
       } else {
-        // Always default to current time when opening modal without existing deadline
-        setSelectedTime(getCurrentTime());
+        // If no time exists, default to "no time" being checked
+        setSelectedTime("");
+        setNoTime(true);
       }
     }
   }, [isOpen, currentDeadline]);
@@ -46,8 +49,22 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
 
   const handleConfirm = () => {
     if (selectedDate) {
-      onSetDeadline(selectedDate, selectedTime, recurring !== "none" ? recurring : undefined);
+      // If "no time" is selected, pass empty string for time
+      const timeToSet = noTime ? "" : selectedTime;
+      onSetDeadline(selectedDate, timeToSet, recurring !== "none" ? recurring : undefined);
       onClose();
+    }
+  };
+
+  const handleNoTimeToggle = () => {
+    const newNoTime = !noTime;
+    setNoTime(newNoTime);
+    if (newNoTime) {
+      // Clear time when "no time" is enabled
+      setSelectedTime("");
+    } else {
+      // Set to current time when "no time" is disabled
+      setSelectedTime(getCurrentTime());
     }
   };
 
@@ -94,11 +111,30 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
 
           {/* Time Picker */}
           <div className="px-[20px] w-full">
+            {/* No Time Toggle */}
+            <div className="mb-[12px]">
+              <div 
+                className="bg-[rgba(225,230,238,0.1)] box-border flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
+                onClick={handleNoTimeToggle}
+              >
+                {/* Toggle Switch */}
+                <div className="h-[24px] relative shrink-0 w-[44px]">
+                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 24">
+                    <g>
+                      <rect fill={noTime ? "#00C853" : "#595559"} height="24" rx="12" width="44" />
+                      <circle cx={noTime ? "32" : "12"} cy="12" fill="white" r="10" />
+                    </g>
+                  </svg>
+                </div>
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">No time</p>
+              </div>
+            </div>
             <TimeInput
               id="deadline-time"
               value={selectedTime}
               onChange={(time) => setSelectedTime(time)}
               label="Time"
+              disabled={noTime}
             />
           </div>
 

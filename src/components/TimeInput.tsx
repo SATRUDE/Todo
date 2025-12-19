@@ -4,6 +4,7 @@ interface TimeInputProps {
   onChange?: (value: string) => void;
   label?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export function TimeInput({ 
@@ -11,7 +12,8 @@ export function TimeInput({
   value, 
   onChange, 
   label,
-  className 
+  className,
+  disabled = false
 }: TimeInputProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const timeValue = e.target.value;
@@ -33,7 +35,8 @@ export function TimeInput({
         className="box-border flex gap-[4px] items-center rounded-[8px] w-full relative"
         style={{
           backgroundColor: '#201C20',
-          padding: '16px'
+          padding: '16px',
+          opacity: disabled ? 0.5 : 1
         }}
       >
         <div className="relative shrink-0 size-[24px]">
@@ -59,7 +62,8 @@ export function TimeInput({
           value={inputValue}
           onChange={handleChange}
           step="60"
-          className="bg-transparent border-none outline-none font-['Inter:Regular',sans-serif] font-normal leading-[1.5] text-[18px] tracking-[-0.198px] flex-1 cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:pointer-events-none"
+          disabled={disabled}
+          className="bg-transparent border-none outline-none font-['Inter:Regular',sans-serif] font-normal leading-[1.5] text-[18px] tracking-[-0.198px] flex-1 cursor-pointer disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:pointer-events-none"
           placeholder="09:00"
           style={{
             color: inputValue ? '#e1e6ee' : '#5b5d62'
