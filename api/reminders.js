@@ -68,12 +68,10 @@ function isTodoDue(todo, logContext = '') {
   // Calculate time difference (positive = deadline has passed, negative = deadline is in future)
   const timeDiff = now - deadlineDateTime;
   
-  // Only send notification if deadline was hit within the last 2 minutes
-  // This ensures we catch the deadline when cron runs (every minute) but don't keep sending
-  // notifications for tasks that are overdue by hours or days
-  // The deadline_notified_at check will prevent duplicates, but this adds an extra safety layer
-  const twoMinutes = 2 * 60 * 1000; // 2 minutes in milliseconds
-  const isDue = timeDiff >= 0 && timeDiff <= twoMinutes;
+  // Send notification if deadline has passed (timeDiff >= 0)
+  // The deadline_notified_at check in the main handler will prevent duplicates,
+  // ensuring we only send one notification per todo when the deadline is first hit
+  const isDue = timeDiff >= 0;
 
   if (logContext) {
     const diffSeconds = Math.round(timeDiff / 1000);

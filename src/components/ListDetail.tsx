@@ -211,6 +211,8 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                 </div>
               ))}
             </div>
+            {/* Spacer to prevent bottom nav from covering content */}
+            <div className="h-[120px] w-full" />
           </div>
         </div>
       </div>
