@@ -68,11 +68,12 @@ function isTodoDue(todo, logContext = '') {
   // Calculate time difference (positive = deadline has passed, negative = deadline is in future)
   const timeDiff = now - deadlineDateTime;
   
-  // Due ONLY if deadline has passed (timeDiff >= 0)
-  // This ensures notifications only go off when the deadline time has actually been reached
-  // Since cron runs every minute, we don't need a window for future deadlines
-  // If the deadline time has passed (even by milliseconds), it's due
-  const isDue = timeDiff >= 0;
+  // Only send notification if deadline was hit within the last 2 minutes
+  // This ensures we catch the deadline when cron runs (every minute) but don't keep sending
+  // notifications for tasks that are overdue by hours or days
+  // The deadline_notified_at check will prevent duplicates, but this adds an extra safety layer
+  const twoMinutes = 2 * 60 * 1000; // 2 minutes in milliseconds
+  const isDue = timeDiff >= 0 && timeDiff <= twoMinutes;
 
   if (logContext) {
     const diffSeconds = Math.round(timeDiff / 1000);
@@ -205,13 +206,16 @@ module.exports = async function handler(req, res) {
       
       // Check if already notified - if deadline_notified_at exists, skip entirely
       // This ensures we only send notification once when the deadline is first hit
-      if (todo.deadline_notified_at) {
+      if (todo.deadline_notified_at && todo.deadline_notified_at !== null && todo.deadline_notified_at !== '') {
         console.log(`${logPrefix} - Already notified at ${todo.deadline_notified_at}, skipping`);
         return false;
       }
       
-      // Check if due
+      // Check if due (only within 2-minute window after deadline)
       const isDue = isTodoDue(todo, logPrefix);
+      if (!isDue) {
+        console.log(`${logPrefix} - Not due yet or deadline passed more than 2 minutes ago`);
+      }
       return isDue;
     });
 
@@ -256,6 +260,43 @@ module.exports = async function handler(req, res) {
     for (const todo of dueTodos) {
       console.log(`\n📝 Processing todo #${todo.id}: "${todo.text.substring(0, 50)}${todo.text.length > 50 ? '...' : ''}"`);
 
+      // Mark as notified IMMEDIATELY before sending to prevent duplicate notifications
+      // This uses a database-level check to ensure only one process can mark it as notified
+      // Use UTC to match the isTodoDue function logic
+      const [year, month, day] = todo.deadline_date.split('-').map(Number);
+      const deadlineDateTime = todo.deadline_time 
+        ? (() => {
+            const [hours, minutes] = todo.deadline_time.split(':').map(Number);
+            // Create deadline datetime in UTC to match isTodoDue function
+            const dt = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
+            return dt.toISOString();
+          })()
+        : new Date(Date.UTC(year, month - 1, day)).toISOString();
+
+      // Try to mark as notified - only succeeds if deadline_notified_at is currently null
+      // This prevents race conditions if multiple cron jobs run simultaneously
+      const { data: updateData, error: updateError } = await supabase
+        .from('todos')
+        .update({ deadline_notified_at: deadlineDateTime })
+        .eq('id', todo.id)
+        .is('deadline_notified_at', null) // Only update if not already set
+        .select();
+      
+      if (updateError) {
+        console.error(`❌ Failed to mark todo #${todo.id} as notified:`, updateError);
+        // If update failed, skip sending notifications to avoid duplicates
+        continue;
+      }
+      
+      // Check if the update actually happened (another process might have already marked it)
+      if (!updateData || updateData.length === 0) {
+        console.log(`⚠️ Todo #${todo.id} was already marked as notified by another process, skipping`);
+        continue;
+      }
+      
+      console.log(`✅ Marked todo #${todo.id} as notified at ${deadlineDateTime}`);
+
+      // Now send notifications - we've already marked it as notified so duplicates are prevented
       let todoNotificationSent = false;
       for (const subscription of subscriptions) {
         const success = await sendNotification(subscription, todo, supabase);
@@ -266,26 +307,11 @@ module.exports = async function handler(req, res) {
           failureCount++;
         }
       }
-
-      // Mark this todo as notified after successfully sending to at least one subscription
+      
       if (todoNotificationSent) {
-        // Use UTC to match the isTodoDue function logic
-        const [year, month, day] = todo.deadline_date.split('-').map(Number);
-        const deadlineDateTime = todo.deadline_time 
-          ? (() => {
-              const [hours, minutes] = todo.deadline_time.split(':').map(Number);
-              // Create deadline datetime in UTC to match isTodoDue function
-              const dt = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
-              return dt.toISOString();
-            })()
-          : new Date(Date.UTC(year, month - 1, day)).toISOString();
-
-        await supabase
-          .from('todos')
-          .update({ deadline_notified_at: deadlineDateTime })
-          .eq('id', todo.id);
-        
-        console.log(`✅ Marked todo #${todo.id} as notified at ${deadlineDateTime}`);
+        console.log(`📤 Sent notifications for todo #${todo.id}`);
+      } else {
+        console.log(`⚠️ Failed to send notifications for todo #${todo.id}, but it's already marked as notified`);
       }
     }
 
