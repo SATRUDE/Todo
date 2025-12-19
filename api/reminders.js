@@ -42,7 +42,8 @@ function isTodoDue(todo, logContext = '') {
   }
 
   // Check if deadline_date is in the future (if so, don't send notification)
-  if (deadlineDateUTC > todayUTC) {
+  // Compare dates only (not times) - if deadline date is after today, skip
+  if (deadlineDateUTC.getTime() > todayUTC.getTime()) {
     if (logContext) {
       console.log(`${logContext} - Deadline date ${todo.deadline_date} is in the future (today UTC: ${todayUTC.toISOString().split('T')[0]})`);
     }
@@ -209,10 +210,10 @@ module.exports = async function handler(req, res) {
         return false;
       }
       
-      // Check if due (only within 2-minute window after deadline)
+      // Check if due (deadline has passed)
       const isDue = isTodoDue(todo, logPrefix);
       if (!isDue) {
-        console.log(`${logPrefix} - Not due yet or deadline passed more than 2 minutes ago`);
+        console.log(`${logPrefix} - Not due yet (deadline is in the future)`);
       }
       return isDue;
     });

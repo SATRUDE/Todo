@@ -612,16 +612,12 @@ export function TodoApp() {
     
     try {
       console.log('Adding new task:', { taskText, description, listId, deadline });
-      const createdTask = await createTask(newTodo);
-      console.log('Task created successfully:', createdTask);
-      const appTodo = dbTodoToDisplayTodo(createdTask);
-      console.log('Converted to app format:', appTodo);
-      // Use functional update to ensure we get the latest state
-      setTodos(prevTodos => {
-        const updated = [...prevTodos, appTodo];
-        console.log('Updated todos array, new length:', updated.length);
-        return updated;
-      });
+      await createTask(newTodo);
+      console.log('Task created successfully');
+      // Reload all tasks to ensure consistency and immediate visibility
+      const allTasks = await fetchTasks();
+      const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+      setTodos(displayTasks);
     } catch (error) {
       console.error('Error adding task:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
@@ -642,14 +638,12 @@ export function TodoApp() {
       console.log('Adding new task to list:', { taskText, description, listId });
       const createdTask = await createTask(newTodo);
       console.log('Task created successfully:', createdTask);
-      const appTodo = dbTodoToDisplayTodo(createdTask);
-      console.log('Converted to app format:', appTodo);
-      // Use functional update to ensure we get the latest state
-      setTodos(prevTodos => {
-        const updated = [...prevTodos, appTodo];
-        console.log('Updated todos array, new length:', updated.length);
-        return updated;
-      });
+      const displayTodo = dbTodoToDisplayTodo(createdTask);
+      console.log('Converted to display format:', displayTodo);
+      // Reload all tasks to ensure consistency
+      const allTasks = await fetchTasks();
+      const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+      setTodos(displayTasks);
     } catch (error) {
       console.error('Error adding task to list:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
@@ -733,14 +727,12 @@ export function TodoApp() {
         updateData.group = deadline ? undefined : todo.group;
       }
       
-      const updatedTodo = await updateTaskDb(taskId, updateData);
+      await updateTaskDb(taskId, updateData);
       
-      setTodos(todos.map(t => {
-        if (t.id === taskId) {
-          return dbTodoToDisplayTodo(updatedTodo);
-        }
-        return t;
-      }));
+      // Reload all tasks to ensure consistency
+      const allTasks = await fetchTasks();
+      const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+      setTodos(displayTasks);
     } catch (error) {
       console.error('Error updating task:', error);
     }
