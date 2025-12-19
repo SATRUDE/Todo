@@ -923,11 +923,11 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
   }
 
   return (
-    <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-between pb-[120px] pt-[60px] px-0 relative size-full min-h-screen">
+    <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-start pt-[60px] px-0 relative w-full min-h-screen">
       {/* Main Content */}
       {currentPage === "today" ? (
         <div className="relative shrink-0 w-full">
-          <div className="size-full">
+          <div className="w-full">
             <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
               {/* Header with Today and Date */}
               <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre">
@@ -1091,6 +1091,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 );
               })}
             </div>
+            {/* Spacer to prevent bottom nav from covering content */}
+            <div className="h-[120px] w-full" />
           </div>
         </div>
         </div>

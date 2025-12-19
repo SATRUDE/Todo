@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar } from "./ui/calendar";
+import { TimeInput } from "./TimeInput";
 import svgPaths from "../imports/svg-e51h379o38";
 
 interface DeadlineModalProps {
@@ -11,20 +12,29 @@ interface DeadlineModalProps {
 }
 
 export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline, currentDeadline }: DeadlineModalProps) {
-  // Round time to 5-minute intervals helper
-  const roundTimeTo5Minutes = (time: string): string => {
-    if (!time) return "";
-    const [hours, minutes] = time.split(':').map(Number);
-    const roundedMinutes = Math.round(minutes / 5) * 5;
-    if (roundedMinutes === 60) {
-      return `${(hours + 1).toString().padStart(2, '0')}:00`;
-    }
-    return `${hours.toString().padStart(2, '0')}:${roundedMinutes.toString().padStart(2, '0')}`;
+  // Get current time as default
+  const getCurrentTime = () => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(currentDeadline?.date || new Date());
-  const [selectedTime, setSelectedTime] = useState(currentDeadline?.time ? roundTimeTo5Minutes(currentDeadline.time) : "");
+  const [selectedTime, setSelectedTime] = useState(currentDeadline?.time || "");
   const [recurring, setRecurring] = useState(currentDeadline?.recurring || "none");
+
+  // Set default time to current time when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (currentDeadline?.time) {
+        setSelectedTime(currentDeadline.time);
+      } else {
+        // Always default to current time when opening modal without existing deadline
+        setSelectedTime(getCurrentTime());
+      }
+    }
+  }, [isOpen, currentDeadline]);
 
   const getDayOfWeek = (date: Date) => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -32,27 +42,6 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
   };
 
   const currentDayOfWeek = selectedDate ? getDayOfWeek(selectedDate) : "Friday";
-
-  // Generate time options in 5-minute intervals
-  const generateTimeOptions = () => {
-    const options = [];
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 5) {
-        const hourStr = hour.toString().padStart(2, '0');
-        const minuteStr = minute.toString().padStart(2, '0');
-        const timeValue = `${hourStr}:${minuteStr}`;
-        const displayTime = new Date(`2000-01-01T${timeValue}`).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        });
-        options.push({ value: timeValue, label: displayTime });
-      }
-    }
-    return options;
-  };
-
-  const timeOptions = generateTimeOptions();
 
 
   const handleConfirm = () => {
@@ -105,41 +94,12 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
 
           {/* Time Picker */}
           <div className="px-[20px] w-full">
-            <div className="flex items-center justify-between mb-2">
-              <label className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#e1e6ee] text-[18px] tracking-[-0.198px] block">
-                Time (5-minute intervals)
-              </label>
-              {selectedTime && (
-                <button
-                  onClick={() => setSelectedTime("")}
-                  className="text-[#5b5d62] hover:text-[#e1e6ee] text-sm font-['Inter:Regular',sans-serif]"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-            <select
-              value={selectedTime ? roundTimeTo5Minutes(selectedTime) : ""}
-              onChange={(e) => setSelectedTime(e.target.value)}
-              className="w-full bg-[rgba(225,230,238,0.1)] border border-[rgba(225,230,238,0.1)] rounded-[12px] px-[16px] py-[12px] text-white font-['Inter:Regular',sans-serif] font-normal text-[18px] outline-none focus:border-[rgba(225,230,238,0.3)] cursor-pointer"
-            >
-              <option value="" className="bg-[#110c10]">No time</option>
-              {timeOptions.map((option) => (
-                <option key={option.value} value={option.value} className="bg-[#110c10]">
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {!selectedTime && (
-              <p className="text-[#5b5d62] text-sm mt-1 font-['Inter:Regular',sans-serif]">
-                No time set - task will appear on the selected date
-              </p>
-            )}
-            {selectedTime && (
-              <p className="text-[#5b5d62] text-sm mt-1 font-['Inter:Regular',sans-serif]">
-                Notifications will be sent at the exact time you set
-              </p>
-            )}
+            <TimeInput
+              id="deadline-time"
+              value={selectedTime}
+              onChange={(time) => setSelectedTime(time)}
+              label="Time"
+            />
           </div>
 
           {/* Recurring Dropdown */}
