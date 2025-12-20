@@ -45,9 +45,11 @@ interface ListDetailProps {
   onDeleteList: (listId: number) => void;
   onTaskClick?: (task: Todo) => void;
   lists?: ListItem[];
+  dateFilter?: Date | null;
+  onClearDateFilter?: () => void;
 }
 
-export function ListDetail({ listId, listName, listColor, isShared, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList, onTaskClick, lists = [] }: ListDetailProps) {
+export function ListDetail({ listId, listName, listColor, isShared, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList, onTaskClick, lists = [], dateFilter, onClearDateFilter }: ListDetailProps) {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
 
@@ -126,6 +128,35 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                 </div>
               )}
             </div>
+
+            {/* Date Filter Pill */}
+            {dateFilter && isCompletedList && onClearDateFilter && (
+              <div 
+                className="bg-[rgba(225,230,238,0.1)] box-border flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer w-fit"
+                onClick={onClearDateFilter}
+              >
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                  Today
+                </p>
+                <div className="relative shrink-0 size-[20px]">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    strokeWidth="1.5" 
+                    stroke="currentColor" 
+                    className="size-6"
+                    style={{ width: '20px', height: '20px', color: '#e1e6ee' }}
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      d="M6 18 18 6M6 6l12 12" 
+                    />
+                  </svg>
+                </div>
+              </div>
+            )}
 
             {/* Tasks */}
             <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">

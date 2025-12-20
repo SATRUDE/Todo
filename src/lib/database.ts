@@ -177,6 +177,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     description: dbTodo.description || undefined,
     listId: dbTodo.list_id,
     deadline,
+    updatedAt: dbTodo.updated_at,
   }
 }
 

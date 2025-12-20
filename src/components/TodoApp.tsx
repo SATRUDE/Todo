@@ -9,6 +9,7 @@ import { Settings } from "./Settings";
 import { ReviewMissedDeadlinesBox } from "./ReviewMissedDeadlinesBox";
 import { ReviewMissedDeadlinesModal } from "./ReviewMissedDeadlinesModal";
 import { DeadlineModal } from "./DeadlineModal";
+import { CompletedTasksBox } from "./CompletedTasksBox";
 import { APP_VERSION } from "../lib/version";
 import { 
   fetchTasks, 
@@ -42,6 +43,7 @@ interface Todo {
     time: string;
     recurring?: string;
   };
+  updatedAt?: string; // ISO timestamp string
 }
 
 interface ListItem {
@@ -71,6 +73,7 @@ export function TodoApp() {
   const [selectedTask, setSelectedTask] = useState<Todo | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("today");
   const [selectedList, setSelectedList] = useState<ListItem | null>(null);
+  const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
@@ -452,13 +455,15 @@ export function TodoApp() {
     }
   }, []);
 
-  const handleSelectList = (list: ListItem) => {
+  const handleSelectList = (list: ListItem, filterDate?: Date) => {
     setSelectedList(list);
+    setDateFilter(filterDate || null);
     setCurrentPage("listDetail");
   };
 
   const handleBackFromList = () => {
     setSelectedList(null);
+    setDateFilter(null);
     setCurrentPage("lists");
   };
 
@@ -804,6 +809,23 @@ export function TodoApp() {
       }
       
       return allTasks;
+    } else if (listId === COMPLETED_LIST_ID) {
+      let completedTasks = todos.filter(todo => todo.listId === COMPLETED_LIST_ID);
+      
+      // If dateFilter is set, filter by completion date
+      if (dateFilter) {
+        completedTasks = completedTasks.filter(todo => {
+          if (!todo.updatedAt) return false;
+          const updatedDate = new Date(todo.updatedAt);
+          return (
+            updatedDate.getFullYear() === dateFilter.getFullYear() &&
+            updatedDate.getMonth() === dateFilter.getMonth() &&
+            updatedDate.getDate() === dateFilter.getDate()
+          );
+        });
+      }
+      
+      return completedTasks;
     }
     return todos.filter(todo => todo.listId === listId);
   };
@@ -856,6 +878,21 @@ export function TodoApp() {
       999
     );
     return endOfDeadlineDay < now;
+  });
+
+  // Calculate tasks completed today
+  const tasksCompletedToday = todos.filter(todo => {
+    if (!todo.completed || !todo.updatedAt) return false;
+    
+    const updatedDate = new Date(todo.updatedAt);
+    const today = new Date();
+    
+    // Check if updated date is today (same year, month, and day)
+    return (
+      updatedDate.getFullYear() === today.getFullYear() &&
+      updatedDate.getMonth() === today.getMonth() &&
+      updatedDate.getDate() === today.getDate()
+    );
   });
 
   const getListById = (listId?: number) => {
@@ -944,6 +981,23 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   missedCount={missedDeadlines.length}
                   onClick={() => {
                     setIsReviewMissedDeadlinesOpen(true);
+                  }}
+                />
+              )}
+
+              {/* Completed Tasks Box */}
+              {tasksCompletedToday.length > 0 && (
+                <CompletedTasksBox
+                  completedCount={tasksCompletedToday.length}
+                  onClick={() => {
+                    const completedList: ListItem = {
+                      id: COMPLETED_LIST_ID,
+                      name: "Completed list",
+                      color: "#00C853",
+                      count: tasksCompletedToday.length,
+                      isShared: false,
+                    };
+                    handleSelectList(completedList, new Date());
                   }}
                 />
               )}
@@ -1123,6 +1177,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onDeleteList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : deleteList}
           onTaskClick={handleTaskClick}
           lists={lists}
+          dateFilter={dateFilter}
+          onClearDateFilter={() => setDateFilter(null)}
         />
       ) : currentPage === "settings" ? (
         <Settings
