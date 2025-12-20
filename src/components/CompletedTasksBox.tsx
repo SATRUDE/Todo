@@ -46,3 +46,4 @@ export function CompletedTasksBox({ onClick, completedCount }: CompletedTasksBox
   );
 }
 
+

@@ -56,7 +56,7 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
           </div>
 
           {/* Settings Content - frameContainer equivalent */}
-          <div className="flex flex-col gap-[16px] items-start w-full">
+          <div className="flex flex-col gap-[24px] items-start w-full">
             {/* Enable Notifications */}
             <div className="flex items-center justify-between w-full">
               <button

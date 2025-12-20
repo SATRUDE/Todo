@@ -79,8 +79,8 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
       />
       
       {/* Bottom Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto">
-        <div className="bg-[#110c10] box-border content-stretch flex flex-col gap-[32px] items-center overflow-clip pb-[40px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full">
+      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto max-h-[90vh] flex flex-col">
+        <div className="bg-[#110c10] box-border flex flex-col gap-[32px] items-center overflow-hidden pb-[40px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full flex-1 min-h-0">
           {/* Handle */}
           <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
             <div className="h-[20px] relative shrink-0 w-[100px]">
@@ -93,7 +93,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
           </div>
 
           {/* Title */}
-          <div className="px-[20px] w-full">
+          <div className="px-[20px] w-full shrink-0">
             <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic text-white text-[28px] tracking-[-0.308px]">
               Set Deadline
             </p>
@@ -139,7 +139,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
           </div>
 
           {/* Recurring Dropdown */}
-          <div className="px-[20px] w-full">
+          <div className="px-[20px] w-full shrink-0">
             <label className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#e1e6ee] text-[18px] tracking-[-0.198px] mb-2 block">
               Recurring
             </label>
@@ -157,7 +157,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
           </div>
 
           {/* Buttons */}
-          <div className="px-[20px] w-full flex gap-[12px]">
+          <div className="px-[20px] w-full flex gap-[12px] shrink-0">
             {onClearDeadline && currentDeadline && (
               <button
                 onClick={() => {
