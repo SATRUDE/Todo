@@ -963,7 +963,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
   }
 
   return (
-    <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-start pt-[60px] px-0 relative w-full min-h-screen">
+    <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-start pt-[60px] px-0 relative w-full min-h-screen" style={{ minHeight: '100vh', height: 'auto' }}>
       {/* Main Content */}
       {currentPage === "today" ? (
         <div className="relative shrink-0 w-full">
@@ -975,31 +975,34 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">{getFormattedDate()}</p>
               </div>
 
-              {/* Review Missed Deadlines Box */}
-              {missedDeadlines.length > 0 && (
-                <ReviewMissedDeadlinesBox
-                  missedCount={missedDeadlines.length}
-                  onClick={() => {
-                    setIsReviewMissedDeadlinesOpen(true);
-                  }}
-                />
-              )}
+              {/* Status Boxes */}
+              {(missedDeadlines.length > 0 || tasksCompletedToday.length > 0) && (
+                <div className="flex flex-col gap-[16px] w-full">
+                  {missedDeadlines.length > 0 && (
+                    <ReviewMissedDeadlinesBox
+                      missedCount={missedDeadlines.length}
+                      onClick={() => {
+                        setIsReviewMissedDeadlinesOpen(true);
+                      }}
+                    />
+                  )}
 
-              {/* Completed Tasks Box */}
-              {tasksCompletedToday.length > 0 && (
-                <CompletedTasksBox
-                  completedCount={tasksCompletedToday.length}
-                  onClick={() => {
-                    const completedList: ListItem = {
-                      id: COMPLETED_LIST_ID,
-                      name: "Completed list",
-                      color: "#00C853",
-                      count: tasksCompletedToday.length,
-                      isShared: false,
-                    };
-                    handleSelectList(completedList, new Date());
-                  }}
-                />
+                  {tasksCompletedToday.length > 0 && (
+                    <CompletedTasksBox
+                      completedCount={tasksCompletedToday.length}
+                      onClick={() => {
+                        const completedList: ListItem = {
+                          id: COMPLETED_LIST_ID,
+                          name: "Completed list",
+                          color: "#00C853",
+                          count: tasksCompletedToday.length,
+                          isShared: false,
+                        };
+                        handleSelectList(completedList, new Date());
+                      }}
+                    />
+                  )}
+                </div>
               )}
             
             {/* Todo List */}
@@ -1009,7 +1012,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 return (
                 <div
                   key={todo.id}
-                  className={`content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer transition-opacity duration-1000 ${
+                  className={`content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer transition-opacity duration-1000 ${
                     isRecentlyCompleted ? 'opacity-100' : 'opacity-100'
                   }`}
                   onClick={() => handleTaskClick(todo)}
@@ -1059,11 +1062,11 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   </div>
 
                   {/* Metadata Row */}
-                  <div className="content-stretch flex gap-[8px] items-start relative shrink-0">
+                  <div className="content-stretch flex gap-[8px] items-start relative shrink-0 pl-[32px]">
                     {/* Time */}
                     {todo.time && (
-                      <div className="box-border content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
-                        <div className="relative shrink-0 size-[24px]">
+                      <div className="box-border content-stretch flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">
+                        <div className="relative shrink-0 size-[20px]">
                           <svg
                             className="block size-full"
                             fill="none"
@@ -1081,7 +1084,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                             </g>
                           </svg>
                         </div>
-                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
                           {todo.time}
                         </p>
                       </div>
@@ -1108,7 +1111,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                             </g>
                           </svg>
                         </div>
-                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                           {getDayOfWeek(todo.deadline.date)}
                         </p>
                       </div>
@@ -1119,7 +1122,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                       const list = getListById(todo.listId);
                       return list ? (
                         <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
-                          <div className="relative shrink-0 size-[24px]">
+                          <div className="relative shrink-0 size-[20px]">
                             <svg
                               className="block size-full"
                               fill="none"
@@ -1137,7 +1140,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                               </g>
                             </svg>
                           </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {list.name}
                           </p>
                         </div>
@@ -1148,6 +1151,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 );
               })}
             </div>
+            {/* Large green spacer for debugging scrolling */}
+            <div className="h-[100px] w-full bg-green-500" style={{ position: 'relative', zIndex: 9999, minHeight: '100px' }} />
             {/* Spacer to prevent bottom nav from covering content */}
             <div className="h-[120px] w-full" />
           </div>
@@ -1164,7 +1169,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onBack={() => setCurrentPage("today")}
         />
       ) : currentPage === "listDetail" && selectedList ? (
-        <ListDetail 
+        <>
+          {/* DEBUG: Container test */}
+          <div className="h-[30px] w-full bg-red-500" style={{ position: 'relative', zIndex: 9999 }} />
+          <ListDetail 
           listId={selectedList.id}
           listName={selectedList.name}
           listColor={selectedList.color}
@@ -1180,6 +1188,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           dateFilter={dateFilter}
           onClearDateFilter={() => setDateFilter(null)}
         />
+        </>
       ) : currentPage === "settings" ? (
         <Settings
           onBack={() => setCurrentPage("today")}

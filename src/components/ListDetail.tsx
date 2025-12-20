@@ -1,5 +1,6 @@
 import { useState } from "react";
 import svgPaths from "../imports/svg-obs7av64ch";
+import svgPathsToday from "../imports/svg-z2a631st9g";
 import { AddTaskModal } from "./AddTaskModal";
 import { AddListModal } from "./AddListModal";
 
@@ -9,6 +10,7 @@ interface Todo {
   completed: boolean;
   time?: string;
   description?: string | null;
+  listId?: number;
   deadline?: {
     date: Date;
     time: string;
@@ -82,10 +84,24 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
     isShared: isShared,
   };
 
+  const getListById = (taskListId?: number) => {
+    if (taskListId === undefined || taskListId === 0 || taskListId === -1) {
+      return null;
+    }
+    return lists.find(l => l.id === taskListId);
+  };
+
+  const getDayOfWeek = (date: Date) => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[date.getDay()];
+  };
+
   return (
     <>
-      <div className="relative shrink-0 w-full">
-        <div className="size-full">
+      {/* DEBUG: Green spacer at top */}
+      <div className="h-[50px] w-full bg-green-500" style={{ position: 'relative', zIndex: 9999 }} />
+      <div className="relative w-full pb-[160px]">
+        <div className="w-full">
           <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
             {/* Header */}
             <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
@@ -163,7 +179,7 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
               {tasks.map((todo) => (
                 <div
                   key={todo.id}
-                  className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+                  className="content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer"
                   onClick={() => onTaskClick && onTaskClick(todo)}
                 >
                   {/* Task Name Row */}
@@ -202,48 +218,99 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                     </p>
                   </div>
 
-                  {/* Deadline/Time */}
-                  {(todo.deadline || todo.time) && (
-                    <div className="content-stretch flex gap-[8px] items-start relative shrink-0">
-                      <div className="box-border content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
-                        <div className="relative shrink-0 size-[24px]">
-                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                  {/* Metadata Row */}
+                  <div className="content-stretch flex gap-[8px] items-start relative shrink-0 pl-[32px]">
+                    {/* Time */}
+                    {todo.time && (
+                      <div className="box-border content-stretch flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">
+                        <div className="relative shrink-0 size-[20px]">
+                          <svg
+                            className="block size-full"
+                            fill="none"
+                            preserveAspectRatio="none"
+                            viewBox="0 0 24 24"
+                          >
                             <g>
-                              <path d={svgPaths.p19fddb00} stroke="#5B5D62" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                              <path
+                                d={svgPathsToday.p19fddb00}
+                                stroke="#5B5D62"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.5"
+                              />
                             </g>
                           </svg>
                         </div>
-                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                          {(() => {
-                            if (todo.deadline) {
-                              const today = new Date();
-                              const tomorrow = new Date(today);
-                              tomorrow.setDate(tomorrow.getDate() + 1);
-                              
-                              const isToday = todo.deadline.date.toDateString() === today.toDateString();
-                              const isTomorrow = todo.deadline.date.toDateString() === tomorrow.toDateString();
-                              
-                              const dateText = isToday ? "Today" : isTomorrow ? "Tomorrow" : 
-                                `${todo.deadline.date.toLocaleDateString('en-US', { month: 'short' })} ${todo.deadline.date.getDate()}`;
-                              
-                              // If no time is set, just show the date
-                              if (!todo.deadline.time || todo.deadline.time.trim() === "") {
-                                return dateText;
-                              }
-                              
-                              return `${dateText} ${todo.deadline.time}`;
-                            }
-                            return todo.time;
-                          })()}
+                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          {todo.time}
                         </p>
                       </div>
-                    </div>
-                  )}
+                    )}
+
+                    {/* Day Due */}
+                    {todo.deadline && (
+                      <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                        <div className="relative shrink-0 size-[20px]">
+                          <svg
+                            className="block size-full"
+                            fill="none"
+                            preserveAspectRatio="none"
+                            viewBox="0 0 20 20"
+                          >
+                            <g>
+                              <path
+                                d={svgPathsToday.p31f04100}
+                                stroke="#5B5D62"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.25"
+                              />
+                            </g>
+                          </svg>
+                        </div>
+                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          {getDayOfWeek(todo.deadline.date)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* List */}
+                    {(() => {
+                      const list = getListById(todo.listId);
+                      return list ? (
+                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                          <div className="relative shrink-0 size-[20px]">
+                            <svg
+                              className="block size-full"
+                              fill="none"
+                              preserveAspectRatio="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <g>
+                                <path
+                                  d={svgPathsToday.p1c6a4380}
+                                  stroke={list.color}
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="1.5"
+                                />
+                              </g>
+                            </svg>
+                          </div>
+                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                            {list.name}
+                          </p>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
                 </div>
               ))}
             </div>
-            {/* Spacer to prevent bottom nav from covering content */}
-            <div className="h-[120px] w-full" />
+            {/* Large green spacer for debugging scrolling */}
+            <div className="h-[100px] w-full bg-green-500" style={{ position: 'relative', zIndex: 9999, minHeight: '100px' }} />
+            {/* DEBUG: Another green spacer after */}
+            <div className="h-[100px] w-full bg-green-600" style={{ position: 'relative', zIndex: 9999 }} />
           </div>
         </div>
       </div>
