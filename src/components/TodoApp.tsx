@@ -1152,13 +1152,11 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 );
               })}
             </div>
-            {/* Large green spacer for debugging scrolling */}
-            <div className="h-[100px] w-full bg-green-500" style={{ position: 'relative', zIndex: 9999, minHeight: '100px' }} />
             {/* Spacer to prevent bottom nav from covering content */}
             <div className="h-[120px] w-full" />
           </div>
         </div>
-        </div>
+      </div>
       ) : currentPage === "lists" ? (
         <Lists 
           onSelectList={handleSelectList}
@@ -1172,10 +1170,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
       ) : currentPage === "dashboard" ? (
         <Dashboard />
       ) : currentPage === "listDetail" && selectedList ? (
-        <>
-          {/* DEBUG: Container test */}
-          <div className="h-[30px] w-full bg-red-500" style={{ position: 'relative', zIndex: 9999 }} />
-          <ListDetail 
+        <ListDetail 
           listId={selectedList.id}
           listName={selectedList.name}
           listColor={selectedList.color}
@@ -1191,7 +1186,6 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           dateFilter={dateFilter}
           onClearDateFilter={() => setDateFilter(null)}
         />
-        </>
       ) : currentPage === "settings" ? (
         <Settings
           onBack={() => setCurrentPage("today")}

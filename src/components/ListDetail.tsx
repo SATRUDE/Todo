@@ -98,9 +98,7 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
 
   return (
     <>
-      {/* DEBUG: Green spacer at top */}
-      <div className="h-[50px] w-full bg-green-500" style={{ position: 'relative', zIndex: 9999 }} />
-      <div className="relative w-full pb-[160px]">
+      <div className="relative w-full">
         <div className="w-full">
           <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
             {/* Header */}
@@ -307,14 +305,9 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                 </div>
               ))}
             </div>
-            {/* Large green spacer for debugging scrolling */}
-            <div className="h-[100px] w-full bg-green-500" style={{ position: 'relative', zIndex: 9999, minHeight: '100px' }} />
-            {/* DEBUG: Another green spacer after */}
-            <div className="h-[100px] w-full bg-green-600" style={{ position: 'relative', zIndex: 9999 }} />
           </div>
         </div>
       </div>
-
       {!isCompletedList && !isAllTasksList && (
         <>
           <AddTaskModal
