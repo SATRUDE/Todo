@@ -7,11 +7,11 @@ import { Lists } from "./Lists";
 import { ListDetail } from "./ListDetail";
 import { Settings } from "./Settings";
 import { Dashboard } from "./Dashboard";
-import { CalendarSync } from "./CalendarSync";
 import { ReviewMissedDeadlinesBox } from "./ReviewMissedDeadlinesBox";
 import { ReviewMissedDeadlinesModal } from "./ReviewMissedDeadlinesModal";
 import { DeadlineModal } from "./DeadlineModal";
 import { CompletedTasksBox } from "./CompletedTasksBox";
+import { CalendarTaskSuggestions } from "./CalendarTaskSuggestions";
 import { APP_VERSION } from "../lib/version";
 import { 
   fetchTasks, 
@@ -56,7 +56,7 @@ interface ListItem {
   isShared: boolean;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -86,6 +86,7 @@ export function TodoApp() {
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const updateCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showCalendarSuggestions, setShowCalendarSuggestions] = useState(false);
 
   // Update current time every minute to check for overdue tasks
   useEffect(() => {
@@ -95,6 +96,27 @@ export function TodoApp() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Check for calendar connection and show suggestions if available
+  useEffect(() => {
+    const checkCalendarAndShowSuggestions = async () => {
+      if (currentPage !== "today") return;
+      
+      try {
+        const { getCalendarConnection } = await import("../lib/calendar");
+        const connection = await getCalendarConnection();
+        if (connection) {
+          // Show suggestions if calendar is connected
+          setShowCalendarSuggestions(true);
+        }
+      } catch (error) {
+        // Calendar not connected or error - don't show suggestions
+        console.log('Calendar not connected or error:', error);
+      }
+    };
+
+    checkCalendarAndShowSuggestions();
+  }, [currentPage]);
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -1047,6 +1069,22 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 </div>
               )}
 
+              {/* Calendar Task Suggestions */}
+              {showCalendarSuggestions && (
+                <CalendarTaskSuggestions
+                  onAcceptSuggestion={async (suggestion) => {
+                    // The CalendarTaskSuggestions component handles marking the event as processed
+                    await addNewTask(
+                      suggestion.text,
+                      suggestion.description,
+                      TODAY_LIST_ID,
+                      suggestion.deadline
+                    );
+                  }}
+                  onDismiss={() => setShowCalendarSuggestions(false)}
+                />
+              )}
+            
             {/* Todo List */}
             <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
               {todayTasks.map((todo) => {
@@ -1209,9 +1247,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onBack={() => setCurrentPage("today")}
         />
       ) : currentPage === "dashboard" ? (
-        <Dashboard onAddTask={addNewTask} onNavigateToCalendarSync={() => setCurrentPage("calendarSync")} />
-      ) : currentPage === "calendarSync" ? (
-        <CalendarSync onBack={() => setCurrentPage("dashboard")} onAddTask={addNewTask} />
+        <Dashboard />
       ) : currentPage === "listDetail" && selectedList ? (
         <ListDetail 
           listId={selectedList.id}

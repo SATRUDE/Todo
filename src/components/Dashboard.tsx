@@ -39,7 +39,7 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync }: DashboardProp
                     </svg>
                   </div>
                   <p 
-                    className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[18px]"
+                    className="font-['Inter:Regular',sans-serif] font-extralight relative shrink-0 text-[18px]"
                     style={{ 
                       color: '#8fe594',
                       letterSpacing: '-0.01em',
@@ -88,5 +88,4 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync }: DashboardProp
     </div>
   );
 }
-
 

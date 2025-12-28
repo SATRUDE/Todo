@@ -55,12 +55,30 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss }: Calen
 
   const handleDismissEvent = async (eventId: string) => {
     try {
+      console.log('[CalendarTaskSuggestions] Dismissing event:', eventId);
       await markEventAsProcessed(eventId);
       // Remove the dismissed suggestion from the list
       setSuggestions(prev => prev.filter(s => s.event.id !== eventId));
+      console.log('[CalendarTaskSuggestions] Event dismissed successfully');
     } catch (err) {
-      console.error('Error dismissing event:', err);
-      alert('Failed to dismiss event. Please try again.');
+      console.error('[CalendarTaskSuggestions] Error dismissing event:', err);
+      alert(`Failed to dismiss event: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleAcceptSuggestion = async (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => {
+    try {
+      console.log('[CalendarTaskSuggestions] Accepting suggestion:', suggestion);
+      // Mark event as processed first
+      await markEventAsProcessed(suggestion.eventId);
+      // Then call the callback to add the task
+      onAcceptSuggestion(suggestion);
+      // Remove the accepted suggestion from the list
+      setSuggestions(prev => prev.filter(s => s.event.id !== suggestion.eventId));
+      console.log('[CalendarTaskSuggestions] Suggestion accepted successfully');
+    } catch (err) {
+      console.error('[CalendarTaskSuggestions] Error accepting suggestion:', err);
+      alert(`Failed to add task: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
@@ -150,7 +168,7 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss }: Calen
                 Dismiss
               </button>
               <button
-                onClick={() => onAcceptSuggestion({ ...suggestion, eventId: suggestion.event.id })}
+                onClick={() => handleAcceptSuggestion({ ...suggestion, eventId: suggestion.event.id })}
                 className="px-[16px] py-[8px] bg-[#0b64f9] text-white text-[16px] rounded-lg border-none cursor-pointer hover:bg-[#0954d0] flex items-center gap-[8px]"
               >
                 <span>Add</span>

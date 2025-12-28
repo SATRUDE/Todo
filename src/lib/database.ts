@@ -12,7 +12,25 @@ async function ensureAuthenticated(): Promise<string> {
   const { data: { user: anonUser }, error } = await supabase.auth.signInAnonymously()
   
   if (error || !anonUser) {
-    throw new Error('Failed to authenticate user')
+    console.error('❌ Anonymous authentication error:', error)
+    console.error('Error details:', JSON.stringify(error, null, 2))
+    console.error('Error code:', error?.code)
+    console.error('Error status:', error?.status)
+    
+    // Check if anonymous auth is disabled
+    if (error?.message?.includes('signup_disabled') || error?.message?.includes('Email signup is disabled')) {
+      throw new Error('Anonymous authentication is disabled in Supabase. Please enable it in Authentication → Providers → Anonymous in your Supabase dashboard.')
+    }
+    if (error?.message?.includes('access') || error?.message?.includes('blocked') || error?.message?.includes('denied')) {
+      throw new Error('Access blocked: Anonymous authentication may be disabled. Enable it in Supabase Dashboard → Authentication → Providers → Anonymous.')
+    }
+    if (error?.message?.includes('new signups') || error?.message?.includes('signups are disabled')) {
+      throw new Error('New signups are disabled. Enable "Allow new users to sign up" in Supabase Dashboard → Authentication → User Signups.')
+    }
+    if (error?.code === 'PGRST301' || error?.status === 401) {
+      throw new Error(`Authentication failed (401): ${error?.message || 'Invalid credentials or anonymous auth disabled'}. Check Supabase settings.`)
+    }
+    throw new Error(`Failed to authenticate user: ${error?.message || 'Unknown error'} (Code: ${error?.code || 'N/A'}, Status: ${error?.status || 'N/A'}). Check browser console for details.`)
   }
   
   return anonUser.id
@@ -216,7 +234,7 @@ export async function fetchTasks(): Promise<Todo[]> {
   const userId = await ensureAuthenticated()
   
   // Fetch tasks that belong to user OR legacy tasks (NULL user_id)
-  // RLS policy allows both, so we use .or() to include NULL user_id
+  // Note: RLS policy may block NULL user_id, but we try to include them for backward compatibility
   const { data, error } = await supabase
     .from('todos')
     .select('*')
@@ -224,8 +242,17 @@ export async function fetchTasks(): Promise<Todo[]> {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('Error fetching tasks:', error)
+    console.error('❌ Error fetching tasks:', error)
     console.error('Error details:', JSON.stringify(error, null, 2))
+    console.error('Error code:', error.code)
+    console.error('Error message:', error.message)
+    console.error('Current user ID:', userId)
+    
+    // Check if it's an RLS policy error
+    if (error.code === 'PGRST301' || error.message?.includes('permission denied') || error.message?.includes('row-level security')) {
+      throw new Error(`Access denied by RLS policy. User ID: ${userId}. Make sure anonymous authentication is enabled and the user session is active.`)
+    }
+    
     throw error
   }
 
@@ -295,7 +322,7 @@ export async function fetchLists(): Promise<ListItem[]> {
   const userId = await ensureAuthenticated()
   
   // Fetch lists that belong to user OR legacy lists (NULL user_id)
-  // RLS policy allows both, so we use .or() to include NULL user_id
+  // Note: RLS policy may block NULL user_id, but we try to include them for backward compatibility
   const { data, error } = await supabase
     .from('lists')
     .select('*')
