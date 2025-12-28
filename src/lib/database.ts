@@ -215,10 +215,12 @@ export function dbListToAppList(dbList: any): ListItem {
 export async function fetchTasks(): Promise<Todo[]> {
   const userId = await ensureAuthenticated()
   
+  // Fetch tasks that belong to user OR legacy tasks (NULL user_id)
+  // RLS policy allows both, so we use .or() to include NULL user_id
   const { data, error } = await supabase
     .from('todos')
     .select('*')
-    .eq('user_id', userId)
+    .or(`user_id.is.null,user_id.eq.${userId}`)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -292,10 +294,12 @@ export async function deleteTask(id: number): Promise<void> {
 export async function fetchLists(): Promise<ListItem[]> {
   const userId = await ensureAuthenticated()
   
+  // Fetch lists that belong to user OR legacy lists (NULL user_id)
+  // RLS policy allows both, so we use .or() to include NULL user_id
   const { data, error } = await supabase
     .from('lists')
     .select('*')
-    .eq('user_id', userId)
+    .or(`user_id.is.null,user_id.eq.${userId}`)
     .order('created_at', { ascending: false })
 
   if (error) {
