@@ -7,6 +7,7 @@ import { Lists } from "./Lists";
 import { ListDetail } from "./ListDetail";
 import { Settings } from "./Settings";
 import { Dashboard } from "./Dashboard";
+import { CalendarSync } from "./CalendarSync";
 import { ReviewMissedDeadlinesBox } from "./ReviewMissedDeadlinesBox";
 import { ReviewMissedDeadlinesModal } from "./ReviewMissedDeadlinesModal";
 import { DeadlineModal } from "./DeadlineModal";
@@ -56,7 +57,7 @@ interface ListItem {
   isShared: boolean;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -1247,7 +1248,15 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onBack={() => setCurrentPage("today")}
         />
       ) : currentPage === "dashboard" ? (
-        <Dashboard />
+        <Dashboard 
+          onAddTask={addNewTask}
+          onNavigateToCalendarSync={() => setCurrentPage("calendarSync")}
+        />
+      ) : currentPage === "calendarSync" ? (
+        <CalendarSync 
+          onBack={() => setCurrentPage("dashboard")}
+          onAddTask={addNewTask}
+        />
       ) : currentPage === "listDetail" && selectedList ? (
         <ListDetail 
           listId={selectedList.id}
