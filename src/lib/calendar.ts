@@ -7,6 +7,8 @@ export interface CalendarEvent {
   start: string | null;
   end: string | null;
   location: string;
+  calendarName?: string;
+  calendarColor?: string;
 }
 
 export interface CalendarConnection {
@@ -38,11 +40,37 @@ export async function connectGoogleCalendar(): Promise<string> {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to initiate calendar connection');
+    let errorMessage = 'Failed to initiate calendar connection';
+    try {
+      const error = await response.json();
+      errorMessage = error.error || errorMessage;
+    } catch (e) {
+      // If response is not JSON, try to get text
+      try {
+        const text = await response.text();
+        errorMessage = text || errorMessage;
+      } catch (e2) {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+    }
+    throw new Error(errorMessage);
   }
 
-  const data = await response.json();
+  let data;
+  try {
+    const text = await response.text();
+    if (!text) {
+      throw new Error('Empty response from server');
+    }
+    data = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`Failed to parse response: ${e instanceof Error ? e.message : 'Unknown error'}. Make sure you're running the API server locally with 'vercel dev' or testing on the deployed version.`);
+  }
+
+  if (!data.authUrl) {
+    throw new Error('No auth URL in response');
+  }
+
   return data.authUrl;
 }
 
@@ -73,10 +101,42 @@ export async function getCalendarConnection(): Promise<CalendarConnection | null
       return null;
     }
 
-    return data[0] as CalendarConnection;
+    const connection = data[0] as CalendarConnection;
+    
+    // If calendar_name is null, the connection is likely incomplete/invalid
+    if (connection && !connection.calendar_name) {
+      console.warn('[calendar] Connection found but calendar_name is null, connection may be invalid');
+      // Return null so user can reconnect
+      return null;
+    }
+
+    return connection;
   } catch (error) {
     console.error('[calendar] Unexpected error fetching connection:', error);
     return null;
+  }
+}
+
+/**
+ * Refresh calendar connection info from Google Calendar API
+ */
+export async function refreshCalendarConnection(): Promise<CalendarConnection | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('User must be authenticated');
+  }
+
+  try {
+    // Fetch events to test the connection and trigger any token refresh
+    await fetchCalendarEvents();
+    
+    // Re-fetch the connection to get updated info
+    return await getCalendarConnection();
+  } catch (error) {
+    console.error('[calendar] Error refreshing connection:', error);
+    // If refresh fails, the connection is likely invalid
+    throw error;
   }
 }
 
@@ -183,11 +243,75 @@ export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to fetch calendar events');
+    if (response.status === 401 || error.requiresReconnect) {
+      throw new Error('Unauthorized - Please reconnect your calendar');
+    }
+    throw new Error(error.error || error.message || 'Failed to fetch calendar events');
   }
 
   const data = await response.json();
   return data.events || [];
+}
+
+/**
+ * Get list of processed calendar event IDs for the current user
+ */
+export async function getProcessedEventIds(): Promise<Set<string>> {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return new Set();
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('calendar_event_processed')
+      .select('calendar_event_id')
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('[calendar] Error fetching processed events:', error);
+      return new Set();
+    }
+
+    return new Set((data || []).map(item => item.calendar_event_id));
+  } catch (error) {
+    console.error('[calendar] Unexpected error fetching processed events:', error);
+    return new Set();
+  }
+}
+
+/**
+ * Mark a calendar event as processed (either added as task or dismissed)
+ */
+export async function markEventAsProcessed(eventId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('User must be authenticated');
+  }
+
+  const { error } = await supabase
+    .from('calendar_event_processed')
+    .upsert({
+      user_id: user.id,
+      calendar_event_id: eventId,
+      processed_at: new Date().toISOString(),
+    }, {
+      onConflict: 'user_id,calendar_event_id'
+    });
+
+  if (error) {
+    console.error('[calendar] Error marking event as processed:', error);
+    throw new Error('Failed to mark event as processed');
+  }
+}
+
+/**
+ * Filter out processed calendar events
+ */
+export function filterProcessedEvents(events: CalendarEvent[], processedIds: Set<string>): CalendarEvent[] {
+  return events.filter(event => !processedIds.has(event.id));
 }
 
 /**

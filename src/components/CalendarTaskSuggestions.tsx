@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { fetchCalendarEvents, suggestTasksFromEvents, CalendarEvent } from "../lib/calendar";
+import { fetchCalendarEvents, suggestTasksFromEvents, CalendarEvent, getProcessedEventIds, markEventAsProcessed, filterProcessedEvents } from "../lib/calendar";
 
 interface CalendarTaskSuggestionsProps {
-  onAcceptSuggestion: (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string } }) => void;
-  onDismiss: () => void;
+  onAcceptSuggestion: (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => void;
+  onDismiss?: () => void;
 }
 
 export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss }: CalendarTaskSuggestionsProps) {
@@ -24,13 +24,21 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss }: Calen
       try {
         setLoading(true);
         setError(null);
-        const events = await fetchCalendarEvents();
-        const taskSuggestions = suggestTasksFromEvents(events);
+        
+        // Fetch events and processed event IDs in parallel
+        const [events, processedIds] = await Promise.all([
+          fetchCalendarEvents(),
+          getProcessedEventIds()
+        ]);
+        
+        // Filter out processed events
+        const unprocessedEvents = filterProcessedEvents(events, processedIds);
+        const taskSuggestions = suggestTasksFromEvents(unprocessedEvents);
         
         // Map suggestions with event data
         const suggestionsWithEvents = taskSuggestions.map((suggestion, index) => ({
           ...suggestion,
-          event: events[index],
+          event: unprocessedEvents[index],
         }));
         
         setSuggestions(suggestionsWithEvents);
@@ -44,6 +52,17 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss }: Calen
 
     loadSuggestions();
   }, []);
+
+  const handleDismissEvent = async (eventId: string) => {
+    try {
+      await markEventAsProcessed(eventId);
+      // Remove the dismissed suggestion from the list
+      setSuggestions(prev => prev.filter(s => s.event.id !== eventId));
+    } catch (err) {
+      console.error('Error dismissing event:', err);
+      alert('Failed to dismiss event. Please try again.');
+    }
+  };
 
   if (loading) {
     return (
@@ -67,23 +86,34 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss }: Calen
 
   const formatDate = (date: Date) => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const dayName = days[date.getDay()];
     const day = date.getDate();
-    return `${dayName} ${day}`;
+    const monthName = months[date.getMonth()];
+    return `${dayName} ${day} ${monthName}`;
   };
 
   return (
     <div className="w-full flex flex-col gap-[16px]">
       <div className="flex items-center justify-between w-full">
-        <p className="font-['Inter:Medium',sans-serif] font-medium text-[20px] text-white">
-          Suggested Tasks from Calendar
-        </p>
-        <button
-          onClick={onDismiss}
-          className="text-[#5b5d62] text-[16px] bg-transparent border-none p-0 cursor-pointer"
-        >
-          Dismiss
-        </button>
+        <div className="flex items-center gap-[12px]">
+          <div className="relative shrink-0 size-[20px]">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE" className="size-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+            </svg>
+          </div>
+          <p className="font-['Inter:Medium',sans-serif] font-medium text-[20px] text-white">
+            Suggested Tasks from Calendar
+          </p>
+        </div>
+        {onDismiss && (
+          <button
+            onClick={onDismiss}
+            className="text-[#5b5d62] text-[16px] bg-transparent border-none p-0 cursor-pointer"
+          >
+            Dismiss All
+          </button>
+        )}
       </div>
       
       <div className="flex flex-col gap-[12px]">
@@ -92,10 +122,15 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss }: Calen
             key={index}
             className="flex items-center justify-between p-[16px] bg-[#1a161a] rounded-lg border border-[#2a252a]"
           >
-            <div className="flex-1 flex flex-col gap-[4px]">
-              <p className="font-['Inter:Regular',sans-serif] font-normal text-[18px] text-white">
+            <div className="flex-1 flex flex-col gap-[4px] min-w-0">
+              <p className="font-['Inter:Regular',sans-serif] font-normal text-[18px] text-white min-w-0">
                 {suggestion.text}
               </p>
+              {suggestion.event.calendarName && (
+                <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-[#5b5d62]">
+                  {suggestion.event.calendarName}
+                </p>
+              )}
               {suggestion.deadline && (
                 <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62]">
                   {formatDate(suggestion.deadline.date)} at {suggestion.deadline.time}
@@ -107,12 +142,23 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss }: Calen
                 </p>
               )}
             </div>
-            <button
-              onClick={() => onAcceptSuggestion(suggestion)}
-              className="ml-[16px] px-[16px] py-[8px] bg-[#0b64f9] text-white text-[16px] rounded-lg border-none cursor-pointer hover:bg-[#0954d0]"
-            >
-              Add
-            </button>
+            <div className="ml-[16px] flex items-center gap-[8px]">
+              <button
+                onClick={() => handleDismissEvent(suggestion.event.id)}
+                className="px-[12px] py-[8px] bg-transparent text-[#5b5d62] text-[16px] rounded-lg border border-[#2a252a] cursor-pointer hover:bg-[#2a252a]"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={() => onAcceptSuggestion({ ...suggestion, eventId: suggestion.event.id })}
+                className="px-[16px] py-[8px] bg-[#0b64f9] text-white text-[16px] rounded-lg border-none cursor-pointer hover:bg-[#0954d0] flex items-center gap-[8px]"
+              >
+                <span>Add</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="white" className="size-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m9 9 6-6m0 0 6 6m-6-6v12a6 6 0 0 1-12 0v-3" />
+                </svg>
+              </button>
+            </div>
           </div>
         ))}
       </div>

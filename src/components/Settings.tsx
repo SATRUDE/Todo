@@ -5,6 +5,7 @@ import {
   disconnectGoogleCalendar, 
   getCalendarConnection,
   syncAllTasksToCalendar,
+  refreshCalendarConnection,
   CalendarConnection 
 } from "../lib/calendar";
 
@@ -32,8 +33,12 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
       try {
         const connection = await getCalendarConnection();
         setCalendarConnection(connection);
+        
+        // Connection is now validated - if it exists, it has a valid calendar_name
       } catch (error) {
         console.error('Error checking calendar connection:', error);
+        // Clear connection if there's an error
+        setCalendarConnection(null);
       }
     };
 
@@ -85,7 +90,14 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
       setSyncStatus(`Synced ${result.synced} tasks${result.errors > 0 ? ` (${result.errors} errors)` : ''}`);
     } catch (error) {
       console.error('Error syncing calendar:', error);
-      setSyncStatus(`Sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setSyncStatus(`Sync failed: ${errorMessage}`);
+      
+      // If unauthorized, clear the connection so user can reconnect
+      if (errorMessage.includes('Unauthorized') || errorMessage.includes('reconnect')) {
+        setCalendarConnection(null);
+        setSyncStatus('Connection expired. Please reconnect your calendar.');
+      }
     } finally {
       setIsSyncing(false);
     }
@@ -235,7 +247,7 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
                 </div>
                 <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
                   {calendarConnection 
-                    ? `Connected to ${calendarConnection.calendar_name}` 
+                    ? (calendarConnection.calendar_name || 'Connected to Calendar')
                     : isConnecting 
                     ? 'Connecting...' 
                     : 'Connect Google Calendar'}

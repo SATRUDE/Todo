@@ -35,14 +35,17 @@ module.exports = async function handler(req, res) {
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
   const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
   
-  // Use environment variable first, fallback to constructing from request
+  // CRITICAL: Use the EXACT same redirect URI that was used in the auth request
+  // This must match exactly what's in Google Cloud Console
   let redirectUri = process.env.GOOGLE_REDIRECT_URI;
   if (!redirectUri) {
-    // Construct from request headers (for Vercel)
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    // For local dev, construct from request
+    const protocol = req.headers['x-forwarded-proto'] || (req.headers.host?.includes('localhost') ? 'http' : 'https');
     const host = req.headers.host || req.headers['x-forwarded-host'] || req.headers.origin?.replace(/^https?:\/\//, '') || 'your-app.vercel.app';
     redirectUri = `${protocol}://${host}/api/calendar/callback`;
   }
+  
+  console.log('[calendar/callback] Using redirect URI:', redirectUri);
 
   console.log('[calendar/callback] Configuration:', {
     hasClientId: !!googleClientId,
@@ -89,9 +92,30 @@ module.exports = async function handler(req, res) {
         response: tokenError.response?.data
       });
       
-      // Return more specific error
-      const errorMsg = tokenError.response?.data?.error_description || tokenError.message || 'token_exchange_failed';
-      return res.redirect(`/?calendar_error=${encodeURIComponent(errorMsg)}`);
+      // Return more specific error with helpful message
+      const errorDescription = tokenError.response?.data?.error_description || tokenError.message || 'token_exchange_failed';
+      const errorCode = tokenError.response?.data?.error || 'unknown';
+      
+      console.error('[calendar/callback] OAuth error details:', {
+        error: errorCode,
+        error_description: errorDescription,
+        redirectUri: redirectUri
+      });
+      
+      // Provide user-friendly error message
+      let userMessage = errorDescription;
+      if (errorCode === 'redirect_uri_mismatch' || errorDescription?.includes('redirect_uri')) {
+        userMessage = `Redirect URI mismatch. Please ensure ${redirectUri} is added to Google Cloud Console OAuth settings.`;
+      } else if (errorCode === 'invalid_client' || errorCode === 'unauthorized_client' || errorDescription?.includes('Unauthorized')) {
+        userMessage = `OAuth client authentication failed (${errorCode}). Please verify:
+1. Client ID matches: ${googleClientId?.substring(0, 30)}...
+2. Client secret is correct in .env.local
+3. OAuth client is enabled in Google Cloud Console
+4. Application type is "Web application"
+5. Redirect URI ${redirectUri} is authorized`;
+      }
+      
+      return res.redirect(`/?calendar_error=${encodeURIComponent(userMessage)}`);
     }
     
     if (!tokens.access_token || !tokens.refresh_token) {
@@ -109,8 +133,8 @@ module.exports = async function handler(req, res) {
     const primaryCalendar = calendarList.data.items?.find(cal => cal.primary) || calendarList.data.items?.[0];
 
     // Store tokens in database
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
       return res.redirect('/?calendar_error=server_config');

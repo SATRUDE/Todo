@@ -33,6 +33,7 @@
             "clsx": "*",
             "cmdk": "^1.1.1",
             "embla-carousel-react": "^8.6.0",
+            "googleapis": "^144.0.0",
             "input-otp": "^1.4.2",
             "lucide-react": "^0.487.0",
             "next-themes": "^0.4.6",
@@ -43,19 +44,21 @@
             "react-resizable-panels": "^2.1.7",
             "recharts": "^2.15.2",
             "sonner": "^2.0.3",
-      "googleapis": "^144.0.0",
-      "tailwind-merge": "*",
-      "vaul": "^1.1.2",
-      "web-push": "^3.6.7"
+            "tailwind-merge": "*",
+            "vaul": "^1.1.2",
+            "web-push": "^3.6.7"
       },
       "devDependencies": {
             "@types/node": "^20.10.0",
             "@vitejs/plugin-react-swc": "^3.10.2",
+            "concurrently": "^9.2.1",
             "vite": "6.3.5",
             "vite-plugin-pwa": "^1.2.0"
       },
       "scripts": {
             "dev": "vite",
+            "dev:api": "vercel dev --listen 3001 --yes",
+            "dev:all": "concurrently \"npm run dev\" \"npm run dev:api\"",
             "build": "vite build",
             "send-reminders": "node scripts/send-reminders.js"
       }

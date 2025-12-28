@@ -31,14 +31,17 @@ module.exports = async function handler(req, res) {
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
   const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
   
-  // Use environment variable first, fallback to constructing from request
+  // CRITICAL: Use the EXACT same redirect URI that will be used in callback
+  // This must match exactly what's in Google Cloud Console
   let redirectUri = process.env.GOOGLE_REDIRECT_URI;
   if (!redirectUri) {
-    // Construct from request headers (for Vercel)
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    // For local dev, construct from request
+    const protocol = req.headers['x-forwarded-proto'] || (req.headers.host?.includes('localhost') ? 'http' : 'https');
     const host = req.headers.host || req.headers['x-forwarded-host'] || req.headers.origin?.replace(/^https?:\/\//, '') || 'your-app.vercel.app';
     redirectUri = `${protocol}://${host}/api/calendar/callback`;
   }
+  
+  console.log('[calendar/auth] Using redirect URI:', redirectUri);
 
   console.log('[calendar/auth] Configuration:', {
     hasClientId: !!googleClientId,
@@ -55,19 +58,31 @@ module.exports = async function handler(req, res) {
   const state = Buffer.from(JSON.stringify({ userId, timestamp: Date.now() })).toString('base64');
 
   // Store state in database temporarily (or use a more secure method)
+  // Use service role key to bypass RLS since this is a serverless function
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+  console.log('[calendar/auth] Supabase config check:', {
+    hasSupabaseUrl: !!supabaseUrl,
+    hasSupabaseKey: !!supabaseKey,
+    usingServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    supabaseUrlPrefix: supabaseUrl ? supabaseUrl.substring(0, 20) + '...' : 'missing'
+  });
 
   if (!supabaseUrl || !supabaseKey) {
-    return res.status(500).json({ error: 'Server configuration error' });
+    console.error('[calendar/auth] Missing Supabase credentials');
+    return res.status(500).json({ error: 'Server configuration error: Missing Supabase credentials' });
   }
 
   try {
+    // Use service role key to bypass RLS for serverless functions
     const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    console.log('[calendar/auth] Attempting to upsert calendar connection state...');
     
     // Store state with user_id for verification in callback
     // Using a simple approach - in production, use a proper session store
-    await supabase
+    const upsertPromise = supabase
       .from('calendar_connections')
       .upsert({
         user_id: userId,
@@ -77,6 +92,20 @@ module.exports = async function handler(req, res) {
       }, {
         onConflict: 'user_id'
       });
+
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database operation timed out after 5 seconds')), 5000)
+    );
+
+    const result = await Promise.race([upsertPromise, timeoutPromise]);
+    
+    if (result.error) {
+      console.error('[calendar/auth] Supabase upsert error:', result.error);
+      return res.status(500).json({ error: `Database error: ${result.error.message}` });
+    }
+    
+    console.log('[calendar/auth] Calendar connection state stored successfully');
 
     // Build OAuth URL
     const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');

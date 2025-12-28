@@ -122,14 +122,26 @@ CREATE TABLE IF NOT EXISTS calendar_sync_status (
   UNIQUE(user_id, task_id)
 );
 
+-- Create calendar_event_processed table to track which calendar events have been processed
+CREATE TABLE IF NOT EXISTS calendar_event_processed (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  calendar_event_id TEXT NOT NULL,
+  processed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, calendar_event_id)
+);
+
 -- Create indexes for calendar tables
 CREATE INDEX IF NOT EXISTS idx_calendar_connections_user_id ON calendar_connections(user_id);
 CREATE INDEX IF NOT EXISTS idx_calendar_sync_status_user_id ON calendar_sync_status(user_id);
 CREATE INDEX IF NOT EXISTS idx_calendar_sync_status_task_id ON calendar_sync_status(task_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_event_processed_user_id ON calendar_event_processed(user_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_event_processed_event_id ON calendar_event_processed(calendar_event_id);
 
 -- Enable RLS on calendar tables
 ALTER TABLE calendar_connections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE calendar_sync_status ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calendar_event_processed ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for calendar tables
 CREATE POLICY "Users can manage their own calendar connections" ON calendar_connections
@@ -138,6 +150,11 @@ CREATE POLICY "Users can manage their own calendar connections" ON calendar_conn
   WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can manage their own calendar sync status" ON calendar_sync_status
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage their own processed calendar events" ON calendar_event_processed
   FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
