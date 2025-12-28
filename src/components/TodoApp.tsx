@@ -969,7 +969,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
       {currentPage === "today" ? (
         <div className="relative shrink-0 w-full">
           <div className="w-full">
-            <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] pt-0 pb-[200px] relative w-full h-fit">
+            <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] pt-0 pb-[250px] relative w-full h-fit">
               {/* Header with Today and Date */}
               <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre">
                 <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Today</p>
@@ -1153,7 +1153,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               })}
             </div>
             {/* Spacer to prevent bottom nav from covering content */}
-            <div className="h-[150px] w-full" />
+            <div className="h-[200px] w-full" />
           </div>
         </div>
       </div>
