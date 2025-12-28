@@ -215,12 +215,10 @@ export function dbListToAppList(dbList: any): ListItem {
 export async function fetchTasks(): Promise<Todo[]> {
   const userId = await ensureAuthenticated()
   
-  // Fetch tasks that belong to user OR legacy tasks (NULL user_id)
-  // RLS policy allows both, so we use .or() to include NULL user_id
   const { data, error } = await supabase
     .from('todos')
     .select('*')
-    .or(`user_id.is.null,user_id.eq.${userId}`)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -260,13 +258,11 @@ export async function createTask(todo: any): Promise<Todo> {
 export async function updateTask(id: number, todo: any): Promise<Todo> {
   const userId = await ensureAuthenticated()
   const dbTodo = appTodoToDbTodo(todo)
-  // Assign user_id if it was NULL (legacy data)
-  dbTodo.user_id = userId
   const { data, error } = await supabase
     .from('todos')
     .update(dbTodo)
     .eq('id', id)
-    .or(`user_id.is.null,user_id.eq.${userId}`)
+    .eq('user_id', userId)
     .select()
     .single()
 
@@ -284,7 +280,7 @@ export async function deleteTask(id: number): Promise<void> {
     .from('todos')
     .delete()
     .eq('id', id)
-    .or(`user_id.is.null,user_id.eq.${userId}`)
+    .eq('user_id', userId)
 
   if (error) {
     console.error('Error deleting task:', error)
@@ -296,12 +292,10 @@ export async function deleteTask(id: number): Promise<void> {
 export async function fetchLists(): Promise<ListItem[]> {
   const userId = await ensureAuthenticated()
   
-  // Fetch lists that belong to user OR legacy lists (NULL user_id)
-  // RLS policy allows both, so we use .or() to include NULL user_id
   const { data, error } = await supabase
     .from('lists')
     .select('*')
-    .or(`user_id.is.null,user_id.eq.${userId}`)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -338,17 +332,15 @@ export async function createList(list: { name: string; color: string; isShared: 
 export async function updateList(id: number, list: { name: string; color: string; isShared: boolean }): Promise<ListItem> {
   const userId = await ensureAuthenticated()
   
-  // Assign user_id if it was NULL (legacy data)
   const { data, error } = await supabase
     .from('lists')
     .update({
-      user_id: userId, // Assign to current user if it was NULL
       name: list.name,
       color: list.color,
       is_shared: list.isShared,
     })
     .eq('id', id)
-    .or(`user_id.is.null,user_id.eq.${userId}`)
+    .eq('user_id', userId)
     .select()
     .single()
 
@@ -368,14 +360,14 @@ export async function deleteList(id: number): Promise<void> {
     .from('todos')
     .update({ list_id: 0 })
     .eq('list_id', id)
-    .or(`user_id.is.null,user_id.eq.${userId}`)
+    .eq('user_id', userId)
 
   // Then delete the list
   const { error } = await supabase
     .from('lists')
     .delete()
     .eq('id', id)
-    .or(`user_id.is.null,user_id.eq.${userId}`)
+    .eq('user_id', userId)
 
   if (error) {
     console.error('Error deleting list:', error)

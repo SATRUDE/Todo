@@ -57,27 +57,10 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
   const handleConnectCalendar = async () => {
     try {
       setIsConnecting(true);
-      setSyncStatus('Connecting to Google...');
-      
-      console.log('[Settings] Initiating calendar connection...');
       const authUrl = await connectGoogleCalendar();
-      console.log('[Settings] Got auth URL, redirecting...', authUrl);
-      
-      if (!authUrl || !authUrl.startsWith('http')) {
-        throw new Error('Invalid auth URL received');
-      }
-      
-      // Redirect to Google OAuth
       window.location.href = authUrl;
-      
-      // If redirect doesn't happen immediately, show message
-      setTimeout(() => {
-        if (isConnecting) {
-          setSyncStatus('Redirecting to Google...');
-        }
-      }, 1000);
     } catch (error) {
-      console.error('[Settings] Error connecting calendar:', error);
+      console.error('Error connecting calendar:', error);
       setSyncStatus(`Failed to connect: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setIsConnecting(false);
     }

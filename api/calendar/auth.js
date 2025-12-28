@@ -16,15 +16,6 @@ function parseBody(req) {
 }
 
 module.exports = async function handler(req, res) {
-  // Add CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -34,7 +25,6 @@ module.exports = async function handler(req, res) {
   const userId = body.user_id;
 
   if (!userId) {
-    console.error('[calendar/auth] Missing user_id in request body');
     return res.status(400).json({ error: 'User ID is required' });
   }
 
@@ -50,22 +40,15 @@ module.exports = async function handler(req, res) {
     redirectUri = `${protocol}://${host}/api/calendar/callback`;
   }
 
-  console.log('[calendar/auth] Request received:', {
+  console.log('[calendar/auth] Configuration:', {
     hasClientId: !!googleClientId,
     hasClientSecret: !!googleClientSecret,
-    redirectUri,
-    userId,
-    headers: {
-      origin: req.headers.origin,
-      host: req.headers.host,
-      'x-forwarded-proto': req.headers['x-forwarded-proto'],
-      'x-forwarded-host': req.headers['x-forwarded-host']
-    }
+    redirectUri
   });
 
   if (!googleClientId || !googleClientSecret) {
     console.error('[calendar/auth] Missing Google OAuth credentials');
-    return res.status(500).json({ error: 'Google OAuth not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel environment variables.' });
+    return res.status(500).json({ error: 'Google OAuth not configured' });
   }
 
   // Generate state parameter for CSRF protection
@@ -105,19 +88,12 @@ module.exports = async function handler(req, res) {
     authUrl.searchParams.set('prompt', 'consent');
     authUrl.searchParams.set('state', state);
 
-    const finalAuthUrl = authUrl.toString();
-    console.log('[calendar/auth] Generated auth URL:', finalAuthUrl);
-
     return res.status(200).json({
-      authUrl: finalAuthUrl
+      authUrl: authUrl.toString()
     });
   } catch (error) {
     console.error('[calendar/auth] Error:', error);
-    console.error('[calendar/auth] Error stack:', error.stack);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      message: error.message 
-    });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
