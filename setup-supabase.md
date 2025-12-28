@@ -29,7 +29,8 @@
    - In Supabase dashboard, go to **SQL Editor**
    - Copy the contents of `supabase-schema.sql`
    - Paste and run it in the SQL Editor
-   - This creates the `lists` and `todos` tables
+   - This creates the `lists`, `todos`, and calendar-related tables
+   - **Important**: If you get errors about missing `calendar_event_processed` table, run `migration-create-calendar-event-processed.sql`
 
 4. **Restart your dev server:**
    ```bash
