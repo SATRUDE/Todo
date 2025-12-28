@@ -9,3 +9,4 @@ ADD COLUMN IF NOT EXISTS deadline_notified_at TIMESTAMP WITH TIME ZONE;
 COMMENT ON COLUMN todos.deadline_notified_at IS 'Track when notification was sent for this deadline to prevent duplicate notifications';
 
 
+
