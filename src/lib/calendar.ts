@@ -27,23 +27,51 @@ export async function connectGoogleCalendar(): Promise<string> {
     throw new Error('User must be authenticated');
   }
 
-  const response = await fetch('/api/calendar/auth', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      user_id: user.id,
-    }),
-  });
+  try {
+    const response = await fetch('/api/calendar/auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: user.id,
+      }),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to initiate calendar connection');
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = 'Failed to initiate calendar connection';
+      
+      try {
+        const error = JSON.parse(errorText);
+        errorMessage = error.error || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      
+      console.error('[calendar] API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
+      
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    
+    if (!data.authUrl) {
+      throw new Error('No auth URL returned from server');
+    }
+    
+    return data.authUrl;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('[calendar] Connection error:', error.message);
+      throw error;
+    }
+    throw new Error('Unknown error connecting to calendar');
   }
-
-  const data = await response.json();
-  return data.authUrl;
 }
 
 /**

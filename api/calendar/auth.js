@@ -16,6 +16,15 @@ function parseBody(req) {
 }
 
 module.exports = async function handler(req, res) {
+  // Add CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -25,16 +34,38 @@ module.exports = async function handler(req, res) {
   const userId = body.user_id;
 
   if (!userId) {
+    console.error('[calendar/auth] Missing user_id in request body');
     return res.status(400).json({ error: 'User ID is required' });
   }
 
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
   const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${req.headers.origin || 'https://your-app.vercel.app'}/api/calendar/callback`;
+  
+  // Use environment variable first, fallback to constructing from request
+  let redirectUri = process.env.GOOGLE_REDIRECT_URI;
+  if (!redirectUri) {
+    // Construct from request headers (for Vercel)
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.headers.host || req.headers['x-forwarded-host'] || req.headers.origin?.replace(/^https?:\/\//, '') || 'your-app.vercel.app';
+    redirectUri = `${protocol}://${host}/api/calendar/callback`;
+  }
+
+  console.log('[calendar/auth] Request received:', {
+    hasClientId: !!googleClientId,
+    hasClientSecret: !!googleClientSecret,
+    redirectUri,
+    userId,
+    headers: {
+      origin: req.headers.origin,
+      host: req.headers.host,
+      'x-forwarded-proto': req.headers['x-forwarded-proto'],
+      'x-forwarded-host': req.headers['x-forwarded-host']
+    }
+  });
 
   if (!googleClientId || !googleClientSecret) {
     console.error('[calendar/auth] Missing Google OAuth credentials');
-    return res.status(500).json({ error: 'Google OAuth not configured' });
+    return res.status(500).json({ error: 'Google OAuth not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel environment variables.' });
   }
 
   // Generate state parameter for CSRF protection
@@ -74,12 +105,19 @@ module.exports = async function handler(req, res) {
     authUrl.searchParams.set('prompt', 'consent');
     authUrl.searchParams.set('state', state);
 
+    const finalAuthUrl = authUrl.toString();
+    console.log('[calendar/auth] Generated auth URL:', finalAuthUrl);
+
     return res.status(200).json({
-      authUrl: authUrl.toString()
+      authUrl: finalAuthUrl
     });
   } catch (error) {
     console.error('[calendar/auth] Error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('[calendar/auth] Error stack:', error.stack);
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
   }
 };
 
