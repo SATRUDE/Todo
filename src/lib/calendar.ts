@@ -56,18 +56,28 @@ export async function getCalendarConnection(): Promise<CalendarConnection | null
     return null;
   }
 
-  const { data, error } = await supabase
-    .from('calendar_connections')
-    .select('id, user_id, calendar_id, calendar_name, enabled')
-    .eq('user_id', user.id)
-    .eq('enabled', true)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('calendar_connections')
+      .select('id, user_id, calendar_id, calendar_name, enabled')
+      .eq('user_id', user.id)
+      .eq('enabled', true)
+      .limit(1);
 
-  if (error || !data) {
+    if (error) {
+      console.error('[calendar] Error fetching connection:', error);
+      return null;
+    }
+
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    return data[0] as CalendarConnection;
+  } catch (error) {
+    console.error('[calendar] Unexpected error fetching connection:', error);
     return null;
   }
-
-  return data as CalendarConnection;
 }
 
 /**
