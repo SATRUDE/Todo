@@ -181,7 +181,7 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                   onClick={() => onTaskClick && onTaskClick(todo)}
                 >
                   {/* Task Name Row */}
-                  <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full">
+                  <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
                     <div 
                       className="relative shrink-0 size-[24px] cursor-pointer"
                       onClick={(e) => {
@@ -209,7 +209,7 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                         )}
                       </svg>
                     </div>
-                    <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre ${
+                    <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] truncate tracking-[-0.198px] ${
                       todo.completed ? "text-[#5b5d62] line-through" : "text-white"
                     }`}>
                       {todo.text}

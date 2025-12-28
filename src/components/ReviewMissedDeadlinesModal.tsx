@@ -117,7 +117,7 @@ export function ReviewMissedDeadlinesModal({
                 return (
                   <div key={todo.id} className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full" data-node-id="36:496">
                     {/* Task Name Row */}
-                    <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full" data-node-id="36:497">
+                    <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0" data-node-id="36:497">
                       {/* Checkbox */}
                       <div
                         className="relative shrink-0 size-[24px] cursor-pointer"
@@ -153,7 +153,7 @@ export function ReviewMissedDeadlinesModal({
                         </svg>
                       </div>
                       <p 
-                        className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre ${
+                        className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] truncate tracking-[-0.198px] ${
                           todo.completed ? "line-through text-[#5b5d62]" : "text-white"
                         }`}
                         data-node-id="36:499"
