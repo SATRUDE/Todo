@@ -71,13 +71,18 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss }: Calen
       console.log('[CalendarTaskSuggestions] Accepting suggestion:', suggestion);
       // Mark event as processed first
       await markEventAsProcessed(suggestion.eventId);
-      // Then call the callback to add the task
-      onAcceptSuggestion(suggestion);
+      console.log('[CalendarTaskSuggestions] Event marked as processed');
+      
+      // Then call the callback to add the task (await if it's async)
+      await Promise.resolve(onAcceptSuggestion(suggestion));
+      console.log('[CalendarTaskSuggestions] Task added successfully');
+      
       // Remove the accepted suggestion from the list
       setSuggestions(prev => prev.filter(s => s.event.id !== suggestion.eventId));
-      console.log('[CalendarTaskSuggestions] Suggestion accepted successfully');
+      console.log('[CalendarTaskSuggestions] Suggestion removed from list');
     } catch (err) {
       console.error('[CalendarTaskSuggestions] Error accepting suggestion:', err);
+      console.error('[CalendarTaskSuggestions] Error details:', err);
       alert(`Failed to add task: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
@@ -162,13 +167,23 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss }: Calen
             </div>
             <div className="ml-[16px] flex items-center gap-[8px]">
               <button
-                onClick={() => handleDismissEvent(suggestion.event.id)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDismissEvent(suggestion.event.id);
+                }}
                 className="px-[12px] py-[8px] bg-transparent text-[#5b5d62] text-[16px] rounded-lg border border-[#2a252a] cursor-pointer hover:bg-[#2a252a]"
               >
                 Dismiss
               </button>
               <button
-                onClick={() => handleAcceptSuggestion({ ...suggestion, eventId: suggestion.event.id })}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleAcceptSuggestion({ ...suggestion, eventId: suggestion.event.id });
+                }}
                 className="px-[16px] py-[8px] bg-[#0b64f9] text-white text-[16px] rounded-lg border-none cursor-pointer hover:bg-[#0954d0] flex items-center gap-[8px]"
               >
                 <span>Add</span>

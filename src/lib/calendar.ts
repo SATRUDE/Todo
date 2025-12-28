@@ -291,7 +291,9 @@ export async function markEventAsProcessed(eventId: string): Promise<void> {
     throw new Error('User must be authenticated');
   }
 
-  const { error } = await supabase
+  console.log('[calendar] Marking event as processed:', { eventId, userId: user.id });
+
+  const { data, error } = await supabase
     .from('calendar_event_processed')
     .upsert({
       user_id: user.id,
@@ -299,12 +301,16 @@ export async function markEventAsProcessed(eventId: string): Promise<void> {
       processed_at: new Date().toISOString(),
     }, {
       onConflict: 'user_id,calendar_event_id'
-    });
+    })
+    .select();
 
   if (error) {
     console.error('[calendar] Error marking event as processed:', error);
-    throw new Error('Failed to mark event as processed');
+    console.error('[calendar] Error details:', JSON.stringify(error, null, 2));
+    throw new Error(`Failed to mark event as processed: ${error.message || 'Unknown error'}`);
   }
+
+  console.log('[calendar] Event marked as processed successfully:', data);
 }
 
 /**

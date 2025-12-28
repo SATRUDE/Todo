@@ -1,5 +1,4 @@
 import { CalendarTaskSuggestions } from "./CalendarTaskSuggestions";
-import { markEventAsProcessed } from "../lib/calendar";
 
 interface CalendarSyncProps {
   onBack: () => void;
@@ -9,23 +8,22 @@ interface CalendarSyncProps {
 export function CalendarSync({ onBack, onAddTask }: CalendarSyncProps) {
   const handleAcceptSuggestion = async (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => {
     if (onAddTask) {
-      // Mark the event as processed before adding the task
+      // CalendarTaskSuggestions already handles marking the event as processed
+      // Just add the task here
       try {
-        await markEventAsProcessed(suggestion.eventId);
+        await onAddTask(
+          suggestion.text,
+          suggestion.description,
+          0, // TODAY_LIST_ID
+          suggestion.deadline ? {
+            date: suggestion.deadline.date,
+            time: suggestion.deadline.time
+          } : undefined
+        );
       } catch (error) {
-        console.error('Error marking event as processed:', error);
-        // Continue anyway - don't block task creation
+        console.error('[CalendarSync] Error adding task:', error);
+        throw error; // Re-throw so CalendarTaskSuggestions can handle it
       }
-      
-      onAddTask(
-        suggestion.text,
-        suggestion.description,
-        0, // TODAY_LIST_ID
-        suggestion.deadline ? {
-          date: suggestion.deadline.date,
-          time: suggestion.deadline.time
-        } : undefined
-      );
     }
   };
 
