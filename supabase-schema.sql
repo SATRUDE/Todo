@@ -1,6 +1,7 @@
 -- Create lists table
 CREATE TABLE IF NOT EXISTS lists (
   id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   color TEXT NOT NULL,
   is_shared BOOLEAN DEFAULT FALSE,
@@ -11,6 +12,7 @@ CREATE TABLE IF NOT EXISTS lists (
 -- Create todos table
 CREATE TABLE IF NOT EXISTS todos (
   id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   text TEXT NOT NULL,
   description TEXT,
   completed BOOLEAN DEFAULT FALSE,
@@ -29,10 +31,14 @@ CREATE TABLE IF NOT EXISTS todos (
 CREATE INDEX IF NOT EXISTS idx_todos_list_id ON todos(list_id);
 CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed);
 CREATE INDEX IF NOT EXISTS idx_todos_deadline_date ON todos(deadline_date);
+CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id);
+CREATE INDEX IF NOT EXISTS idx_lists_user_id ON lists(user_id);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions(user_id);
 
 -- Create push_subscriptions table
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   endpoint TEXT NOT NULL UNIQUE,
   p256dh TEXT NOT NULL,
   auth TEXT NOT NULL,
@@ -47,26 +53,29 @@ ALTER TABLE lists ENABLE ROW LEVEL SECURITY;
 ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
 
--- Create policies to allow all operations (you can restrict these later based on your auth needs)
--- For now, we'll allow public read/write access. In production, you should add authentication.
+-- Create policies that filter by user_id for multi-user support
+-- Users can only see and modify their own data
 
 -- Lists policies
-CREATE POLICY "Allow all operations on lists" ON lists
+DROP POLICY IF EXISTS "Allow all operations on lists" ON lists;
+CREATE POLICY "Users can manage their own lists" ON lists
   FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 -- Todos policies
-CREATE POLICY "Allow all operations on todos" ON todos
+DROP POLICY IF EXISTS "Allow all operations on todos" ON todos;
+CREATE POLICY "Users can manage their own todos" ON todos
   FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 -- Push subscriptions policies
-CREATE POLICY "Allow all operations on push_subscriptions" ON push_subscriptions
+DROP POLICY IF EXISTS "Allow all operations on push_subscriptions" ON push_subscriptions;
+CREATE POLICY "Users can manage their own push subscriptions" ON push_subscriptions
   FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 -- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -85,6 +94,57 @@ CREATE TRIGGER update_lists_updated_at
 
 CREATE TRIGGER update_todos_updated_at
   BEFORE UPDATE ON todos
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- Create calendar_connections table for Google Calendar OAuth tokens
+CREATE TABLE IF NOT EXISTS calendar_connections (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  token_expires_at TIMESTAMP WITH TIME ZONE,
+  calendar_id TEXT DEFAULT 'primary',
+  calendar_name TEXT,
+  enabled BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+-- Create calendar_sync_status table to track synced tasks
+CREATE TABLE IF NOT EXISTS calendar_sync_status (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  task_id BIGINT REFERENCES todos(id) ON DELETE CASCADE,
+  calendar_event_id TEXT,
+  last_synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, task_id)
+);
+
+-- Create indexes for calendar tables
+CREATE INDEX IF NOT EXISTS idx_calendar_connections_user_id ON calendar_connections(user_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_sync_status_user_id ON calendar_sync_status(user_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_sync_status_task_id ON calendar_sync_status(task_id);
+
+-- Enable RLS on calendar tables
+ALTER TABLE calendar_connections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calendar_sync_status ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for calendar tables
+CREATE POLICY "Users can manage their own calendar connections" ON calendar_connections
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage their own calendar sync status" ON calendar_sync_status
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Create trigger to update updated_at for calendar_connections
+CREATE TRIGGER update_calendar_connections_updated_at
+  BEFORE UPDATE ON calendar_connections
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 

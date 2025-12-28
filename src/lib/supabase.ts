@@ -35,7 +35,9 @@ if (supabaseUrl && supabaseAnonKey && isValidUrl(supabaseUrl)) {
       schema: 'public'
     },
     auth: {
-      persistSession: false
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
     }
   })
 } else {

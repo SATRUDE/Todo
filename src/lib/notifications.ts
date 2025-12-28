@@ -123,6 +123,15 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 // Send subscription to your backend
 export async function sendSubscriptionToServer(subscription: PushSubscription): Promise<boolean> {
   try {
+    // Get current user ID
+    const { supabase } = await import('./supabase');
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('No user authenticated');
+      return false;
+    }
+    
     console.log('📤 Sending subscription to /api/push/subscribe...');
     const response = await fetch('/api/push/subscribe', {
       method: 'POST',
@@ -130,6 +139,7 @@ export async function sendSubscriptionToServer(subscription: PushSubscription): 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        user_id: user.id,
         subscription: {
           endpoint: subscription.endpoint,
           keys: {

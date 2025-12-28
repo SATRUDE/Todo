@@ -8,6 +8,10 @@
     {
       "path": "/api/reminders",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/calendar/sync-cron",
+      "schedule": "0 * * * *"
     }
   ],
   "rewrites": [

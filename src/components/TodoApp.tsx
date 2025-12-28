@@ -11,6 +11,7 @@ import { ReviewMissedDeadlinesBox } from "./ReviewMissedDeadlinesBox";
 import { ReviewMissedDeadlinesModal } from "./ReviewMissedDeadlinesModal";
 import { DeadlineModal } from "./DeadlineModal";
 import { CompletedTasksBox } from "./CompletedTasksBox";
+import { CalendarTaskSuggestions } from "./CalendarTaskSuggestions";
 import { APP_VERSION } from "../lib/version";
 import { 
   fetchTasks, 
@@ -85,6 +86,7 @@ export function TodoApp() {
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const updateCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showCalendarSuggestions, setShowCalendarSuggestions] = useState(false);
 
   // Update current time every minute to check for overdue tasks
   useEffect(() => {
@@ -94,6 +96,27 @@ export function TodoApp() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Check for calendar connection and show suggestions if available
+  useEffect(() => {
+    const checkCalendarAndShowSuggestions = async () => {
+      if (currentPage !== "today") return;
+      
+      try {
+        const { getCalendarConnection } = await import("../lib/calendar");
+        const connection = await getCalendarConnection();
+        if (connection) {
+          // Show suggestions if calendar is connected
+          setShowCalendarSuggestions(true);
+        }
+      } catch (error) {
+        // Calendar not connected or error - don't show suggestions
+        console.log('Calendar not connected or error:', error);
+      }
+    };
+
+    checkCalendarAndShowSuggestions();
+  }, [currentPage]);
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -548,6 +571,15 @@ export function TodoApp() {
         
         setTodos(updatedTodos);
         
+        // Sync to calendar when recurring task is completed
+        try {
+          const { syncAllTasksToCalendar } = await import("../lib/calendar");
+          await syncAllTasksToCalendar();
+        } catch (calendarError) {
+          console.error('Error syncing to calendar:', calendarError);
+          // Don't block on calendar sync errors
+        }
+        
         // If it's a today task, show it as completed for 1 second
         if (isTodayTask && isCompleting) {
           setRecentlyCompleted(prev => new Set(prev).add(id));
@@ -582,6 +614,15 @@ export function TodoApp() {
             return t;
           })
         );
+        
+        // Sync to calendar when task completion status changes
+        try {
+          const { syncAllTasksToCalendar } = await import("../lib/calendar");
+          await syncAllTasksToCalendar();
+        } catch (calendarError) {
+          console.error('Error syncing to calendar:', calendarError);
+          // Don't block on calendar sync errors
+        }
         
         // If it's a today task being completed, show it as completed for 1 second
         if (isTodayTask && isCompleting) {
@@ -634,6 +675,17 @@ export function TodoApp() {
       const allTasks = await fetchTasks();
       const displayTasks = allTasks.map(dbTodoToDisplayTodo);
       setTodos(displayTasks);
+      
+      // Sync to calendar if task has deadline
+      if (deadline) {
+        try {
+          const { syncAllTasksToCalendar } = await import("../lib/calendar");
+          await syncAllTasksToCalendar();
+        } catch (calendarError) {
+          console.error('Error syncing to calendar:', calendarError);
+          // Don't block on calendar sync errors
+        }
+      }
     } catch (error) {
       console.error('Error adding task:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
@@ -749,6 +801,17 @@ export function TodoApp() {
       const allTasks = await fetchTasks();
       const displayTasks = allTasks.map(dbTodoToDisplayTodo);
       setTodos(displayTasks);
+      
+      // Sync to calendar if task has deadline or deadline was updated
+      if (deadline !== undefined) {
+        try {
+          const { syncAllTasksToCalendar } = await import("../lib/calendar");
+          await syncAllTasksToCalendar();
+        } catch (calendarError) {
+          console.error('Error syncing to calendar:', calendarError);
+          // Don't block on calendar sync errors
+        }
+      }
     } catch (error) {
       console.error('Error updating task:', error);
     }
@@ -1004,6 +1067,21 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                     />
                   )}
                 </div>
+              )}
+
+              {/* Calendar Task Suggestions */}
+              {showCalendarSuggestions && (
+                <CalendarTaskSuggestions
+                  onAcceptSuggestion={async (suggestion) => {
+                    await addNewTask(
+                      suggestion.text,
+                      suggestion.description,
+                      TODAY_LIST_ID,
+                      suggestion.deadline
+                    );
+                  }}
+                  onDismiss={() => setShowCalendarSuggestions(false)}
+                />
               )}
             
             {/* Todo List */}

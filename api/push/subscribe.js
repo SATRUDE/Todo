@@ -25,6 +25,7 @@ module.exports = async function handler(req, res) {
 
   const body = parseBody(req) || {};
   const subscription = body.subscription;
+  const userId = body.user_id;
 
   if (!subscription || !subscription.endpoint) {
     return res.status(400).json({ error: 'Invalid subscription payload' });
@@ -34,7 +35,11 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid subscription keys' });
   }
 
-  console.log('[push/subscribe] Received subscription', subscription.endpoint);
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
+  console.log('[push/subscribe] Received subscription', subscription.endpoint, 'for user', userId);
 
   // Get Supabase credentials from environment variables
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -53,6 +58,7 @@ module.exports = async function handler(req, res) {
       .from('push_subscriptions')
       .upsert(
         {
+          user_id: userId,
           endpoint: subscription.endpoint,
           p256dh: subscription.keys.p256dh,
           auth: subscription.keys.auth,

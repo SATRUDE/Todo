@@ -1,4 +1,12 @@
+import { useState, useEffect } from "react";
 import { APP_VERSION } from "../lib/version";
+import { 
+  connectGoogleCalendar, 
+  disconnectGoogleCalendar, 
+  getCalendarConnection,
+  syncAllTasksToCalendar,
+  CalendarConnection 
+} from "../lib/calendar";
 
 interface SettingsProps {
   onBack: () => void;
@@ -13,6 +21,76 @@ interface SettingsProps {
 }
 
 export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, isChecking, onEnableNotifications, notificationPermission = 'default', onTestNotification, onCreateOverdueTask }: SettingsProps) {
+  const [calendarConnection, setCalendarConnection] = useState<CalendarConnection | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+
+  // Check for calendar connection on mount and handle OAuth callback
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const connection = await getCalendarConnection();
+        setCalendarConnection(connection);
+      } catch (error) {
+        console.error('Error checking calendar connection:', error);
+      }
+    };
+
+    checkConnection();
+
+    // Check for OAuth callback in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('calendar_connected') === 'true') {
+      checkConnection();
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    if (urlParams.get('calendar_error')) {
+      const error = urlParams.get('calendar_error');
+      setSyncStatus(`Connection failed: ${error}`);
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleConnectCalendar = async () => {
+    try {
+      setIsConnecting(true);
+      const authUrl = await connectGoogleCalendar();
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error('Error connecting calendar:', error);
+      setSyncStatus(`Failed to connect: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setIsConnecting(false);
+    }
+  };
+
+  const handleDisconnectCalendar = async () => {
+    try {
+      await disconnectGoogleCalendar();
+      setCalendarConnection(null);
+      setSyncStatus('Calendar disconnected');
+    } catch (error) {
+      console.error('Error disconnecting calendar:', error);
+      setSyncStatus(`Failed to disconnect: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleSyncCalendar = async () => {
+    try {
+      setIsSyncing(true);
+      setSyncStatus(null);
+      const result = await syncAllTasksToCalendar();
+      setSyncStatus(`Synced ${result.synced} tasks${result.errors > 0 ? ` (${result.errors} errors)` : ''}`);
+    } catch (error) {
+      console.error('Error syncing calendar:', error);
+      setSyncStatus(`Sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Debug: Log props on mount and when permission changes
   console.log('Settings component rendered with:', {
     hasOnEnableNotifications: !!onEnableNotifications,
@@ -133,6 +211,55 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
                 {APP_VERSION}
               </p>
             </div>
+
+            {/* Google Calendar Connection */}
+            <div className="flex items-center justify-between w-full">
+              <button
+                type="button"
+                className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left"
+                style={{ pointerEvents: 'auto', zIndex: 1, color: 'inherit', font: 'inherit' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (calendarConnection) {
+                    handleDisconnectCalendar();
+                  } else {
+                    handleConnectCalendar();
+                  }
+                }}
+                disabled={isConnecting}
+              >
+                <div className="relative shrink-0 size-[24px]">
+                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#E1E6EE" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                  </svg>
+                </div>
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
+                  {calendarConnection 
+                    ? `Connected to ${calendarConnection.calendar_name}` 
+                    : isConnecting 
+                    ? 'Connecting...' 
+                    : 'Connect Google Calendar'}
+                </p>
+              </button>
+              {calendarConnection && (
+                <button
+                  type="button"
+                  className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#0b64f9] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre bg-transparent border-none p-0 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSyncCalendar();
+                  }}
+                  disabled={isSyncing}
+                >
+                  {isSyncing ? 'Syncing...' : 'Sync'}
+                </button>
+              )}
+            </div>
+            {syncStatus && (
+              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre w-full">
+                {syncStatus}
+              </p>
+            )}
 
             {/* Create Overdue Task (Test) */}
             {onCreateOverdueTask && (

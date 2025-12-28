@@ -43,9 +43,10 @@
             "react-resizable-panels": "^2.1.7",
             "recharts": "^2.15.2",
             "sonner": "^2.0.3",
-            "tailwind-merge": "*",
-            "vaul": "^1.1.2",
-            "web-push": "^3.6.7"
+      "googleapis": "^144.0.0",
+      "tailwind-merge": "*",
+      "vaul": "^1.1.2",
+      "web-push": "^3.6.7"
       },
       "devDependencies": {
             "@types/node": "^20.10.0",

@@ -232,31 +232,13 @@ module.exports = async function handler(req, res) {
 
     console.log(`⏰ Found ${dueTodos.length} due todos`);
 
-    // Fetch all push subscriptions
-    const { data: subscriptions, error: subscriptionsError } = await supabase
-      .from('push_subscriptions')
-      .select('*');
+    // Note: Subscriptions are now fetched per-user in the loop below
 
-    if (subscriptionsError) {
-      throw new Error(`Failed to fetch subscriptions: ${subscriptionsError.message}`);
-    }
+      // Send notifications for each due todo to user's subscriptions
+      let successCount = 0;
+      let failureCount = 0;
 
-    if (!subscriptions || subscriptions.length === 0) {
-      console.log('ℹ️ No push subscriptions found');
-      return res.status(200).json({ 
-        success: true, 
-        message: 'No push subscriptions found',
-        checked: new Date().toISOString()
-      });
-    }
-
-    console.log(`📱 Found ${subscriptions.length} push subscriptions`);
-
-    // Send notifications for each due todo to all subscriptions
-    let successCount = 0;
-    let failureCount = 0;
-
-    for (const todo of dueTodos) {
+      for (const todo of dueTodos) {
       console.log(`\n📝 Processing todo #${todo.id}: "${todo.text.substring(0, 50)}${todo.text.length > 50 ? '...' : ''}"`);
 
       // Mark as notified IMMEDIATELY before sending to prevent duplicate notifications
@@ -295,9 +277,25 @@ module.exports = async function handler(req, res) {
       
       console.log(`✅ Marked todo #${todo.id} as notified at ${deadlineDateTime}`);
 
+      // Fetch subscriptions for this todo's user
+      const { data: userSubscriptions, error: userSubsError } = await supabase
+        .from('push_subscriptions')
+        .select('*')
+        .eq('user_id', todo.user_id);
+
+      if (userSubsError) {
+        console.error(`❌ Failed to fetch subscriptions for user ${todo.user_id}:`, userSubsError);
+        continue;
+      }
+
+      if (!userSubscriptions || userSubscriptions.length === 0) {
+        console.log(`ℹ️ No push subscriptions found for user ${todo.user_id}`);
+        continue;
+      }
+
       // Now send notifications - we've already marked it as notified so duplicates are prevented
       let todoNotificationSent = false;
-      for (const subscription of subscriptions) {
+      for (const subscription of userSubscriptions) {
         const success = await sendNotification(subscription, todo, supabase);
         if (success) {
           successCount++;
