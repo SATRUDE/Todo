@@ -4,9 +4,10 @@ import { fetchCalendarEvents, suggestTasksFromEvents, CalendarEvent, getProcesse
 interface CalendarTaskSuggestionsProps {
   onAcceptSuggestion: (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => void;
   onDismiss?: () => void;
+  onTaskClick?: (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => void;
 }
 
-export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss }: CalendarTaskSuggestionsProps) {
+export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss, onTaskClick }: CalendarTaskSuggestionsProps) {
   const [suggestions, setSuggestions] = useState<Array<{
     text: string;
     description?: string;
@@ -146,7 +147,12 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss }: Calen
             className="flex items-center justify-between p-[16px] bg-[#1a161a] rounded-lg border border-[#2a252a]"
           >
             <div className="flex-1 flex flex-col gap-[4px] min-w-0">
-              <p className="font-['Inter:Regular',sans-serif] font-normal text-[18px] text-white min-w-0">
+              <p 
+                className={`font-['Inter:Regular',sans-serif] font-normal text-[18px] min-w-0 ${
+                  onTaskClick ? 'text-white cursor-pointer hover:text-[#E1E6EE] hover:underline' : 'text-white'
+                }`}
+                onClick={onTaskClick ? () => onTaskClick({ ...suggestion, eventId: suggestion.event.id }) : undefined}
+              >
                 {suggestion.text}
               </p>
               {suggestion.event.calendarName && (

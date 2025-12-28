@@ -34,10 +34,11 @@ interface TaskDetailModalProps {
   task: Todo;
   onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => void;
   onDeleteTask: (taskId: number) => void;
+  onCreateTask?: (text: string, description?: string | null, listId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => void;
   lists?: ListItem[];
 }
 
-export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, lists = [] }: TaskDetailModalProps) {
+export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [] }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
   const [taskDescription, setTaskDescription] = useState(task.description || "");
   const [isSelectListOpen, setIsSelectListOpen] = useState(false);
@@ -69,7 +70,12 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
 
   const handleSave = () => {
     if (taskInput.trim() === "") return;
-    onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, deadline === null ? null : deadline);
+    // Check if this is a new task (temporary ID < 0) and we have onCreateTask
+    if (task.id < 0 && onCreateTask) {
+      onCreateTask(taskInput, taskDescription || null, selectedListId || undefined, deadline === null ? null : deadline);
+    } else {
+      onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, deadline === null ? null : deadline);
+    }
     onClose();
   };
 
@@ -90,8 +96,14 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   };
 
   const handleDelete = () => {
-    onDeleteTask(task.id);
-    onClose();
+    // Only delete if it's an existing task (not a new one from calendar suggestion)
+    if (task.id >= 0) {
+      onDeleteTask(task.id);
+      onClose();
+    } else {
+      // For new tasks, just close the modal
+      onClose();
+    }
   };
 
   const getDeadlineText = () => {
@@ -268,17 +280,19 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                   <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Copy</p>
                 </div>
 
-                {/* Trash Icon */}
-                <div 
-                  className="relative shrink-0 size-[24px] cursor-pointer hover:opacity-70"
-                  onClick={handleDelete}
-                >
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                    <g>
-                      <path d={deleteIconPaths.pf5e3c80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                    </g>
-                  </svg>
-                </div>
+                {/* Trash Icon - Only show for existing tasks */}
+                {task.id >= 0 && (
+                  <div 
+                    className="relative shrink-0 size-[24px] cursor-pointer hover:opacity-70"
+                    onClick={handleDelete}
+                  >
+                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                      <g>
+                        <path d={deleteIconPaths.pf5e3c80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                      </g>
+                    </svg>
+                  </div>
+                )}
               </div>
 
               {/* Submit Button Row */}

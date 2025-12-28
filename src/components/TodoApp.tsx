@@ -1218,6 +1218,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         <CalendarSync 
           onBack={() => setCurrentPage("dashboard")}
           onAddTask={addNewTask}
+          lists={lists}
         />
       ) : currentPage === "listDetail" && selectedList ? (
         <ListDetail 
