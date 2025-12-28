@@ -6,6 +6,7 @@ import { TaskDetailModal } from "./TaskDetailModal";
 import { Lists } from "./Lists";
 import { ListDetail } from "./ListDetail";
 import { Settings } from "./Settings";
+import { Dashboard } from "./Dashboard";
 import { ReviewMissedDeadlinesBox } from "./ReviewMissedDeadlinesBox";
 import { ReviewMissedDeadlinesModal } from "./ReviewMissedDeadlinesModal";
 import { DeadlineModal } from "./DeadlineModal";
@@ -54,7 +55,7 @@ interface ListItem {
   isShared: boolean;
 }
 
-type Page = "today" | "lists" | "listDetail" | "settings";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -963,7 +964,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
   }
 
   return (
-    <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-start pt-[60px] px-0 relative w-full min-h-screen" style={{ minHeight: '100vh', height: 'auto' }}>
+    <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-start pt-[60px] pb-[100px] px-0 relative w-full min-h-screen" style={{ minHeight: '100vh', height: 'auto' }}>
       {/* Main Content */}
       {currentPage === "today" ? (
         <div className="relative shrink-0 w-full">
@@ -1168,6 +1169,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onDeleteList={deleteList}
           onBack={() => setCurrentPage("today")}
         />
+      ) : currentPage === "dashboard" ? (
+        <Dashboard />
       ) : currentPage === "listDetail" && selectedList ? (
         <>
           {/* DEBUG: Container test */}
@@ -1257,6 +1260,31 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 strokeWidth="2"
               />
             </g>
+          </svg>
+        </div>
+
+        {/* Dashboard Icon */}
+        <div 
+          className="relative shrink-0 size-[32px] cursor-pointer"
+          onClick={() => {
+            setCurrentPage("dashboard");
+            setSelectedList(null);
+          }}
+        >
+          <svg
+            className="block size-full"
+            fill="none"
+            preserveAspectRatio="none"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"
+              stroke={currentPage === "dashboard" ? "#E1E6EE" : "#5B5D62"}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.5"
+            />
           </svg>
         </div>
 
