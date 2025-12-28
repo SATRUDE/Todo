@@ -144,34 +144,35 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss, onTaskC
         {suggestions.map((suggestion, index) => (
           <div
             key={index}
-            className="flex items-center justify-between p-[16px] bg-[#1a161a] rounded-lg border border-[#2a252a]"
+            className="flex items-start justify-between p-[16px] bg-[#1a161a] rounded-lg border border-[#2a252a] w-full max-w-full overflow-hidden"
           >
-            <div className="flex-1 flex flex-col gap-[4px] min-w-0">
+            <div className="flex-1 flex flex-col gap-[4px] min-w-0 max-w-full overflow-hidden">
               <p 
-                className={`font-['Inter:Regular',sans-serif] font-normal text-[18px] min-w-0 ${
+                className={`font-['Inter:Regular',sans-serif] font-normal text-[18px] break-words overflow-wrap-anywhere ${
                   onTaskClick ? 'text-white cursor-pointer hover:text-[#E1E6EE] hover:underline' : 'text-white'
                 }`}
+                style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                 onClick={onTaskClick ? () => onTaskClick({ ...suggestion, eventId: suggestion.event.id }) : undefined}
               >
                 {suggestion.text}
               </p>
               {suggestion.event.calendarName && (
-                <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-[#5b5d62]">
+                <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-[#5b5d62] break-words overflow-wrap-anywhere" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                   {suggestion.event.calendarName}
                 </p>
               )}
               {suggestion.deadline && (
-                <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62]">
+                <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62] break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                   {formatDate(suggestion.deadline.date)} at {suggestion.deadline.time}
                 </p>
               )}
               {suggestion.description && (
-                <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62] mt-[4px]">
+                <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62] mt-[4px] break-words overflow-wrap-anywhere" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                   {suggestion.description.substring(0, 100)}{suggestion.description.length > 100 ? '...' : ''}
                 </p>
               )}
             </div>
-            <div className="ml-[16px] flex items-center gap-[8px]">
+            <div className="ml-[16px] flex items-center gap-[8px] flex-shrink-0">
               <button
                 type="button"
                 onClick={(e) => {
