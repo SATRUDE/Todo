@@ -4,7 +4,6 @@ import {
   connectGoogleCalendar, 
   disconnectGoogleCalendar, 
   getCalendarConnection,
-  syncAllTasksToCalendar,
   refreshCalendarConnection,
   CalendarConnection 
 } from "../lib/calendar";
@@ -24,7 +23,6 @@ interface SettingsProps {
 export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, isChecking, onEnableNotifications, notificationPermission = 'default', onTestNotification, onCreateOverdueTask }: SettingsProps) {
   const [calendarConnection, setCalendarConnection] = useState<CalendarConnection | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
   // Check for calendar connection on mount and handle OAuth callback
@@ -82,26 +80,6 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
     }
   };
 
-  const handleSyncCalendar = async () => {
-    try {
-      setIsSyncing(true);
-      setSyncStatus(null);
-      const result = await syncAllTasksToCalendar();
-      setSyncStatus(`Synced ${result.synced} tasks${result.errors > 0 ? ` (${result.errors} errors)` : ''}`);
-    } catch (error) {
-      console.error('Error syncing calendar:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setSyncStatus(`Sync failed: ${errorMessage}`);
-      
-      // If unauthorized, clear the connection so user can reconnect
-      if (errorMessage.includes('Unauthorized') || errorMessage.includes('reconnect')) {
-        setCalendarConnection(null);
-        setSyncStatus('Connection expired. Please reconnect your calendar.');
-      }
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   // Debug: Log props on mount and when permission changes
   console.log('Settings component rendered with:', {
@@ -253,19 +231,6 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
                     : 'Connect Google Calendar'}
                 </p>
               </button>
-              {calendarConnection && (
-                <button
-                  type="button"
-                  className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#0b64f9] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre bg-transparent border-none p-0 cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSyncCalendar();
-                  }}
-                  disabled={isSyncing}
-                >
-                  {isSyncing ? 'Syncing...' : 'Sync'}
-                </button>
-              )}
             </div>
             {syncStatus && (
               <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre w-full">
