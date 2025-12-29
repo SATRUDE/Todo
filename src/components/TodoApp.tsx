@@ -654,16 +654,8 @@ export function TodoApp() {
       const displayTasks = allTasks.map(dbTodoToDisplayTodo);
       setTodos(displayTasks);
       
-      // Sync to calendar if task has deadline
-      if (deadline) {
-        try {
-          const { syncAllTasksToCalendar } = await import("../lib/calendar");
-          await syncAllTasksToCalendar();
-        } catch (calendarError) {
-          console.error('Error syncing to calendar:', calendarError);
-          // Don't block on calendar sync errors
-        }
-      }
+      // Note: Calendar sync is manual only - users must explicitly sync from the calendar sync page
+      // Tasks are NOT automatically added to calendar when created
     } catch (error) {
       console.error('Error adding task:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
