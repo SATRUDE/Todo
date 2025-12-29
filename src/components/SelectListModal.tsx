@@ -15,9 +15,10 @@ interface SelectListModalProps {
   lists: ListItem[];
   selectedListId: number | null;
   onSelectList: (listId: number) => void;
+  includeToday?: boolean; // Add option to include "Today" (listId = 0)
 }
 
-export function SelectListModal({ isOpen, onClose, lists, selectedListId, onSelectList }: SelectListModalProps) {
+export function SelectListModal({ isOpen, onClose, lists, selectedListId, onSelectList, includeToday = false }: SelectListModalProps) {
   if (!isOpen) return null;
 
   // Prevent body scroll when modal is open
@@ -31,6 +32,11 @@ export function SelectListModal({ isOpen, onClose, lists, selectedListId, onSele
       document.body.style.overflow = '';
     };
   }, [isOpen]);
+
+  // Create list items array with optional "Today" at the beginning
+  const listItems = includeToday 
+    ? [{ id: 0, name: "Today", color: "#E1E6EE", count: 0, isShared: false }, ...lists]
+    : lists;
 
   return (
     <div className="fixed inset-0 z-[10002] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
@@ -65,7 +71,7 @@ export function SelectListModal({ isOpen, onClose, lists, selectedListId, onSele
                 <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[20px] text-nowrap tracking-[-0.22px] whitespace-pre">Add to list</p>
                 
                 {/* List Items */}
-                {lists.map((list) => (
+                {listItems.map((list) => (
                   <div 
                     key={list.id}
                     className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer"

@@ -50,6 +50,7 @@ export function CommonTaskDetailModal({
   const [taskDescription, setTaskDescription] = useState(task.description || "");
   const [taskTime, setTaskTime] = useState(task.time || "");
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(task.deadline || null);
+  const [selectedListId, setSelectedListId] = useState<number | null>(null);
   const [isSelectListOpen, setIsSelectListOpen] = useState(false);
   const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
@@ -61,6 +62,7 @@ export function CommonTaskDetailModal({
     setTaskDescription(task.description || "");
     setTaskTime(task.time || "");
     setDeadline(task.deadline || null);
+    setSelectedListId(null); // Reset list selection when modal opens
     
     // Auto-resize textareas when task changes
     setTimeout(() => {
@@ -89,12 +91,36 @@ export function CommonTaskDetailModal({
 
   const handleSave = () => {
     if (taskInput.trim() === "") return;
-    // Check if this is a new task (temporary ID < 0) and we have onCreateTask
+    // Only allow saving for new common tasks (temporary ID < 0)
+    // For existing common tasks, we don't update them - they remain as templates
     if (task.id < 0 && onCreateTask) {
       onCreateTask(taskInput, taskDescription || null, taskTime || null, deadline === null ? null : deadline);
-    } else {
-      onUpdateTask(task.id, taskInput, taskDescription || null, taskTime || null, deadline === null ? null : deadline);
+      onClose();
     }
+    // For existing common tasks (id >= 0), the save button does nothing
+    // Users should use deadline or "Add to list" to create tasks from the template
+  };
+
+  const handleAddTask = () => {
+    // For existing common tasks, create a new task from the template
+    // Use selectedListId if set, otherwise default to Today (0) if deadline is set, or null
+    const listIdToUse = selectedListId !== null ? selectedListId : (deadline ? 0 : null);
+    
+    if (listIdToUse === null) {
+      // No list or deadline selected, can't add
+      return;
+    }
+
+    const updatedTask = {
+      ...task,
+      text: taskInput,
+      description: taskDescription || null,
+      time: taskTime || null,
+      deadline: deadline || undefined,
+    };
+    
+    onAddToList(updatedTask, listIdToUse);
+    // Close the modal after creating the task (common task remains unchanged)
     onClose();
   };
 
@@ -106,20 +132,16 @@ export function CommonTaskDetailModal({
   };
 
   const handleSelectList = (listId: number) => {
+    setSelectedListId(listId);
     setIsSelectListOpen(false);
-    // Use current edited values when adding to list
-    const updatedTask = {
-      ...task,
-      text: taskInput,
-      description: taskDescription || null,
-      time: taskTime || null,
-      deadline: deadline || undefined,
-    };
-    onAddToList(updatedTask, listId);
+    // Just update the state - don't create the task yet
+    // The plus button will create it
   };
 
   const handleSetDeadline = (date: Date, time: string, recurring?: string) => {
     setDeadline({ date, time, recurring });
+    // Just update the state - don't create the task yet
+    // The plus button will create it
   };
 
   const handleDelete = () => {
@@ -142,12 +164,15 @@ export function CommonTaskDetailModal({
     const isToday = deadline.date.toDateString() === today.toDateString();
     const isTomorrow = deadline.date.toDateString() === tomorrow.toDateString();
     
-    if (isToday) return `Today ${deadline.time}`;
-    if (isTomorrow) return `Tomorrow ${deadline.time}`;
+    const dateText = isToday ? "Today" : isTomorrow ? "Tomorrow" : 
+      `${deadline.date.toLocaleDateString('en-US', { month: 'short' })} ${deadline.date.getDate()}`;
     
-    const month = deadline.date.toLocaleDateString('en-US', { month: 'short' });
-    const day = deadline.date.getDate();
-    return `${month} ${day} ${deadline.time}`;
+    // If no time is set, just show the date
+    if (!deadline.time || deadline.time.trim() === "") {
+      return dateText;
+    }
+    
+    return `${dateText} ${deadline.time}`;
   };
 
   if (!isOpen) return null;
@@ -255,7 +280,9 @@ export function CommonTaskDetailModal({
                       </g>
                     </svg>
                   </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Add to list</p>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                    {selectedListId !== null ? (lists.find(l => l.id === selectedListId)?.name || "List") : "List"}
+                  </p>
                 </div>
 
                 {/* Trash Icon - Only show for existing tasks */}
@@ -275,42 +302,85 @@ export function CommonTaskDetailModal({
 
               {/* Submit Button Row */}
               <div className="flex gap-[10px] items-end justify-end w-full" style={{ justifyContent: 'flex-end', width: '100%' }}>
-                <div 
-                  className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
-                  style={{
-                    width: '35px',
-                    height: '35px',
-                    padding: '3px',
-                    flexShrink: 0,
-                    backgroundColor: taskInput.trim() ? '#0b64f9' : '#5b5d62'
-                  }}
-                  onClick={handleSave}
-                >
-                  <div className="relative" style={{ width: '24px', height: '24px' }}>
-                    <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '24px', height: '24px' }}>
-                      <g>
-                        <line
-                          x1="12"
-                          y1="6"
-                          x2="12"
-                          y2="18"
-                          stroke="#E1E6EE"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                        />
-                        <line
-                          x1="6"
-                          y1="12"
-                          x2="18"
-                          y2="12"
-                          stroke="#E1E6EE"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                        />
-                      </g>
-                    </svg>
+                {/* For new common tasks (id < 0), show save button */}
+                {task.id < 0 ? (
+                  <div 
+                    className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
+                    style={{
+                      width: '35px',
+                      height: '35px',
+                      padding: '3px',
+                      flexShrink: 0,
+                      backgroundColor: taskInput.trim() ? '#0b64f9' : '#5b5d62'
+                    }}
+                    onClick={handleSave}
+                  >
+                    <div className="relative" style={{ width: '24px', height: '24px' }}>
+                      <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '24px', height: '24px' }}>
+                        <g>
+                          <line
+                            x1="12"
+                            y1="6"
+                            x2="12"
+                            y2="18"
+                            stroke="#E1E6EE"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                          <line
+                            x1="6"
+                            y1="12"
+                            x2="18"
+                            y2="12"
+                            stroke="#E1E6EE"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                        </g>
+                      </svg>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  /* For existing common tasks, show plus button when deadline or list is selected */
+                  (deadline || selectedListId !== null) && (
+                    <div 
+                      className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
+                      style={{
+                        width: '35px',
+                        height: '35px',
+                        padding: '3px',
+                        flexShrink: 0,
+                        backgroundColor: '#0b64f9'
+                      }}
+                      onClick={handleAddTask}
+                    >
+                      <div className="relative" style={{ width: '24px', height: '24px' }}>
+                        <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '24px', height: '24px' }}>
+                          <g>
+                            <line
+                              x1="12"
+                              y1="6"
+                              x2="12"
+                              y2="18"
+                              stroke="#E1E6EE"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                            />
+                            <line
+                              x1="6"
+                              y1="12"
+                              x2="18"
+                              y2="12"
+                              stroke="#E1E6EE"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                            />
+                          </g>
+                        </svg>
+                      </div>
+                    </div>
+                  )
+                )}
               </div>
             </div>
           </div>
@@ -322,8 +392,9 @@ export function CommonTaskDetailModal({
         isOpen={isSelectListOpen}
         onClose={() => setIsSelectListOpen(false)}
         lists={lists}
-        selectedListId={null}
+        selectedListId={selectedListId}
         onSelectList={handleSelectList}
+        includeToday={true}
       />
 
       {/* Deadline Modal */}
