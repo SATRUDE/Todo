@@ -549,14 +549,7 @@ export function TodoApp() {
         
         setTodos(updatedTodos);
         
-        // Sync to calendar when recurring task is completed
-        try {
-          const { syncAllTasksToCalendar } = await import("../lib/calendar");
-          await syncAllTasksToCalendar();
-        } catch (calendarError) {
-          console.error('Error syncing to calendar:', calendarError);
-          // Don't block on calendar sync errors
-        }
+        // Note: Calendar sync is manual only - users must explicitly sync from the calendar sync page
         
         // If it's a today task, show it as completed for 1 second
         if (isTodayTask && isCompleting) {
@@ -593,14 +586,7 @@ export function TodoApp() {
           })
         );
         
-        // Sync to calendar when task completion status changes
-        try {
-          const { syncAllTasksToCalendar } = await import("../lib/calendar");
-          await syncAllTasksToCalendar();
-        } catch (calendarError) {
-          console.error('Error syncing to calendar:', calendarError);
-          // Don't block on calendar sync errors
-        }
+        // Note: Calendar sync is manual only - users must explicitly sync from the calendar sync page
         
         // If it's a today task being completed, show it as completed for 1 second
         if (isTodayTask && isCompleting) {
@@ -772,16 +758,8 @@ export function TodoApp() {
       const displayTasks = allTasks.map(dbTodoToDisplayTodo);
       setTodos(displayTasks);
       
-      // Sync to calendar if task has deadline or deadline was updated
-      if (deadline !== undefined) {
-        try {
-          const { syncAllTasksToCalendar } = await import("../lib/calendar");
-          await syncAllTasksToCalendar();
-        } catch (calendarError) {
-          console.error('Error syncing to calendar:', calendarError);
-          // Don't block on calendar sync errors
-        }
-      }
+      // Note: Calendar sync is manual only - users must explicitly sync from the calendar sync page
+      // Tasks are NOT automatically synced when deadlines are updated
     } catch (error) {
       console.error('Error updating task:', error);
     }
