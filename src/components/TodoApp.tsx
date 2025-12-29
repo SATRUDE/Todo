@@ -14,7 +14,9 @@ import { ReviewMissedDeadlinesModal } from "./ReviewMissedDeadlinesModal";
 import { DeadlineModal } from "./DeadlineModal";
 import { CompletedTasksBox } from "./CompletedTasksBox";
 import { CalendarTaskSuggestions } from "./CalendarTaskSuggestions";
+import { SignIn } from "./SignIn";
 import { APP_VERSION } from "../lib/version";
+import { supabase } from "../lib/supabase";
 import { 
   fetchTasks, 
   createTask, 
@@ -95,6 +97,45 @@ export function TodoApp() {
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const updateCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  // Check authentication status on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsAuthenticated(!!session);
+      } catch (error) {
+        console.error('Error checking auth:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+      if (event === 'SIGNED_OUT') {
+        // Clear all data on sign out
+        setTodos([]);
+        setLists([]);
+        setCommonTasks([]);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSignIn = () => {
+    setIsAuthenticated(true);
+    setIsCheckingAuth(false);
+  };
+
   // Update current time every minute to check for overdue tasks
   useEffect(() => {
     const interval = setInterval(() => {
@@ -104,8 +145,12 @@ export function TodoApp() {
     return () => clearInterval(interval);
   }, []);
 
-  // Load data from Supabase on mount
+  // Load data from Supabase on mount (only if authenticated)
   useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
     const loadData = async () => {
       try {
         setLoading(true);
@@ -185,7 +230,7 @@ export function TodoApp() {
     };
 
     loadData();
-  }, []);
+  }, [isAuthenticated]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -1104,6 +1149,11 @@ export function TodoApp() {
     
     return `${dayOfWeek} ${day}${getOrdinalSuffix(day)}`;
   };
+
+  // Show sign-in screen if not authenticated
+  if (isCheckingAuth || !isAuthenticated) {
+    return <SignIn onSignIn={handleSignIn} />;
+  }
 
   if (loading) {
     return (

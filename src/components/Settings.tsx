@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { APP_VERSION } from "../lib/version";
+import { supabase } from "../lib/supabase";
 import { 
   connectGoogleCalendar, 
   disconnectGoogleCalendar, 
@@ -263,6 +264,33 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
                 </button>
               </div>
             )}
+
+            {/* Sign Out */}
+            <div className="flex items-center justify-between w-full">
+              <button
+                type="button"
+                className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left"
+                style={{ pointerEvents: 'auto', zIndex: 1, color: 'inherit', font: 'inherit' }}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await supabase.auth.signOut();
+                    // The auth state change listener in TodoApp will handle the UI update
+                  } catch (error) {
+                    console.error('Error signing out:', error);
+                  }
+                }}
+              >
+                <div className="relative shrink-0 size-[24px]">
+                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#EF4123" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
+                  </svg>
+                </div>
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-[#EF4123] tracking-[-0.198px] whitespace-pre">
+                  Sign out
+                </p>
+              </button>
+            </div>
           </div>
         </div>
 

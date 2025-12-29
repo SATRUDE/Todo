@@ -1,39 +1,34 @@
 import { supabase } from './supabase'
 
-// Helper function to ensure user is authenticated (using anonymous auth if needed)
+// Check if we're in development mode (localhost)
+const isDevelopment = () => {
+  if (typeof window === 'undefined') return false;
+  return window.location.hostname === 'localhost' || 
+         window.location.hostname === '127.0.0.1' ||
+         window.location.hostname.includes('localhost');
+};
+
+// Helper function to ensure user is authenticated (requires sign-in, or anonymous in dev)
 async function ensureAuthenticated(): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error } = await supabase.auth.getUser()
   
-  if (user) {
-    return user.id
+  if (error) {
+    throw new Error(`Authentication error: ${error.message}`)
   }
   
-  // If no user, sign in anonymously
-  const { data: { user: anonUser }, error } = await supabase.auth.signInAnonymously()
-  
-  if (error || !anonUser) {
-    console.error('❌ Anonymous authentication error:', error)
-    console.error('Error details:', JSON.stringify(error, null, 2))
-    console.error('Error code:', error?.code)
-    console.error('Error status:', error?.status)
-    
-    // Check if anonymous auth is disabled
-    if (error?.message?.includes('signup_disabled') || error?.message?.includes('Email signup is disabled')) {
-      throw new Error('Anonymous authentication is disabled in Supabase. Please enable it in Authentication → Providers → Anonymous in your Supabase dashboard.')
+  if (!user) {
+    // In development, allow anonymous sign-in as fallback
+    if (isDevelopment()) {
+      const { data: { user: anonUser }, error: anonError } = await supabase.auth.signInAnonymously()
+      if (anonError || !anonUser) {
+        throw new Error(`Authentication error: ${anonError?.message || 'Failed to sign in anonymously'}`)
+      }
+      return anonUser.id
     }
-    if (error?.message?.includes('access') || error?.message?.includes('blocked') || error?.message?.includes('denied')) {
-      throw new Error('Access blocked: Anonymous authentication may be disabled. Enable it in Supabase Dashboard → Authentication → Providers → Anonymous.')
-    }
-    if (error?.message?.includes('new signups') || error?.message?.includes('signups are disabled')) {
-      throw new Error('New signups are disabled. Enable "Allow new users to sign up" in Supabase Dashboard → Authentication → User Signups.')
-    }
-    if (error?.code === 'PGRST301' || error?.status === 401) {
-      throw new Error(`Authentication failed (401): ${error?.message || 'Invalid credentials or anonymous auth disabled'}. Check Supabase settings.`)
-    }
-    throw new Error(`Failed to authenticate user: ${error?.message || 'Unknown error'} (Code: ${error?.code || 'N/A'}, Status: ${error?.status || 'N/A'}). Check browser console for details.`)
+    throw new Error('User not authenticated. Please sign in.')
   }
   
-  return anonUser.id
+  return user.id
 }
 
 // Convert a Date to YYYY-MM-DD using the local calendar date.
