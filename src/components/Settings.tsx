@@ -286,7 +286,7 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#EF4123" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
                   </svg>
                 </div>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-[#EF4123] tracking-[-0.198px] whitespace-pre">
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
                   Sign out
                 </p>
               </button>

@@ -15,6 +15,7 @@ import { DeadlineModal } from "./DeadlineModal";
 import { CompletedTasksBox } from "./CompletedTasksBox";
 import { CalendarTaskSuggestions } from "./CalendarTaskSuggestions";
 import { SignIn } from "./SignIn";
+import { ResetPassword } from "./ResetPassword";
 import { APP_VERSION } from "../lib/version";
 import { supabase } from "../lib/supabase";
 import { 
@@ -66,7 +67,7 @@ interface ListItem {
   isShared: boolean;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "resetPassword";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -99,6 +100,54 @@ export function TodoApp() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  
+  // Check if we're on the reset password route
+  useEffect(() => {
+    const checkResetPassword = async () => {
+      // Check if pathname is /reset-password
+      const isResetPasswordPath = window.location.pathname === '/reset-password' || window.location.pathname.endsWith('/reset-password');
+      
+      if (isResetPasswordPath) {
+        // Check if user has a session (Supabase auto-authenticates on password recovery)
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        console.log('Reset password route check:', { 
+          pathname: window.location.pathname,
+          hash: window.location.hash.substring(0, 100),
+          search: window.location.search,
+          hasSession: !!session
+        });
+        
+        if (session) {
+          // User is authenticated via password recovery link
+          setCurrentPage('resetPassword');
+        } else {
+          // Check hash/query params for recovery token
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const queryParams = new URLSearchParams(window.location.search);
+          const type = hashParams.get('type') || queryParams.get('type');
+          
+          if (type === 'recovery') {
+            setCurrentPage('resetPassword');
+          }
+        }
+      }
+    };
+    
+    // Check immediately
+    checkResetPassword();
+    
+    // Also listen for hash changes (in case Supabase processes it)
+    const handleHashChange = () => {
+      checkResetPassword();
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
   // Check authentication status on mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -118,6 +167,20 @@ export function TodoApp() {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
+      
+      // Check if this is a password recovery flow
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        // Check if we're on the reset password route
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const queryParams = new URLSearchParams(window.location.search);
+        const type = hashParams.get('type') || queryParams.get('type');
+        
+        if (type === 'recovery' || window.location.pathname === '/reset-password') {
+          setCurrentPage('resetPassword');
+          return; // Don't set authenticated yet, wait for password to be set
+        }
+      }
+      
       if (event === 'SIGNED_OUT') {
         // Clear all data on sign out
         setTodos([]);
@@ -1150,6 +1213,26 @@ export function TodoApp() {
     return `${dayOfWeek} ${day}${getOrdinalSuffix(day)}`;
   };
 
+  // Show reset password page if on reset password route (even if not authenticated)
+  if (currentPage === "resetPassword") {
+    return (
+      <ResetPassword 
+        onPasswordReset={() => {
+          setCurrentPage("today");
+          // Clear the hash from URL
+          window.history.replaceState(null, '', window.location.pathname);
+          // User should now be authenticated, so reload
+          window.location.reload();
+        }}
+        onCancel={() => {
+          setCurrentPage("today");
+          // Clear the hash from URL
+          window.history.replaceState(null, '', window.location.pathname);
+        }}
+      />
+    );
+  }
+
   // Show sign-in screen if not authenticated
   if (isCheckingAuth || !isAuthenticated) {
     return <SignIn onSignIn={handleSignIn} />;
@@ -1421,6 +1504,19 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onDeleteCommonTask={handleDeleteCommonTask}
           onAddTaskToList={handleAddCommonTaskToList}
           lists={lists}
+        />
+      ) : currentPage === "resetPassword" ? (
+        <ResetPassword 
+          onPasswordReset={() => {
+            setCurrentPage("today");
+            // Clear the hash from URL
+            window.history.replaceState(null, '', window.location.pathname);
+          }}
+          onCancel={() => {
+            setCurrentPage("today");
+            // Clear the hash from URL
+            window.history.replaceState(null, '', window.location.pathname);
+          }}
         />
       ) : currentPage === "listDetail" && selectedList ? (
         <ListDetail 
