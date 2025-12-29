@@ -168,60 +168,22 @@ export async function disconnectGoogleCalendar(): Promise<void> {
 
 /**
  * Sync a single task to Google Calendar
+ * DISABLED: Calendar sync is disabled. Calendar is read-only.
  */
 export async function syncTaskToCalendar(task: any): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    throw new Error('User must be authenticated');
-  }
-
-  if (!task.deadline) {
-    return; // Only sync tasks with deadlines
-  }
-
-  const response = await fetch('/api/calendar/sync', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      user_id: user.id,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to sync task to calendar');
-  }
+  // Calendar sync is disabled - tasks are not written to calendar
+  console.log('[calendar] Calendar sync is disabled - tasks are not written to calendar');
+  return Promise.resolve();
 }
 
 /**
  * Sync all tasks to Google Calendar
+ * DISABLED: Calendar sync is disabled. Calendar is read-only.
  */
 export async function syncAllTasksToCalendar(): Promise<{ synced: number; errors: number; total: number }> {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    throw new Error('User must be authenticated');
-  }
-
-  const response = await fetch('/api/calendar/sync', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      user_id: user.id,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to sync tasks to calendar');
-  }
-
-  return await response.json();
+  // Calendar sync is disabled - tasks are not written to calendar
+  console.log('[calendar] Calendar sync is disabled - tasks are not written to calendar');
+  return Promise.resolve({ synced: 0, errors: 0, total: 0 });
 }
 
 /**

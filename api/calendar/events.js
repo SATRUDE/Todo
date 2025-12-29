@@ -94,8 +94,17 @@ module.exports = async function handler(req, res) {
     const calendar = await getCalendarClient(userId, supabase);
 
     // Fetch all calendars the user has access to
-    const calendarListResponse = await calendar.calendarList.list();
+    // Use minAccessRole to ensure we get all calendars the user can read
+    const calendarListResponse = await calendar.calendarList.list({
+      minAccessRole: 'reader', // Get all calendars where user has at least read access
+      showHidden: false, // Don't show hidden calendars
+    });
     const allCalendars = calendarListResponse.data.items || [];
+
+    console.log(`[calendar/events] Found ${allCalendars.length} calendars for user ${userId}`);
+    allCalendars.forEach(cal => {
+      console.log(`[calendar/events] Calendar: ${cal.summary || cal.id} (${cal.id}), accessRole: ${cal.accessRole}, selected: ${cal.selected}`);
+    });
 
     // Fetch events for the next month from ALL calendars
     const now = new Date();
@@ -107,30 +116,47 @@ module.exports = async function handler(req, res) {
       try {
         // Skip calendars the user doesn't have read access to
         if (cal.accessRole === 'freeBusyReader' || cal.accessRole === 'none') {
+          console.log(`[calendar/events] Skipping calendar ${cal.summary || cal.id} - insufficient access (${cal.accessRole})`);
           continue;
         }
+
+        // Skip calendars that are explicitly hidden or not selected
+        // But still include them if they have events (some calendars might be unselected but still accessible)
+        if (cal.hidden === true) {
+          console.log(`[calendar/events] Skipping hidden calendar ${cal.summary || cal.id}`);
+          continue;
+        }
+
+        console.log(`[calendar/events] Fetching events from calendar: ${cal.summary || cal.id} (${cal.id})`);
 
         const response = await calendar.events.list({
           calendarId: cal.id,
           timeMin: now.toISOString(),
           timeMax: oneMonthLater.toISOString(),
-          maxResults: 100,
+          maxResults: 250, // Increased from 100 to get more events
           singleEvents: true,
           orderBy: 'startTime',
         });
 
-        if (response.data.items) {
+        if (response.data.items && response.data.items.length > 0) {
+          console.log(`[calendar/events] Found ${response.data.items.length} events in calendar ${cal.summary || cal.id}`);
           // Add calendar info to each event for context
           const eventsWithCalendar = response.data.items.map(event => ({
             ...event,
             calendarName: cal.summary || cal.id,
-            calendarColor: cal.backgroundColor || '#4285f4'
+            calendarColor: cal.backgroundColor || cal.colorId || '#4285f4'
           }));
           allEvents.push(...eventsWithCalendar);
+        } else {
+          console.log(`[calendar/events] No events found in calendar ${cal.summary || cal.id}`);
         }
       } catch (calendarError) {
         // Log error but continue with other calendars
         console.error(`[calendar/events] Error fetching events from calendar ${cal.id} (${cal.summary}):`, calendarError.message);
+        // If it's a 404, the calendar might not exist or be accessible
+        if (calendarError.code === 404) {
+          console.log(`[calendar/events] Calendar ${cal.id} not found or not accessible, skipping`);
+        }
       }
     }
 
