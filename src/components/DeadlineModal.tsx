@@ -48,11 +48,24 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
 
 
   const handleConfirm = () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeadlineModal.tsx:handleConfirm:entry',message:'Handle confirm called',data:{hasSelectedDate:!!selectedDate,selectedTime,noTime,recurring},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     if (selectedDate) {
       // If "no time" is selected, pass empty string for time
       const timeToSet = noTime ? "" : selectedTime;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeadlineModal.tsx:handleConfirm:beforeCallback',message:'Calling onSetDeadline',data:{date:selectedDate.toISOString(),timeToSet,recurring:recurring !== "none" ? recurring : undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       onSetDeadline(selectedDate, timeToSet, recurring !== "none" ? recurring : undefined);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeadlineModal.tsx:handleConfirm:afterCallback',message:'onSetDeadline called successfully',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       onClose();
+    } else {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeadlineModal.tsx:handleConfirm:noDate',message:'No selected date',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
     }
   };
 

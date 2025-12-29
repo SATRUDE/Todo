@@ -287,18 +287,51 @@ export async function createTask(todo: any): Promise<Todo> {
 export async function updateTask(id: number, todo: any): Promise<Todo> {
   const userId = await ensureAuthenticated()
   const dbTodo = appTodoToDbTodo(todo)
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateTask:beforeUpdate',message:'Before Supabase update',data:{taskId:id,userId,dbTodo},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
+  // #endregion
+  
+  // First, check what user_id the task currently has
+  // #region agent log
+  const { data: existingTask } = await supabase
+    .from('todos')
+    .select('id, user_id')
+    .eq('id', id)
+    .single();
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateTask:checkExisting',message:'Checking existing task user_id',data:{taskId:id,existingUserId:existingTask?.user_id,currentUserId:userId},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
+  // #endregion
+  
+  // Query should match tasks with matching user_id OR NULL user_id (for legacy tasks)
+  // Use .or() to allow both cases
+  // Also ensure we set user_id if it's currently NULL (for legacy tasks)
+  if (!dbTodo.user_id && existingTask?.user_id === null) {
+    dbTodo.user_id = userId;
+  }
+  
   const { data, error } = await supabase
     .from('todos')
     .update(dbTodo)
     .eq('id', id)
-    .eq('user_id', userId)
+    .or(`user_id.eq.${userId},user_id.is.null`)
     .select()
     .single()
 
   if (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateTask:error',message:'Supabase update error',data:{taskId:id,errorCode:error.code,errorMessage:error.message,errorDetails:JSON.stringify(error),dbTodo},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
     console.error('Error updating task:', error)
+    console.error('Error code:', error.code)
+    console.error('Error message:', error.message)
+    console.error('Error details:', JSON.stringify(error, null, 2))
+    console.error('DB Todo being sent:', JSON.stringify(dbTodo, null, 2))
     throw error
   }
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateTask:success',message:'Supabase update successful',data:{taskId:id,updatedData:data},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
+  // #endregion
 
   return dbTodoToAppTodo(data)
 }
@@ -309,7 +342,7 @@ export async function deleteTask(id: number): Promise<void> {
     .from('todos')
     .delete()
     .eq('id', id)
-    .eq('user_id', userId)
+    .or(`user_id.eq.${userId},user_id.is.null`)
 
   if (error) {
     console.error('Error deleting task:', error)
