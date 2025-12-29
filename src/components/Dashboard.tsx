@@ -1,9 +1,10 @@
 interface DashboardProps {
   onAddTask?: (taskText: string, description?: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => void;
   onNavigateToCalendarSync?: () => void;
+  onNavigateToCommonTasks?: () => void;
 }
 
-export function Dashboard({ onAddTask, onNavigateToCalendarSync }: DashboardProps) {
+export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCommonTasks }: DashboardProps) {
 
   return (
     <div className="relative shrink-0 w-full">
@@ -53,7 +54,7 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync }: DashboardProp
 
               {/* Common Tasks Card */}
               <div 
-                className="flex flex-col items-start justify-end px-[16px] py-[12px] relative flex-1"
+                className="flex flex-col items-start justify-end px-[16px] py-[12px] relative flex-1 cursor-pointer"
                 style={{ 
                   backgroundColor: '#1f2022',
                   height: '146px',
@@ -61,6 +62,7 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync }: DashboardProp
                   boxSizing: 'border-box',
                   justifyContent: 'flex-end'
                 }}
+                onClick={onNavigateToCommonTasks}
               >
                 <div className="flex flex-col gap-[10px] items-start justify-center relative shrink-0">
                   <div className="relative shrink-0" style={{ width: '40px', height: '40px' }}>

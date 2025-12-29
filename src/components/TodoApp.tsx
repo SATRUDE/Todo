@@ -8,6 +8,7 @@ import { ListDetail } from "./ListDetail";
 import { Settings } from "./Settings";
 import { Dashboard } from "./Dashboard";
 import { CalendarSync } from "./CalendarSync";
+import { CommonTasks } from "./CommonTasks";
 import { ReviewMissedDeadlinesBox } from "./ReviewMissedDeadlinesBox";
 import { ReviewMissedDeadlinesModal } from "./ReviewMissedDeadlinesModal";
 import { DeadlineModal } from "./DeadlineModal";
@@ -23,7 +24,13 @@ import {
   createList,
   updateList as updateListDb,
   deleteList as deleteListDb,
-  dbTodoToDisplayTodo
+  dbTodoToDisplayTodo,
+  fetchCommonTasks,
+  createCommonTask,
+  updateCommonTask,
+  deleteCommonTask,
+  CommonTask,
+  dbCommonTaskToDisplayCommonTask
 } from "../lib/database";
 import { 
   requestNotificationPermission, 
@@ -57,7 +64,7 @@ interface ListItem {
   isShared: boolean;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -68,6 +75,7 @@ const listColors = ["#0B64F9", "#00C853", "#EF4123", "#FF6D00", "#FA8072"];
 export function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [lists, setLists] = useState<ListItem[]>([]);
+  const [commonTasks, setCommonTasks] = useState<CommonTask[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [isReviewMissedDeadlinesOpen, setIsReviewMissedDeadlinesOpen] = useState(false);
@@ -125,14 +133,30 @@ export function TodoApp() {
           return;
         }
         
-        const [tasksData, listsData] = await Promise.all([
+        const [tasksData, listsData, commonTasksData] = await Promise.allSettled([
           fetchTasks(),
-          fetchLists()
+          fetchLists(),
+          fetchCommonTasks()
         ]);
         
+        // Handle tasks
+        const tasksResult = tasksData.status === 'fulfilled' ? tasksData.value : [];
+        const listsResult = listsData.status === 'fulfilled' ? listsData.value : [];
+        const commonTasksResult = commonTasksData.status === 'fulfilled' ? commonTasksData.value : [];
+        
+        if (tasksData.status === 'rejected') {
+          console.error('Error fetching tasks:', tasksData.reason);
+        }
+        if (listsData.status === 'rejected') {
+          console.error('Error fetching lists:', listsData.reason);
+        }
+        if (commonTasksData.status === 'rejected') {
+          console.error('Error fetching common tasks:', commonTasksData.reason);
+        }
+        
         // Convert database format to app format
-        const appTodos = tasksData.map(dbTodoToDisplayTodo);
-        const appLists = listsData.map(list => ({
+        const appTodos = tasksResult.map(dbTodoToDisplayTodo);
+        const appLists = listsResult.map(list => ({
           id: list.id,
           name: list.name,
           color: list.color,
@@ -142,6 +166,9 @@ export function TodoApp() {
         
         setTodos(appTodos);
         setLists(appLists);
+        // Convert common tasks from database format to display format
+        const displayCommonTasks = commonTasksResult.map(dbCommonTaskToDisplayCommonTask);
+        setCommonTasks(displayCommonTasks);
       } catch (error: any) {
         console.error('Error loading data:', error);
         
@@ -771,6 +798,65 @@ export function TodoApp() {
     }
   };
 
+  // Common Tasks handlers
+  const handleUpdateCommonTask = async (id: number, text: string, description?: string | null, time?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => {
+    try {
+      const updatedTask = await updateCommonTask(id, { text, description, time, deadline: deadline || undefined });
+      const displayTask = dbCommonTaskToDisplayCommonTask(updatedTask);
+      setCommonTasks(commonTasks.map(task => task.id === id ? displayTask : task));
+    } catch (error) {
+      console.error('Error updating common task:', error);
+      alert(`Failed to update common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleDeleteCommonTask = async (id: number) => {
+    try {
+      await deleteCommonTask(id);
+      setCommonTasks(commonTasks.filter(task => task.id !== id));
+    } catch (error) {
+      console.error('Error deleting common task:', error);
+      alert(`Failed to delete common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleCreateCommonTask = async (text: string, description?: string | null, time?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => {
+    try {
+      const createdTask = await createCommonTask({ text, description, time, deadline: deadline || undefined });
+      const displayTask = dbCommonTaskToDisplayCommonTask(createdTask);
+      setCommonTasks([...commonTasks, displayTask]);
+    } catch (error) {
+      console.error('Error creating common task:', error);
+      alert(`Failed to create common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleAddCommonTaskToList = async (task: CommonTask, listId: number) => {
+    try {
+      // Create a new task from the common task template
+      const newTodo: Todo = {
+        id: Date.now(), // Temporary ID
+        text: task.text,
+        completed: false,
+        listId: listId,
+        description: task.description ?? null,
+        time: task.time ?? undefined,
+        deadline: task.deadline,
+      };
+      
+      const createdTask = await createTask(newTodo);
+      const displayTodo = dbTodoToDisplayTodo(createdTask);
+      
+      // Reload all tasks to ensure consistency
+      const allTasks = await fetchTasks();
+      const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+      setTodos(displayTasks);
+    } catch (error) {
+      console.error('Error adding common task to list:', error);
+      alert(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => {
     try {
       const todo = todos.find(t => t.id === taskId);
@@ -1268,11 +1354,22 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         <Dashboard 
           onAddTask={addNewTask}
           onNavigateToCalendarSync={() => setCurrentPage("calendarSync")}
+          onNavigateToCommonTasks={() => setCurrentPage("commonTasks")}
         />
       ) : currentPage === "calendarSync" ? (
         <CalendarSync 
           onBack={() => setCurrentPage("dashboard")}
           onAddTask={addNewTask}
+          lists={lists}
+        />
+      ) : currentPage === "commonTasks" ? (
+        <CommonTasks 
+          onBack={() => setCurrentPage("dashboard")}
+          commonTasks={commonTasks}
+          onUpdateCommonTask={handleUpdateCommonTask}
+          onCreateCommonTask={handleCreateCommonTask}
+          onDeleteCommonTask={handleDeleteCommonTask}
+          onAddTaskToList={handleAddCommonTaskToList}
           lists={lists}
         />
       ) : currentPage === "listDetail" && selectedList ? (

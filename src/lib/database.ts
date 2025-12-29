@@ -89,6 +89,18 @@ export interface ListItem {
   updated_at?: string
 }
 
+export interface CommonTask {
+  id: number
+  text: string
+  description?: string | null
+  time?: string | null
+  deadline_date?: string | null // YYYY-MM-DD string
+  deadline_time?: string | null // HH:MM string
+  deadline_recurring?: string | null // 'daily', 'weekly', 'weekday', 'monthly'
+  created_at?: string
+  updated_at?: string
+}
+
 // Convert database Todo to app Todo format
 export function dbTodoToAppTodo(dbTodo: any): Todo {
   return {
@@ -436,6 +448,213 @@ export async function deleteList(id: number): Promise<void> {
   if (error) {
     console.error('Error deleting list:', error)
     throw error
+  }
+}
+
+// Common Tasks
+export async function fetchCommonTasks(): Promise<CommonTask[]> {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:fetchCommonTasks:entry',message:'Fetching common tasks',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+  
+  const userId = await ensureAuthenticated()
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:fetchCommonTasks:beforeQuery',message:'Before Supabase query',data:{userId,tableName:'common_tasks'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+  
+  const { data, error } = await supabase
+    .from('common_tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:fetchCommonTasks:afterQuery',message:'After Supabase query',data:{hasError:!!error,errorCode:error?.code,errorMessage:error?.message,errorDetails:error ? JSON.stringify(error) : null,dataLength:data?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+
+  if (error) {
+    console.error('Error fetching common tasks:', error)
+    console.error('Error details:', JSON.stringify(error, null, 2))
+    throw error
+  }
+
+  return data || []
+}
+
+export async function createCommonTask(task: { text: string; description?: string | null; time?: string | null; deadline?: { date: Date; time: string; recurring?: string } | null }): Promise<CommonTask> {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createCommonTask:entry',message:'Creating common task',data:{taskText:task.text,hasDescription:!!task.description,hasTime:!!task.time,hasDeadline:!!task.deadline},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
+  
+  const userId = await ensureAuthenticated()
+  
+  const insertData: any = {
+    user_id: userId,
+    text: task.text,
+    description: task.description || null,
+    time: task.time || null,
+  }
+
+  if (task.deadline) {
+    insertData.deadline_date = formatLocalDate(task.deadline.date)
+    if (task.deadline.time && task.deadline.time.trim() !== '') {
+      // Convert local time to UTC for storage (same as todos)
+      const localDate = task.deadline.date
+      const [hours, minutes] = task.deadline.time.split(':').map(Number)
+      const localDateTime = new Date(
+        localDate.getFullYear(),
+        localDate.getMonth(),
+        localDate.getDate(),
+        hours,
+        minutes,
+        0,
+        0
+      )
+      const utcHours = localDateTime.getUTCHours()
+      const utcMinutes = localDateTime.getUTCMinutes()
+      insertData.deadline_time = `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`
+    } else {
+      insertData.deadline_time = null
+    }
+    insertData.deadline_recurring = task.deadline.recurring || null
+  } else {
+    insertData.deadline_date = null
+    insertData.deadline_time = null
+    insertData.deadline_recurring = null
+  }
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createCommonTask:beforeInsert',message:'Before Supabase insert',data:{userId,tableName:'common_tasks',insertData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
+  
+  const { data, error } = await supabase
+    .from('common_tasks')
+    .insert(insertData)
+    .select()
+    .single()
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createCommonTask:afterInsert',message:'After Supabase insert',data:{hasError:!!error,errorCode:error?.code,errorMessage:error?.message,errorDetails:error ? JSON.stringify(error) : null,hasData:!!data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
+
+  if (error) {
+    console.error('Error creating common task:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function updateCommonTask(id: number, task: { text: string; description?: string | null; time?: string | null; deadline?: { date: Date; time: string; recurring?: string } | null }): Promise<CommonTask> {
+  const userId = await ensureAuthenticated()
+  
+  const updateData: any = {
+    text: task.text,
+    description: task.description || null,
+    time: task.time || null,
+  }
+
+  if (task.deadline) {
+    updateData.deadline_date = formatLocalDate(task.deadline.date)
+    if (task.deadline.time && task.deadline.time.trim() !== '') {
+      // Convert local time to UTC for storage (same as todos)
+      const localDate = task.deadline.date
+      const [hours, minutes] = task.deadline.time.split(':').map(Number)
+      const localDateTime = new Date(
+        localDate.getFullYear(),
+        localDate.getMonth(),
+        localDate.getDate(),
+        hours,
+        minutes,
+        0,
+        0
+      )
+      const utcHours = localDateTime.getUTCHours()
+      const utcMinutes = localDateTime.getUTCMinutes()
+      updateData.deadline_time = `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`
+    } else {
+      updateData.deadline_time = null
+    }
+    updateData.deadline_recurring = task.deadline.recurring || null
+  } else {
+    updateData.deadline_date = null
+    updateData.deadline_time = null
+    updateData.deadline_recurring = null
+  }
+  
+  const { data, error } = await supabase
+    .from('common_tasks')
+    .update(updateData)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating common task:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function deleteCommonTask(id: number): Promise<void> {
+  const userId = await ensureAuthenticated()
+  
+  const { error } = await supabase
+    .from('common_tasks')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Error deleting common task:', error)
+    throw error
+  }
+}
+
+// Convert database CommonTask to display format (with deadline object)
+export function dbCommonTaskToDisplayCommonTask(dbTask: CommonTask): any {
+  const parsedDeadlineDate = parseLocalDate(dbTask.deadline_date)
+  
+  // Convert UTC time back to local time for display
+  let displayTime = dbTask.deadline_time || ''
+  if (parsedDeadlineDate && dbTask.deadline_time && dbTask.deadline_time.trim() !== '') {
+    // Parse UTC time
+    const [utcHours, utcMinutes] = dbTask.deadline_time.split(':').map(Number)
+    
+    // Create a UTC date object
+    const utcDate = new Date(Date.UTC(
+      parsedDeadlineDate.getFullYear(),
+      parsedDeadlineDate.getMonth(),
+      parsedDeadlineDate.getDate(),
+      utcHours,
+      utcMinutes,
+      0,
+      0
+    ))
+    
+    // Convert to local time
+    const localHours = utcDate.getHours()
+    const localMinutes = utcDate.getMinutes()
+    
+    // Format as HH:MM in local time
+    displayTime = `${String(localHours).padStart(2, '0')}:${String(localMinutes).padStart(2, '0')}`
+  }
+  
+  const deadline = parsedDeadlineDate ? {
+    date: parsedDeadlineDate,
+    time: displayTime,
+    recurring: dbTask.deadline_recurring,
+  } : undefined
+
+  return {
+    id: dbTask.id,
+    text: dbTask.text,
+    description: dbTask.description || undefined,
+    time: dbTask.time || undefined,
+    deadline,
   }
 }
 
