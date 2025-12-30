@@ -231,3 +231,13 @@ button[aria-selected="true"]:focus {
   background-color: white !important;
   color: black !important;
 }
+
+/* Force inactive tab text color */
+.tab-inactive-text {
+  color: #E1E6EE !important;
+}
+
+/* Test: Make it more visible to verify styling works */
+.tab-inactive-text-test {
+  color: #ff0000 !important; /* Red for testing */
+}

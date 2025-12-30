@@ -1485,3 +1485,54 @@ html {
   inherits: false;
   initial-value: 0 0 #0000;
 }
+
+/* Force inactive tab text color - Version 1: Basic class */
+.tab-inactive-text {
+  color: #E1E6EE !important;
+}
+
+/* Version 2: Higher specificity */
+button .tab-inactive-text-v2 {
+  color: #E1E6EE !important;
+}
+
+/* Version 3: Even higher specificity */
+.content-stretch.flex.items-center button p.tab-inactive-text-v3 {
+  color: #E1E6EE !important;
+}
+
+/* Version 4: Data attribute selector */
+[data-tab-inactive="true"] {
+  color: #E1E6EE !important;
+}
+
+/* Version 5: Using CSS variable */
+.tab-inactive-text-v5 {
+  --tab-inactive-color: #E1E6EE;
+  color: var(--tab-inactive-color) !important;
+}
+
+/* Version 6: Direct p tag with class */
+p.tab-inactive-text-v6 {
+  color: #E1E6EE !important;
+}
+
+/* Version 7: Button with class */
+button.tab-button-inactive p {
+  color: #E1E6EE !important;
+}
+
+/* Version 8: Using ID selector (highest specificity) */
+#tab-inactive-text-v8 {
+  color: #E1E6EE !important;
+}
+
+/* Version 9: Multiple classes for specificity */
+.tab-inactive-text-v9.font-['Inter:Regular',sans-serif] {
+  color: #E1E6EE !important;
+}
+
+/* Version 10: Universal selector with class */
+*.tab-inactive-text-v10 {
+  color: #E1E6EE !important;
+}

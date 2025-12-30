@@ -100,6 +100,7 @@ export function TodoApp() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<"today" | "tomorrow" | "week">("today");
   
   // Check if we're on the reset password route
   useEffect(() => {
@@ -1121,19 +1122,103 @@ export function TodoApp() {
     return todos.filter(todo => todo.listId === listId);
   };
 
-  const todayTasks = todos.filter(todo => {
-    if (!todo.deadline) return false;
+  // Helper function to check if a date is today
+  const isToday = (date: Date): boolean => {
     const today = new Date();
-    const taskDate = todo.deadline.date;
-    const isToday = taskDate.toDateString() === today.toDateString();
+    return date.toDateString() === today.toDateString();
+  };
+
+  // Helper function to check if a date is tomorrow
+  const isTomorrow = (date: Date): boolean => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return date.toDateString() === tomorrow.toDateString();
+  };
+
+  // Helper function to check if a date is within this week (from today until Sunday)
+  const isThisWeek = (date: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    if (!isToday) return false;
+    // Calculate the next Sunday (or today if it's already Sunday)
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+    const nextSunday = new Date(today);
+    nextSunday.setDate(today.getDate() + daysUntilSunday);
+    nextSunday.setHours(23, 59, 59, 999); // End of Sunday
     
-    // Show task if:
-    // 1. It's not completed, OR
-    // 2. It was recently completed (within 1 second)
-    return !todo.completed || recentlyCompleted.has(todo.id);
-  });
+    const taskDate = new Date(date);
+    taskDate.setHours(0, 0, 0, 0);
+    
+    return taskDate >= today && taskDate <= nextSunday;
+  };
+
+  // Filter tasks based on selected time range
+  const getFilteredTasks = () => {
+    const filtered = todos.filter(todo => {
+      if (!todo.deadline) return false;
+      
+      const taskDate = todo.deadline.date;
+      let matchesRange = false;
+      
+      switch (selectedTimeRange) {
+        case "today":
+          matchesRange = isToday(taskDate);
+          break;
+        case "tomorrow":
+          matchesRange = isTomorrow(taskDate);
+          break;
+        case "week":
+          matchesRange = isThisWeek(taskDate);
+          break;
+      }
+      
+      if (!matchesRange) return false;
+      
+      // Show task if:
+      // 1. It's not completed, OR
+      // 2. It was recently completed (within 1 second)
+      return !todo.completed || recentlyCompleted.has(todo.id);
+    });
+    
+    // Sort by deadline for "This week" view (soonest first)
+    if (selectedTimeRange === "week") {
+      return filtered.sort((a, b) => {
+        if (!a.deadline || !b.deadline) return 0;
+        
+        // Compare dates first
+        const dateA = a.deadline.date.getTime();
+        const dateB = b.deadline.date.getTime();
+        
+        if (dateA !== dateB) {
+          return dateA - dateB; // Soonest date first
+        }
+        
+        // If same date, compare times
+        const timeA = a.deadline.time || "";
+        const timeB = b.deadline.time || "";
+        
+        if (timeA && timeB) {
+          // Parse time strings (HH:MM format)
+          const [hoursA, minutesA] = timeA.split(':').map(Number);
+          const [hoursB, minutesB] = timeB.split(':').map(Number);
+          const totalMinutesA = hoursA * 60 + minutesA;
+          const totalMinutesB = hoursB * 60 + minutesB;
+          return totalMinutesA - totalMinutesB; // Earliest time first
+        }
+        
+        // If one has time and other doesn't, prioritize the one with time
+        if (timeA && !timeB) return -1;
+        if (!timeA && timeB) return 1;
+        
+        return 0;
+      });
+    }
+    
+    return filtered;
+  };
+
+  const todayTasks = getFilteredTasks();
 
   // Calculate missed deadlines (tasks with deadlines that have passed and are not completed)
   // Use currentTime state to trigger re-renders when time passes
@@ -1290,6 +1375,106 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Today</p>
                 <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">{getFormattedDate()}</p>
               </div>
+
+              {/* Inline style tag to force inactive tab color */}
+              <style>{`
+                .tab-inactive-force {
+                  color: #5B5D62 !important;
+                }
+                button.tab-button-inactive-force > * {
+                  color: #5B5D62 !important;
+                }
+                [data-inactive-tab="true"] {
+                  color: #5B5D62 !important;
+                }
+                .tab-inactive-text-v5 {
+                  color: #5B5D62 !important;
+                }
+                .tab-inactive-text-v6 {
+                  color: #5B5D62 !important;
+                }
+                #tab-inactive-text-v8 {
+                  color: #5B5D62 !important;
+                }
+                .tab-inactive-text-v9 {
+                  color: #5B5D62 !important;
+                }
+                .tab-inactive-text-v10 {
+                  color: #5B5D62 !important;
+                }
+              `}</style>
+              
+              {/* Tabs for Today/Tomorrow/This Week */}
+              <div 
+                className="content-stretch flex items-center gap-[8px] relative rounded-[100px] w-fit"
+                style={{ backgroundColor: '#1f2022' }}
+              >
+                {/* Today tab */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTimeRange("today")}
+                  className="content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none"
+                  style={{
+                    padding: selectedTimeRange === "today" ? "6px 16px" : "4px 16px",
+                    backgroundColor: selectedTimeRange === "today" ? "#f5f5f5" : "transparent",
+                    border: selectedTimeRange === "today" ? "1px solid #e1e6ee" : "none"
+                  }}
+                >
+                  <span 
+                    className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] ${selectedTimeRange !== "today" ? "tab-inactive-force" : ""}`}
+                    style={{
+                      color: selectedTimeRange === "today" ? "#110c10" : "#5B5D62"
+                    }}
+                  >
+                    Today
+                  </span>
+                </button>
+                
+                {/* Tomorrow tab */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTimeRange("tomorrow")}
+                  className="content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none"
+                  data-inactive-tab={selectedTimeRange !== "tomorrow" ? "true" : undefined}
+                  style={{
+                    padding: selectedTimeRange === "tomorrow" ? "6px 16px" : "4px 16px",
+                    backgroundColor: selectedTimeRange === "tomorrow" ? "#f5f5f5" : "transparent",
+                    border: selectedTimeRange === "tomorrow" ? "1px solid #e1e6ee" : "none"
+                  }}
+                >
+                  <span 
+                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]"
+                    style={{
+                      color: selectedTimeRange === "tomorrow" ? "#110c10" : "#5B5D62"
+                    }}
+                  >
+                    Tomorrow
+                  </span>
+                </button>
+                
+                {/* This week tab */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTimeRange("week")}
+                  className={`content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none ${selectedTimeRange !== "week" ? "tab-button-inactive-force" : ""}`}
+                  style={{
+                    padding: selectedTimeRange === "week" ? "6px 16px" : "4px 16px",
+                    backgroundColor: selectedTimeRange === "week" ? "#f5f5f5" : "transparent",
+                    border: selectedTimeRange === "week" ? "1px solid #e1e6ee" : "none"
+                  }}
+                >
+                  <span 
+                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]"
+                    style={{
+                      color: selectedTimeRange === "week" ? "#110c10" : "#5B5D62"
+                    }}
+                  >
+                    This week
+                  </span>
+                </button>
+              </div>
+              
+                
 
               {/* Status Boxes */}
               {(missedDeadlines.length > 0 || tasksCompletedToday.length > 0) && (
