@@ -239,8 +239,8 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
               </p>
             )}
 
-            {/* Create Overdue Task (Test) */}
-            {onCreateOverdueTask && (
+            {/* Create Overdue Task (Test) - Only show on localhost */}
+            {onCreateOverdueTask && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
               <div className="flex items-center justify-between w-full">
                 <button
                   type="button"
