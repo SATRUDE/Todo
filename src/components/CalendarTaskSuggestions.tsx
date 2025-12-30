@@ -105,7 +105,25 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss, onTaskC
   }
 
   if (suggestions.length === 0) {
-    return null;
+    return (
+      <div className="w-full flex flex-col gap-[16px]">
+        <div className="flex items-center gap-[12px]">
+          <div className="relative shrink-0 size-[20px]">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE" className="size-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+            </svg>
+          </div>
+          <p className="font-['Inter:Medium',sans-serif] font-medium text-[20px] text-white">
+            Suggested Tasks from Calendar
+          </p>
+        </div>
+        <div className="w-full p-[24px] bg-[#1a161a] rounded-lg border border-[#2a252a] flex flex-col items-start justify-center gap-[8px]">
+          <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62] text-left">
+            All calendar events have been processed or there are no upcoming events
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const formatDate = (date: Date) => {
