@@ -1382,14 +1382,14 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
   }
 
   return (
-    <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-start pt-[60px] pb-[100px] px-0 relative w-full min-h-screen" style={{ minHeight: '100vh', height: 'auto' }}>
+    <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-start pt-[60px] pb-[100px] px-0 relative w-full min-h-screen overflow-x-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
       {/* Main Content */}
       {currentPage === "today" ? (
         <div className="relative shrink-0 w-full">
           <div className="w-full">
-            <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] pt-0 relative w-full h-fit overflow-x-hidden" style={{ paddingBottom: '150px' }}>
+            <div className="box-border content-stretch flex flex-col gap-[32px] items-start pt-0 relative w-full h-fit overflow-x-hidden" style={{ paddingBottom: '150px' }}>
               {/* Header with Today and Date */}
-              <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre">
+              <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre px-[20px]">
                 <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Today</p>
                 <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">{getFormattedDate()}</p>
               </div>
@@ -1424,10 +1424,14 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               
               {/* Tabs for Today/Tomorrow/This Week/This Month - Horizontally scrollable */}
               <div 
-                className="w-full overflow-x-auto tabs-scroll-container"
+                className="tabs-scroll-container"
                 style={{ 
+                  width: '100%',
+                  overflowX: 'auto',
+                  overflowY: 'hidden',
                   scrollbarWidth: 'none', // Firefox
-                  msOverflowStyle: 'none' // IE/Edge
+                  msOverflowStyle: 'none', // IE/Edge
+                  WebkitOverflowScrolling: 'touch' // Smooth scrolling on iOS
                 }}
               >
                 <style>{`
@@ -1436,11 +1440,13 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   }
                 `}</style>
                 <div 
-                  className="flex items-center gap-[8px] rounded-[100px]"
+                  className="flex items-center gap-[8px] rounded-[100px] ml-5"
                   style={{ 
                     backgroundColor: '#1f2022',
-                    width: 'fit-content',
-                    minWidth: 'fit-content'
+                    width: 'max-content',
+                    minWidth: 'max-content',
+                    display: 'inline-flex',
+                    marginLeft: '20px'
                   }}
                 >
                 {/* Today tab */}
@@ -1449,7 +1455,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   onClick={() => setSelectedTimeRange("today")}
                   className="content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none"
                   style={{
-                    padding: "6px 12px",
+                    padding: "6px 16px",
                     backgroundColor: selectedTimeRange === "today" ? "#f5f5f5" : "transparent",
                     border: selectedTimeRange === "today" ? "1px solid #e1e6ee" : "1px solid transparent"
                   }}
@@ -1471,7 +1477,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   className="content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none"
                   data-inactive-tab={selectedTimeRange !== "tomorrow" ? "true" : undefined}
                   style={{
-                    padding: "6px 12px",
+                    padding: "6px 16px",
                     backgroundColor: selectedTimeRange === "tomorrow" ? "#f5f5f5" : "transparent",
                     border: selectedTimeRange === "tomorrow" ? "1px solid #e1e6ee" : "1px solid transparent"
                   }}
@@ -1492,7 +1498,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   onClick={() => setSelectedTimeRange("week")}
                   className={`content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none ${selectedTimeRange !== "week" ? "tab-button-inactive-force" : ""}`}
                   style={{
-                    padding: "6px 12px",
+                    padding: "6px 16px",
                     backgroundColor: selectedTimeRange === "week" ? "#f5f5f5" : "transparent",
                     border: selectedTimeRange === "week" ? "1px solid #e1e6ee" : "1px solid transparent"
                   }}
@@ -1513,7 +1519,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   onClick={() => setSelectedTimeRange("month")}
                   className={`content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none ${selectedTimeRange !== "month" ? "tab-button-inactive-force" : ""}`}
                   style={{
-                    padding: "6px 12px",
+                    padding: "6px 16px",
                     backgroundColor: selectedTimeRange === "month" ? "#f5f5f5" : "transparent",
                     border: selectedTimeRange === "month" ? "1px solid #e1e6ee" : "1px solid transparent"
                   }}
@@ -1534,7 +1540,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
 
               {/* Status Boxes */}
               {(missedDeadlines.length > 0 || tasksCompletedToday.length > 0) && (
-                <div className="flex flex-col gap-[16px] w-full">
+                <div className="flex flex-col gap-[16px] w-full px-[20px]">
                   {missedDeadlines.length > 0 && (
                     <ReviewMissedDeadlinesBox
                       missedCount={missedDeadlines.length}
@@ -1564,7 +1570,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
 
             
             {/* Todo List */}
-            <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
+            <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full px-[20px]">
               {todayTasks.map((todo) => {
                 const isRecentlyCompleted = recentlyCompleted.has(todo.id);
                 return (
