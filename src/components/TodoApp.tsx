@@ -1449,7 +1449,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   onClick={() => setSelectedTimeRange("today")}
                   className="content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none"
                   style={{
-                    padding: selectedTimeRange === "today" ? "6px 16px" : "6px 16px",
+                    padding: "6px 12px",
                     backgroundColor: selectedTimeRange === "today" ? "#f5f5f5" : "transparent",
                     border: selectedTimeRange === "today" ? "1px solid #e1e6ee" : "1px solid transparent"
                   }}
@@ -1471,7 +1471,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   className="content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none"
                   data-inactive-tab={selectedTimeRange !== "tomorrow" ? "true" : undefined}
                   style={{
-                    padding: selectedTimeRange === "tomorrow" ? "6px 16px" : "6px 16px",
+                    padding: "6px 12px",
                     backgroundColor: selectedTimeRange === "tomorrow" ? "#f5f5f5" : "transparent",
                     border: selectedTimeRange === "tomorrow" ? "1px solid #e1e6ee" : "1px solid transparent"
                   }}
@@ -1492,7 +1492,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   onClick={() => setSelectedTimeRange("week")}
                   className={`content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none ${selectedTimeRange !== "week" ? "tab-button-inactive-force" : ""}`}
                   style={{
-                    padding: selectedTimeRange === "week" ? "6px 16px" : "6px 16px",
+                    padding: "6px 12px",
                     backgroundColor: selectedTimeRange === "week" ? "#f5f5f5" : "transparent",
                     border: selectedTimeRange === "week" ? "1px solid #e1e6ee" : "1px solid transparent"
                   }}
@@ -1513,7 +1513,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   onClick={() => setSelectedTimeRange("month")}
                   className={`content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none ${selectedTimeRange !== "month" ? "tab-button-inactive-force" : ""}`}
                   style={{
-                    padding: selectedTimeRange === "month" ? "6px 16px" : "6px 16px",
+                    padding: "6px 12px",
                     backgroundColor: selectedTimeRange === "month" ? "#f5f5f5" : "transparent",
                     border: selectedTimeRange === "month" ? "1px solid #e1e6ee" : "1px solid transparent"
                   }}
