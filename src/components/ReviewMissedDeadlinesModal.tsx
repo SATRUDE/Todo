@@ -164,6 +164,27 @@ export function ReviewMissedDeadlinesModal({
                       </p>
                     </div>
 
+                    {/* Description */}
+                    {todo.description && todo.description.trim() && (
+                      <div 
+                        className="w-full pl-[32px] overflow-hidden"
+                        style={{ maxWidth: '100%', boxSizing: 'border-box' }}
+                      >
+                        <p 
+                          className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                          style={{ 
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '100%',
+                            width: '100%'
+                          }}
+                        >
+                          {todo.description}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Metadata Row */}
                     <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="36:500">
                       {/* Time */}
