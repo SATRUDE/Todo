@@ -100,7 +100,7 @@ export function TodoApp() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [selectedTimeRange, setSelectedTimeRange] = useState<"today" | "tomorrow" | "week">("today");
+  const [selectedTimeRange, setSelectedTimeRange] = useState<"today" | "tomorrow" | "week" | "month">("today");
   
   // Check if we're on the reset password route
   useEffect(() => {
@@ -1153,6 +1153,21 @@ export function TodoApp() {
     return taskDate >= today && taskDate <= nextSunday;
   };
 
+  // Helper function to check if a date is within this month
+  const isThisMonth = (date: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Get the last day of the current month
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    lastDayOfMonth.setHours(23, 59, 59, 999);
+    
+    const taskDate = new Date(date);
+    taskDate.setHours(0, 0, 0, 0);
+    
+    return taskDate >= today && taskDate <= lastDayOfMonth;
+  };
+
   // Filter tasks based on selected time range
   const getFilteredTasks = () => {
     const filtered = todos.filter(todo => {
@@ -1171,6 +1186,9 @@ export function TodoApp() {
         case "week":
           matchesRange = isThisWeek(taskDate);
           break;
+        case "month":
+          matchesRange = isThisMonth(taskDate);
+          break;
       }
       
       if (!matchesRange) return false;
@@ -1181,8 +1199,8 @@ export function TodoApp() {
       return !todo.completed || recentlyCompleted.has(todo.id);
     });
     
-    // Sort by deadline for "This week" view (soonest first)
-    if (selectedTimeRange === "week") {
+    // Sort by deadline for "This week" and "This month" views (soonest first)
+    if (selectedTimeRange === "week" || selectedTimeRange === "month") {
       return filtered.sort((a, b) => {
         if (!a.deadline || !b.deadline) return 0;
         
@@ -1369,7 +1387,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
       {currentPage === "today" ? (
         <div className="relative shrink-0 w-full">
           <div className="w-full">
-            <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] pt-0 relative w-full h-fit" style={{ paddingBottom: '150px' }}>
+            <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] pt-0 relative w-full h-fit overflow-x-hidden" style={{ paddingBottom: '150px' }}>
               {/* Header with Today and Date */}
               <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre">
                 <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Today</p>
@@ -1404,20 +1422,36 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 }
               `}</style>
               
-              {/* Tabs for Today/Tomorrow/This Week */}
+              {/* Tabs for Today/Tomorrow/This Week/This Month - Horizontally scrollable */}
               <div 
-                className="content-stretch flex items-center gap-[8px] relative rounded-[100px] w-fit"
-                style={{ backgroundColor: '#1f2022' }}
+                className="w-full overflow-x-auto tabs-scroll-container"
+                style={{ 
+                  scrollbarWidth: 'none', // Firefox
+                  msOverflowStyle: 'none' // IE/Edge
+                }}
               >
+                <style>{`
+                  .tabs-scroll-container::-webkit-scrollbar {
+                    display: none; /* Chrome, Safari, Opera */
+                  }
+                `}</style>
+                <div 
+                  className="flex items-center gap-[8px] rounded-[100px]"
+                  style={{ 
+                    backgroundColor: '#1f2022',
+                    width: 'fit-content',
+                    minWidth: 'fit-content'
+                  }}
+                >
                 {/* Today tab */}
                 <button
                   type="button"
                   onClick={() => setSelectedTimeRange("today")}
                   className="content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none"
                   style={{
-                    padding: selectedTimeRange === "today" ? "6px 16px" : "4px 16px",
+                    padding: selectedTimeRange === "today" ? "6px 16px" : "6px 16px",
                     backgroundColor: selectedTimeRange === "today" ? "#f5f5f5" : "transparent",
-                    border: selectedTimeRange === "today" ? "1px solid #e1e6ee" : "none"
+                    border: selectedTimeRange === "today" ? "1px solid #e1e6ee" : "1px solid transparent"
                   }}
                 >
                   <span 
@@ -1437,9 +1471,9 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   className="content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none"
                   data-inactive-tab={selectedTimeRange !== "tomorrow" ? "true" : undefined}
                   style={{
-                    padding: selectedTimeRange === "tomorrow" ? "6px 16px" : "4px 16px",
+                    padding: selectedTimeRange === "tomorrow" ? "6px 16px" : "6px 16px",
                     backgroundColor: selectedTimeRange === "tomorrow" ? "#f5f5f5" : "transparent",
-                    border: selectedTimeRange === "tomorrow" ? "1px solid #e1e6ee" : "none"
+                    border: selectedTimeRange === "tomorrow" ? "1px solid #e1e6ee" : "1px solid transparent"
                   }}
                 >
                   <span 
@@ -1452,15 +1486,15 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   </span>
                 </button>
                 
-                {/* This week tab */}
+                {/* Week tab */}
                 <button
                   type="button"
                   onClick={() => setSelectedTimeRange("week")}
                   className={`content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none ${selectedTimeRange !== "week" ? "tab-button-inactive-force" : ""}`}
                   style={{
-                    padding: selectedTimeRange === "week" ? "6px 16px" : "4px 16px",
+                    padding: selectedTimeRange === "week" ? "6px 16px" : "6px 16px",
                     backgroundColor: selectedTimeRange === "week" ? "#f5f5f5" : "transparent",
-                    border: selectedTimeRange === "week" ? "1px solid #e1e6ee" : "none"
+                    border: selectedTimeRange === "week" ? "1px solid #e1e6ee" : "1px solid transparent"
                   }}
                 >
                   <span 
@@ -1469,9 +1503,31 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                       color: selectedTimeRange === "week" ? "#110c10" : "#5B5D62"
                     }}
                   >
-                    This week
+                    Week
                   </span>
                 </button>
+                
+                {/* Month tab */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTimeRange("month")}
+                  className={`content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none ${selectedTimeRange !== "month" ? "tab-button-inactive-force" : ""}`}
+                  style={{
+                    padding: selectedTimeRange === "month" ? "6px 16px" : "6px 16px",
+                    backgroundColor: selectedTimeRange === "month" ? "#f5f5f5" : "transparent",
+                    border: selectedTimeRange === "month" ? "1px solid #e1e6ee" : "1px solid transparent"
+                  }}
+                >
+                  <span 
+                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]"
+                    style={{
+                      color: selectedTimeRange === "month" ? "#110c10" : "#5B5D62"
+                    }}
+                  >
+                    Month
+                  </span>
+                </button>
+                </div>
               </div>
               
                 
