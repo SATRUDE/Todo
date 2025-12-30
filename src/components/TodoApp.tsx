@@ -88,6 +88,7 @@ export function TodoApp() {
   const [currentPage, setCurrentPage] = useState<Page>("today");
   const [selectedList, setSelectedList] = useState<ListItem | null>(null);
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
+  const [timeRangeFilter, setTimeRangeFilter] = useState<"today" | "week" | "month" | null>(null);
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
@@ -602,6 +603,7 @@ export function TodoApp() {
   const handleBackFromList = () => {
     setSelectedList(null);
     setDateFilter(null);
+    setTimeRangeFilter(null);
     setCurrentPage("lists");
   };
 
@@ -1104,8 +1106,51 @@ export function TodoApp() {
     } else if (listId === COMPLETED_LIST_ID) {
       let completedTasks = todos.filter(todo => todo.listId === COMPLETED_LIST_ID);
       
-      // If dateFilter is set, filter by completion date
-      if (dateFilter) {
+      // If timeRangeFilter is set, filter by time range
+      if (timeRangeFilter) {
+        const today = new Date();
+        const todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        
+        completedTasks = completedTasks.filter(todo => {
+          if (!todo.updatedAt) return false;
+          const updatedDate = new Date(todo.updatedAt);
+          const updatedDateNormalized = new Date(updatedDate.getFullYear(), updatedDate.getMonth(), updatedDate.getDate());
+          
+          switch (timeRangeFilter) {
+            case "today":
+              return (
+                updatedDateNormalized.getFullYear() === todayNormalized.getFullYear() &&
+                updatedDateNormalized.getMonth() === todayNormalized.getMonth() &&
+                updatedDateNormalized.getDate() === todayNormalized.getDate()
+              );
+            case "week":
+              // Check if completed within this week (from Monday to Sunday)
+              const dayOfWeek = todayNormalized.getDay();
+              // Calculate days to subtract to get to Monday (or Sunday if today is Sunday)
+              const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+              const weekStart = new Date(todayNormalized);
+              weekStart.setDate(todayNormalized.getDate() + daysToMonday);
+              weekStart.setHours(0, 0, 0, 0);
+              
+              // Calculate days to add to get to Sunday
+              const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+              const weekEnd = new Date(todayNormalized);
+              weekEnd.setDate(todayNormalized.getDate() + daysUntilSunday);
+              weekEnd.setHours(23, 59, 59, 999);
+              return updatedDateNormalized >= weekStart && updatedDateNormalized <= weekEnd;
+            case "month":
+              // Check if completed within this month (from 1st to last day of month)
+              const monthStart = new Date(todayNormalized.getFullYear(), todayNormalized.getMonth(), 1);
+              monthStart.setHours(0, 0, 0, 0);
+              const monthEnd = new Date(todayNormalized.getFullYear(), todayNormalized.getMonth() + 1, 0);
+              monthEnd.setHours(23, 59, 59, 999);
+              return updatedDateNormalized >= monthStart && updatedDateNormalized <= monthEnd;
+            default:
+              return true;
+          }
+        });
+      } else if (dateFilter) {
+        // If dateFilter is set, filter by completion date (specific date)
         completedTasks = completedTasks.filter(todo => {
           if (!todo.updatedAt) return false;
           const updatedDate = new Date(todo.updatedAt);
@@ -1274,20 +1319,72 @@ export function TodoApp() {
     return endOfDeadlineDay < now;
   });
 
-  // Calculate tasks completed today
-  const tasksCompletedToday = todos.filter(todo => {
-    if (!todo.completed || !todo.updatedAt) return false;
-    
-    const updatedDate = new Date(todo.updatedAt);
-    const today = new Date();
-    
-    // Check if updated date is today (same year, month, and day)
-    return (
-      updatedDate.getFullYear() === today.getFullYear() &&
-      updatedDate.getMonth() === today.getMonth() &&
-      updatedDate.getDate() === today.getDate()
-    );
-  });
+  // Calculate tasks completed for the selected time range
+  const getCompletedTasksForTimeRange = () => {
+    if (selectedTimeRange === "tomorrow") {
+      return []; // Don't show completed tasks for tomorrow
+    }
+
+    return todos.filter(todo => {
+      // Check if task is completed (either by completed flag or by being in completed list)
+      const isCompleted = todo.completed || todo.listId === COMPLETED_LIST_ID;
+      if (!isCompleted) return false;
+      
+      // If no updatedAt, skip (we need a date to filter by time range)
+      if (!todo.updatedAt || todo.updatedAt.trim() === "") return false;
+      
+      const updatedDate = new Date(todo.updatedAt);
+      // Check if date is valid
+      if (isNaN(updatedDate.getTime())) return false;
+      
+      const today = new Date();
+      
+      // Normalize dates to start of day for comparison
+      const updatedDateNormalized = new Date(updatedDate.getFullYear(), updatedDate.getMonth(), updatedDate.getDate());
+      const todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      
+      switch (selectedTimeRange) {
+        case "today":
+          // Check if updated date is today (same year, month, and day)
+          return (
+            updatedDateNormalized.getFullYear() === todayNormalized.getFullYear() &&
+            updatedDateNormalized.getMonth() === todayNormalized.getMonth() &&
+            updatedDateNormalized.getDate() === todayNormalized.getDate()
+          );
+        case "week":
+          // Check if completed within this week (from Monday to Sunday)
+          const dayOfWeek = todayNormalized.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+          // Calculate days to subtract to get to Monday (or Sunday if today is Sunday)
+          const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday, go back 6 days; otherwise go to Monday
+          const weekStart = new Date(todayNormalized);
+          weekStart.setDate(todayNormalized.getDate() + daysToMonday);
+          weekStart.setHours(0, 0, 0, 0);
+          
+          // Calculate days to add to get to Sunday
+          const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+          const weekEnd = new Date(todayNormalized);
+          weekEnd.setDate(todayNormalized.getDate() + daysUntilSunday);
+          weekEnd.setHours(23, 59, 59, 999); // End of Sunday
+          
+          return updatedDateNormalized >= weekStart && updatedDateNormalized <= weekEnd;
+        case "month":
+          // Check if completed within this month (from 1st to last day of month)
+          const monthStart = new Date(todayNormalized.getFullYear(), todayNormalized.getMonth(), 1);
+          monthStart.setHours(0, 0, 0, 0);
+          const monthEnd = new Date(todayNormalized.getFullYear(), todayNormalized.getMonth() + 1, 0);
+          monthEnd.setHours(23, 59, 59, 999);
+          
+          return updatedDateNormalized >= monthStart && updatedDateNormalized <= monthEnd;
+        default:
+          return false;
+      }
+    });
+  };
+
+  const tasksCompletedForTimeRange = getCompletedTasksForTimeRange();
+  
+  // Determine if we should show completed tasks box (for today, week, month tabs)
+  const shouldShowCompletedBox = (selectedTimeRange === "today" || selectedTimeRange === "week" || selectedTimeRange === "month") && tasksCompletedForTimeRange.length > 0;
 
   const getListById = (listId?: number) => {
     if (listId === undefined || listId === TODAY_LIST_ID || listId === COMPLETED_LIST_ID) {
@@ -1539,7 +1636,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 
 
               {/* Status Boxes */}
-              {(missedDeadlines.length > 0 || tasksCompletedToday.length > 0) && (
+              {(missedDeadlines.length > 0 || shouldShowCompletedBox) && (
                 <div className="flex flex-col gap-[16px] w-full px-[20px]">
                   {missedDeadlines.length > 0 && (
                     <ReviewMissedDeadlinesBox
@@ -1550,18 +1647,25 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                     />
                   )}
 
-                  {tasksCompletedToday.length > 0 && (
+                  {shouldShowCompletedBox && (
                     <CompletedTasksBox
-                      completedCount={tasksCompletedToday.length}
+                      completedCount={tasksCompletedForTimeRange.length}
                       onClick={() => {
                         const completedList: ListItem = {
                           id: COMPLETED_LIST_ID,
                           name: "Completed list",
                           color: "#00C853",
-                          count: tasksCompletedToday.length,
+                          count: tasksCompletedForTimeRange.length,
                           isShared: false,
                         };
-                        handleSelectList(completedList, new Date());
+                        // Set the time range filter based on the selected tab
+                        const newTimeRangeFilter = selectedTimeRange === "today" ? "today" : selectedTimeRange === "week" ? "week" : selectedTimeRange === "month" ? "month" : null;
+                        // #region agent log
+                        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:CompletedTasksBox:onClick',message:'Setting timeRangeFilter before opening completed list',data:{selectedTimeRange,newTimeRangeFilter,completedCount:tasksCompletedForTimeRange.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                        // #endregion
+                        setTimeRangeFilter(newTimeRangeFilter);
+                        setDateFilter(null); // Clear date filter when using time range filter
+                        handleSelectList(completedList, null);
                       }}
                     />
                   )}
@@ -1787,22 +1891,39 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           }}
         />
       ) : currentPage === "listDetail" && selectedList ? (
-        <ListDetail 
-          listId={selectedList.id}
-          listName={selectedList.name}
-          listColor={selectedList.color}
-          isShared={selectedList.isShared}
-          onBack={handleBackFromList}
-          tasks={getTasksForList(selectedList.id)}
-          onToggleTask={toggleTodo}
-          onAddTask={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : (taskText, description) => addNewTaskToList(taskText, description, selectedList.id)}
-          onUpdateList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : updateList}
-          onDeleteList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : deleteList}
-          onTaskClick={handleTaskClick}
-          lists={lists}
-          dateFilter={dateFilter}
-          onClearDateFilter={() => setDateFilter(null)}
-        />
+        (() => {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:ListDetail:render',message:'Rendering ListDetail with timeRangeFilter',data:{listId:selectedList.id,listName:selectedList.name,timeRangeFilter,dateFilter:dateFilter?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+          return (
+            <ListDetail 
+              listId={selectedList.id}
+              listName={selectedList.name}
+              listColor={selectedList.color}
+              isShared={selectedList.isShared}
+              onBack={selectedList.id === COMPLETED_LIST_ID && timeRangeFilter ? () => {
+                // If this is the completed list opened from today/week/month tab, go back to today page
+                setSelectedList(null);
+                setDateFilter(null);
+                setTimeRangeFilter(null);
+                setCurrentPage("today");
+              } : handleBackFromList}
+              tasks={getTasksForList(selectedList.id)}
+              onToggleTask={toggleTodo}
+              onAddTask={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : (taskText, description) => addNewTaskToList(taskText, description, selectedList.id)}
+              onUpdateList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : updateList}
+              onDeleteList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : deleteList}
+              onTaskClick={handleTaskClick}
+              lists={lists}
+              dateFilter={dateFilter}
+              timeRangeFilter={timeRangeFilter}
+              onClearDateFilter={() => {
+                setDateFilter(null);
+                setTimeRangeFilter(null);
+              }}
+            />
+          );
+        })()
       ) : currentPage === "settings" ? (
         <Settings
           onBack={() => setCurrentPage("today")}
