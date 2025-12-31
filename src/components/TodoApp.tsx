@@ -101,7 +101,7 @@ export function TodoApp() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [selectedTimeRange, setSelectedTimeRange] = useState<"today" | "tomorrow" | "week" | "month">("today");
+  const [selectedTimeRange, setSelectedTimeRange] = useState<"today" | "tomorrow" | "week" | "month" | "allTime">("today");
   
   // Check if we're on the reset password route
   useEffect(() => {
@@ -1234,6 +1234,9 @@ export function TodoApp() {
         case "month":
           matchesRange = isThisMonth(taskDate);
           break;
+        case "allTime":
+          matchesRange = true; // Show all tasks with deadlines
+          break;
       }
       
       if (!matchesRange) return false;
@@ -1375,6 +1378,9 @@ export function TodoApp() {
           monthEnd.setHours(23, 59, 59, 999);
           
           return updatedDateNormalized >= monthStart && updatedDateNormalized <= monthEnd;
+        case "allTime":
+          // Show all completed tasks (no date filtering)
+          return true;
         default:
           return false;
       }
@@ -1383,8 +1389,8 @@ export function TodoApp() {
 
   const tasksCompletedForTimeRange = getCompletedTasksForTimeRange();
   
-  // Determine if we should show completed tasks box (for today, week, month tabs)
-  const shouldShowCompletedBox = (selectedTimeRange === "today" || selectedTimeRange === "week" || selectedTimeRange === "month") && tasksCompletedForTimeRange.length > 0;
+  // Determine if we should show completed tasks box (for today, week, month, allTime tabs)
+  const shouldShowCompletedBox = (selectedTimeRange === "today" || selectedTimeRange === "week" || selectedTimeRange === "month" || selectedTimeRange === "allTime") && tasksCompletedForTimeRange.length > 0;
 
   const getListById = (listId?: number) => {
     if (listId === undefined || listId === TODAY_LIST_ID || listId === COMPLETED_LIST_ID) {
@@ -1485,9 +1491,9 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         <div className="relative shrink-0 w-full">
           <div className="w-full">
             <div className="box-border content-stretch flex flex-col gap-[32px] items-start pt-0 relative w-full h-fit overflow-x-hidden" style={{ paddingBottom: '150px' }}>
-              {/* Header with Today and Date */}
+              {/* Header with Tasks and Date */}
               <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre px-[20px]">
-                <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Today</p>
+                <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Tasks</p>
                 <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">{getFormattedDate()}</p>
               </div>
 
@@ -1630,6 +1636,27 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                     Month
                   </span>
                 </button>
+                
+                {/* All time tab */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTimeRange("allTime")}
+                  className={`content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none ${selectedTimeRange !== "allTime" ? "tab-button-inactive-force" : ""}`}
+                  style={{
+                    padding: "6px 16px",
+                    backgroundColor: selectedTimeRange === "allTime" ? "#f5f5f5" : "transparent",
+                    border: selectedTimeRange === "allTime" ? "1px solid #e1e6ee" : "1px solid transparent"
+                  }}
+                >
+                  <span 
+                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]"
+                    style={{
+                      color: selectedTimeRange === "allTime" ? "#110c10" : "#5B5D62"
+                    }}
+                  >
+                    All time
+                  </span>
+                </button>
                 </div>
               </div>
               
@@ -1659,7 +1686,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                           isShared: false,
                         };
                         // Set the time range filter based on the selected tab
-                        const newTimeRangeFilter = selectedTimeRange === "today" ? "today" : selectedTimeRange === "week" ? "week" : selectedTimeRange === "month" ? "month" : null;
+                        // For "allTime", set to null to show all completed tasks without filtering
+                        const newTimeRangeFilter = selectedTimeRange === "today" ? "today" : selectedTimeRange === "week" ? "week" : selectedTimeRange === "month" ? "month" : selectedTimeRange === "allTime" ? null : null;
                         // #region agent log
                         fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:CompletedTasksBox:onClick',message:'Setting timeRangeFilter before opening completed list',data:{selectedTimeRange,newTimeRangeFilter,completedCount:tasksCompletedForTimeRange.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
                         // #endregion
@@ -1901,8 +1929,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               listName={selectedList.name}
               listColor={selectedList.color}
               isShared={selectedList.isShared}
-              onBack={selectedList.id === COMPLETED_LIST_ID && timeRangeFilter ? () => {
-                // If this is the completed list opened from today/week/month tab, go back to today page
+              onBack={selectedList.id === COMPLETED_LIST_ID && (timeRangeFilter !== undefined) ? () => {
+                // If this is the completed list opened from today/week/month/allTime tab, go back to today page
                 setSelectedList(null);
                 setDateFilter(null);
                 setTimeRangeFilter(null);
