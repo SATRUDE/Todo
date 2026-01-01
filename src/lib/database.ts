@@ -96,6 +96,15 @@ export interface CommonTask {
   updated_at?: string
 }
 
+export interface Goal {
+  id: number
+  text: string
+  description?: string | null
+  is_active?: boolean
+  created_at?: string
+  updated_at?: string
+}
+
 // Convert database Todo to app Todo format
 export function dbTodoToAppTodo(dbTodo: any): Todo {
   return {
@@ -650,6 +659,140 @@ export function dbCommonTaskToDisplayCommonTask(dbTask: CommonTask): any {
     description: dbTask.description || undefined,
     time: dbTask.time || undefined,
     deadline,
+  }
+}
+
+// Goals
+export async function fetchGoals(): Promise<Goal[]> {
+  const userId = await ensureAuthenticated()
+  
+  const { data, error } = await supabase
+    .from('goals')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching goals:', error)
+    throw error
+  }
+
+  return data || []
+}
+
+export async function createGoal(goal: { text: string; description?: string | null; is_active?: boolean }): Promise<Goal> {
+  const userId = await ensureAuthenticated()
+  
+  // If setting to active, check if there are already 3 active goals
+  const isActive = goal.is_active !== false; // Default to true if not specified
+  
+  if (isActive) {
+    const { data: activeGoals, error: countError } = await supabase
+      .from('goals')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+    
+    if (countError) {
+      console.error('Error checking active goals:', countError)
+      throw countError
+    }
+    
+    if (activeGoals && activeGoals.length >= 3) {
+      throw new Error('You can only have 3 active goals at a time. Please deactivate or delete an existing goal first.')
+    }
+  }
+  
+  const insertData: any = {
+    user_id: userId,
+    text: goal.text,
+    description: goal.description || null,
+    is_active: isActive,
+  }
+  
+  const { data, error } = await supabase
+    .from('goals')
+    .insert(insertData)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating goal:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function updateGoal(id: number, goal: { text: string; description?: string | null; is_active?: boolean }): Promise<Goal> {
+  const userId = await ensureAuthenticated()
+  
+  // If setting to active, check if there are already 3 active goals
+  if (goal.is_active !== false) {
+    const { data: activeGoals, error: countError } = await supabase
+      .from('goals')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .neq('id', id) // Exclude the current goal
+    
+    if (countError) {
+      console.error('Error checking active goals:', countError)
+      throw countError
+    }
+    
+    if (activeGoals && activeGoals.length >= 3) {
+      throw new Error('You can only have 3 active goals at a time. Please deactivate another goal first.')
+    }
+  }
+  
+  const updateData: any = {
+    text: goal.text,
+    description: goal.description || null,
+  }
+  
+  if (goal.is_active !== undefined) {
+    updateData.is_active = goal.is_active
+  }
+  
+  const { data, error } = await supabase
+    .from('goals')
+    .update(updateData)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating goal:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function deleteGoal(id: number): Promise<void> {
+  const userId = await ensureAuthenticated()
+  
+  const { error } = await supabase
+    .from('goals')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Error deleting goal:', error)
+    throw error
+  }
+}
+
+// Convert database Goal to display format
+export function dbGoalToDisplayGoal(dbGoal: Goal): any {
+  return {
+    id: dbGoal.id,
+    text: dbGoal.text,
+    description: dbGoal.description || undefined,
+    is_active: dbGoal.is_active !== false, // Default to true if not set
   }
 }
 

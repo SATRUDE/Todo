@@ -9,6 +9,7 @@ import { Settings } from "./Settings";
 import { Dashboard } from "./Dashboard";
 import { CalendarSync } from "./CalendarSync";
 import { CommonTasks } from "./CommonTasks";
+import { Goals } from "./Goals";
 import { ReviewMissedDeadlinesBox } from "./ReviewMissedDeadlinesBox";
 import { ReviewMissedDeadlinesModal } from "./ReviewMissedDeadlinesModal";
 import { DeadlineModal } from "./DeadlineModal";
@@ -33,7 +34,13 @@ import {
   updateCommonTask,
   deleteCommonTask,
   CommonTask,
-  dbCommonTaskToDisplayCommonTask
+  dbCommonTaskToDisplayCommonTask,
+  fetchGoals,
+  createGoal,
+  updateGoal,
+  deleteGoal,
+  Goal,
+  dbGoalToDisplayGoal
 } from "../lib/database";
 import { 
   requestNotificationPermission, 
@@ -67,7 +74,7 @@ interface ListItem {
   isShared: boolean;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "resetPassword";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "goals" | "resetPassword";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -79,6 +86,7 @@ export function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [lists, setLists] = useState<ListItem[]>([]);
   const [commonTasks, setCommonTasks] = useState<CommonTask[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [isReviewMissedDeadlinesOpen, setIsReviewMissedDeadlinesOpen] = useState(false);
@@ -243,16 +251,18 @@ export function TodoApp() {
           return;
         }
         
-        const [tasksData, listsData, commonTasksData] = await Promise.allSettled([
+        const [tasksData, listsData, commonTasksData, goalsData] = await Promise.allSettled([
           fetchTasks(),
           fetchLists(),
-          fetchCommonTasks()
+          fetchCommonTasks(),
+          fetchGoals()
         ]);
         
         // Handle tasks
         const tasksResult = tasksData.status === 'fulfilled' ? tasksData.value : [];
         const listsResult = listsData.status === 'fulfilled' ? listsData.value : [];
         const commonTasksResult = commonTasksData.status === 'fulfilled' ? commonTasksData.value : [];
+        const goalsResult = goalsData.status === 'fulfilled' ? goalsData.value : [];
         
         if (tasksData.status === 'rejected') {
           console.error('Error fetching tasks:', tasksData.reason);
@@ -262,6 +272,9 @@ export function TodoApp() {
         }
         if (commonTasksData.status === 'rejected') {
           console.error('Error fetching common tasks:', commonTasksData.reason);
+        }
+        if (goalsData.status === 'rejected') {
+          console.error('Error fetching goals:', goalsData.reason);
         }
         
         // Convert database format to app format
@@ -279,6 +292,9 @@ export function TodoApp() {
         // Convert common tasks from database format to display format
         const displayCommonTasks = commonTasksResult.map(dbCommonTaskToDisplayCommonTask);
         setCommonTasks(displayCommonTasks);
+        // Convert goals from database format to display format
+        const displayGoals = goalsResult.map(dbGoalToDisplayGoal);
+        setGoals(displayGoals);
       } catch (error: any) {
         console.error('Error loading data:', error);
         
@@ -965,6 +981,39 @@ export function TodoApp() {
     } catch (error) {
       console.error('Error adding common task to list:', error);
       alert(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Goals handlers
+  const handleUpdateGoal = async (id: number, text: string, description?: string | null, is_active?: boolean) => {
+    try {
+      const updatedGoal = await updateGoal(id, { text, description, is_active });
+      const displayGoal = dbGoalToDisplayGoal(updatedGoal);
+      setGoals(goals.map(goal => goal.id === id ? displayGoal : goal));
+    } catch (error) {
+      console.error('Error updating goal:', error);
+      alert(`Failed to update goal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleDeleteGoal = async (id: number) => {
+    try {
+      await deleteGoal(id);
+      setGoals(goals.filter(goal => goal.id !== id));
+    } catch (error) {
+      console.error('Error deleting goal:', error);
+      alert(`Failed to delete goal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleCreateGoal = async (text: string, description?: string | null, is_active?: boolean) => {
+    try {
+      const createdGoal = await createGoal({ text, description, is_active });
+      const displayGoal = dbGoalToDisplayGoal(createdGoal);
+      setGoals([...goals, displayGoal]);
+    } catch (error) {
+      console.error('Error creating goal:', error);
+      alert(`Failed to create goal: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1888,6 +1937,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onAddTask={addNewTask}
           onNavigateToCalendarSync={() => setCurrentPage("calendarSync")}
           onNavigateToCommonTasks={() => setCurrentPage("commonTasks")}
+          onNavigateToGoals={() => setCurrentPage("goals")}
         />
       ) : currentPage === "calendarSync" ? (
         <CalendarSync 
@@ -1904,6 +1954,14 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onDeleteCommonTask={handleDeleteCommonTask}
           onAddTaskToList={handleAddCommonTaskToList}
           lists={lists}
+        />
+      ) : currentPage === "goals" ? (
+        <Goals 
+          onBack={() => setCurrentPage("dashboard")}
+          goals={goals}
+          onUpdateGoal={handleUpdateGoal}
+          onCreateGoal={handleCreateGoal}
+          onDeleteGoal={handleDeleteGoal}
         />
       ) : currentPage === "resetPassword" ? (
         <ResetPassword 
