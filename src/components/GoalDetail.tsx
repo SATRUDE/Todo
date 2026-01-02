@@ -15,6 +15,13 @@ interface Milestone {
   name: string;
   days?: number;
   deadline_date?: string | null;
+  completed?: boolean;
+}
+
+interface Todo {
+  id: number;
+  completed: boolean;
+  milestoneId?: number;
 }
 
 interface GoalDetailProps {
@@ -26,6 +33,8 @@ interface GoalDetailProps {
   onCreateMilestone: (goalId: number, name: string, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<Milestone>;
   onUpdateMilestone: (id: number, name: string, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<Milestone>;
   onDeleteMilestone: (id: number) => Promise<void>;
+  onSelectMilestone?: (milestone: Milestone) => void;
+  todos?: Todo[]; // Tasks to check milestone completion
 }
 
 export function GoalDetail({ 
@@ -36,7 +45,8 @@ export function GoalDetail({
   onFetchMilestones,
   onCreateMilestone,
   onUpdateMilestone,
-  onDeleteMilestone
+  onDeleteMilestone,
+  onSelectMilestone
 }: GoalDetailProps) {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -219,19 +229,34 @@ export function GoalDetail({
             </div>
 
             {/* Milestones Cards */}
-            {milestones.length === 0 ? (
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
-                No milestones yet. Click the + button to add one.
-              </p>
-            ) : (
-              milestones.map((milestone) => (
+            {(() => {
+              const activeMilestones = milestones.filter(m => !m.completed);
+              const achievedMilestones = milestones.filter(m => m.completed === true);
+              
+              if (activeMilestones.length === 0 && achievedMilestones.length === 0) {
+                return (
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+                    No milestones yet. Click the + button to add one.
+                  </p>
+                );
+              }
+              
+              return (
+                <>
+                  {/* Active Milestones */}
+                  {activeMilestones.map((milestone) => (
                 <div
                   key={milestone.id}
                   className="content-stretch flex flex-col items-start justify-center relative shrink-0 w-full cursor-pointer"
                   style={{ padding: '16px', backgroundColor: '#1F2022', borderRadius: '8px' }}
                   onClick={() => {
-                    setSelectedMilestone(milestone);
-                    setIsMilestoneModalOpen(true);
+                    if (onSelectMilestone) {
+                      onSelectMilestone(milestone);
+                    } else {
+                      // Fallback to modal if onSelectMilestone is not provided
+                      setSelectedMilestone(milestone);
+                      setIsMilestoneModalOpen(true);
+                    }
                   }}
                 >
                   <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
@@ -272,8 +297,77 @@ export function GoalDetail({
                     })()}
                   </div>
                 </div>
-              ))
-            )}
+                  ))}
+                  
+                  {/* Achieved Milestones Section */}
+                  {achievedMilestones.length > 0 && (
+                    <>
+                      <div className="content-stretch flex items-center relative shrink-0 w-full" style={{ marginTop: '32px' }}>
+                        <p 
+                          className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]"
+                          style={{ fontSize: '12px' }}
+                        >
+                          ACHIEVED
+                        </p>
+                      </div>
+                      {achievedMilestones.map((milestone) => (
+                        <div
+                          key={milestone.id}
+                          className="content-stretch flex flex-col items-start justify-center relative shrink-0 w-full cursor-pointer opacity-60"
+                          style={{ padding: '16px', backgroundColor: '#1F2022', borderRadius: '8px' }}
+                          onClick={() => {
+                            if (onSelectMilestone) {
+                              onSelectMilestone(milestone);
+                            } else {
+                              setSelectedMilestone(milestone);
+                              setIsMilestoneModalOpen(true);
+                            }
+                          }}
+                        >
+                          <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
+                            <div className="content-stretch flex items-center relative shrink-0 w-full">
+                              <p className="basis-0 font-['Inter:Regular',sans-serif] font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px] line-through">
+                                {milestone.name}
+                              </p>
+                            </div>
+                            {(() => {
+                              const daysUntil = getDaysUntilDeadline(milestone.deadline_date);
+                              if (daysUntil === null) return null;
+                              
+                              return (
+                                <div className="content-stretch flex gap-[10px] items-start relative shrink-0">
+                                  <div className="relative shrink-0 size-[24px]">
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      strokeWidth="1.5"
+                                      stroke="#5B5D62"
+                                      className="size-6"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
+                                      />
+                                    </svg>
+                                  </div>
+                                  <div className="content-stretch flex items-center relative shrink-0">
+                                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]">
+                                      {daysUntil} day{daysUntil !== 1 ? 's' : ''}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </div>
           
           {/* Spacer to prevent bottom cutoff */}

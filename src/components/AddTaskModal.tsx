@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import svgPaths from "../imports/svg-p3zv31caxs";
 import generateSvgPaths from "../imports/svg-gf1ry58lrd";
 import { SelectListModal } from "./SelectListModal";
+import { SelectMilestoneModal } from "./SelectMilestoneModal";
 import { DeadlineModal } from "./DeadlineModal";
 
 interface ListItem {
@@ -13,15 +14,24 @@ interface ListItem {
   isShared: boolean;
 }
 
+interface MilestoneWithGoal {
+  id: number;
+  name: string;
+  goalId: number;
+  goalName: string;
+}
+
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddTask: (task: string, description?: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => void;
+  onAddTask: (task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }) => void;
   lists?: ListItem[];
   defaultListId?: number;
+  milestones?: MilestoneWithGoal[];
+  defaultMilestoneId?: number;
 }
 
-export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultListId }: AddTaskModalProps) {
+export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultListId, milestones = [], defaultMilestoneId }: AddTaskModalProps) {
   const getDefaultDeadline = () => {
     const today = new Date();
     return { date: today, time: "", recurring: undefined };
@@ -30,34 +40,43 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
   const [taskInput, setTaskInput] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [isSelectListOpen, setIsSelectListOpen] = useState(false);
+  const [isSelectMilestoneOpen, setIsSelectMilestoneOpen] = useState(false);
   const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<number | null>(defaultListId || null);
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState<number | null>(defaultMilestoneId || null);
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(getDefaultDeadline());
   const [isBulkAddMode, setIsBulkAddMode] = useState(false);
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Update selectedListId when defaultListId changes or modal opens
+  // Update selectedListId and selectedMilestoneId when defaults change or modal opens
   useEffect(() => {
-    if (isOpen && defaultListId !== undefined) {
-      setSelectedListId(defaultListId);
-    } else if (!isOpen) {
+    if (isOpen) {
+      if (defaultListId !== undefined) {
+        setSelectedListId(defaultListId);
+      }
+      if (defaultMilestoneId !== undefined) {
+        setSelectedMilestoneId(defaultMilestoneId);
+      }
+    } else {
       // Reset when modal closes
       setSelectedListId(defaultListId || null);
+      setSelectedMilestoneId(defaultMilestoneId || null);
       setTaskInput("");
       setDeadline(getDefaultDeadline());
       setTaskDescription("");
     }
-  }, [isOpen, defaultListId]);
+  }, [isOpen, defaultListId, defaultMilestoneId]);
 
   const handleSubmit = async () => {
     if (taskInput.trim() !== "") {
       if (isBulkAddMode) {
         await handleBulkAdd();
       } else {
-        await onAddTask(taskInput, taskDescription, selectedListId || undefined, deadline || undefined);
+        await onAddTask(taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined);
         setTaskInput("");
         setSelectedListId(null);
+        setSelectedMilestoneId(null);
         setDeadline(getDefaultDeadline());
         setTaskDescription("");
         onClose();
@@ -112,6 +131,17 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
     return list ? list.color : "#E1E6EE";
   };
 
+  const handleSelectMilestone = (milestoneId: number) => {
+    setSelectedMilestoneId(milestoneId);
+    setIsSelectMilestoneOpen(false);
+  };
+
+  const getSelectedMilestoneName = () => {
+    if (selectedMilestoneId === null) return "Milestone";
+    const milestone = milestones.find(m => m.id === selectedMilestoneId);
+    return milestone ? milestone.name : "Milestone";
+  };
+
   const handleGenerateTask = () => {
     const tasks = [
       "Do the laundry",
@@ -138,12 +168,13 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
     // Add all tasks sequentially to ensure they all get added
     for (const line of lines) {
       if (line.trim()) {
-        await onAddTask(line.trim(), "", selectedListId || undefined, deadline || undefined);
+        await onAddTask(line.trim(), "", selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined);
       }
     }
     
     setTaskInput("");
     setSelectedListId(null);
+    setSelectedMilestoneId(null);
     setDeadline(getDefaultDeadline());
     setIsBulkAddMode(false);
     setTaskDescription("");
@@ -285,6 +316,23 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
                       <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getSelectedListName()}</p>
                     </div>
 
+                    {/* Milestone Button */}
+                    {milestones.length > 0 && (
+                      <div 
+                        className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                        onClick={() => setIsSelectMilestoneOpen(true)}
+                      >
+                        <div className="relative shrink-0 size-[20px]">
+                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                            <g>
+                              <path d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0" stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                            </g>
+                          </svg>
+                        </div>
+                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getSelectedMilestoneName()}</p>
+                      </div>
+                    )}
+
                     {/* Generate Task Button */}
                     <div 
                       className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
@@ -371,6 +419,15 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
         lists={lists}
         selectedListId={selectedListId}
         onSelectList={handleSelectList}
+      />
+
+      {/* Select Milestone Modal */}
+      <SelectMilestoneModal
+        isOpen={isSelectMilestoneOpen}
+        onClose={() => setIsSelectMilestoneOpen(false)}
+        milestones={milestones}
+        selectedMilestoneId={selectedMilestoneId}
+        onSelectMilestone={handleSelectMilestone}
       />
 
       {/* Deadline Modal */}

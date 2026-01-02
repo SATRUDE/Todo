@@ -67,6 +67,7 @@ export interface Todo {
   group?: string
   description?: string | null
   list_id?: number // -1 for completed, 0 for today, positive numbers for custom lists
+  milestone_id?: number // Foreign key to milestones table
   deadline_date?: string // YYYY-MM-DD string
   deadline_time?: string
   deadline_recurring?: string
@@ -111,6 +112,7 @@ export interface Milestone {
   name: string
   days?: number // Deprecated - calculated from deadline_date
   deadline_date?: string | null // YYYY-MM-DD string
+  completed?: boolean
   created_at?: string
   updated_at?: string
 }
@@ -125,6 +127,7 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     group: dbTodo.group,
     description: dbTodo.description,
     list_id: dbTodo.list_id,
+    milestone_id: dbTodo.milestone_id,
     deadline_date: dbTodo.deadline_date,
     deadline_time: dbTodo.deadline_time,
     deadline_recurring: dbTodo.deadline_recurring,
@@ -152,6 +155,13 @@ export function appTodoToDbTodo(todo: any): any {
     dbTodo.description = todo.description
   }
   // If description is null/undefined/empty, we don't include it in the insert
+  
+  // Handle milestone_id
+  if (todo.milestoneId !== undefined) {
+    dbTodo.milestone_id = todo.milestoneId
+  } else if (todo.milestone_id !== undefined) {
+    dbTodo.milestone_id = todo.milestone_id
+  }
   
   if (todo.deadline) {
     dbTodo.deadline_date = formatLocalDate(todo.deadline.date)
@@ -238,6 +248,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     group: dbTodo.group,
     description: dbTodo.description || undefined,
     listId: dbTodo.list_id,
+    milestoneId: dbTodo.milestone_id,
     deadline,
     updatedAt: dbTodo.updated_at,
   }
@@ -279,6 +290,24 @@ export async function fetchTasks(): Promise<Todo[]> {
       throw new Error(`Access denied by RLS policy. User ID: ${userId}. Make sure anonymous authentication is enabled and the user session is active.`)
     }
     
+    throw error
+  }
+
+  return data ? data.map(dbTodoToAppTodo) : []
+}
+
+export async function fetchTasksByMilestone(milestoneId: number): Promise<Todo[]> {
+  const userId = await ensureAuthenticated()
+  
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('milestone_id', milestoneId)
+    .or(`user_id.is.null,user_id.eq.${userId}`)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching tasks by milestone:', error)
     throw error
   }
 
@@ -895,7 +924,7 @@ export async function createMilestone(milestone: { goal_id: number; name: string
   return data
 }
 
-export async function updateMilestone(id: number, milestone: { name: string; deadline?: { date: Date; time: string; recurring?: string } | null }): Promise<Milestone> {
+export async function updateMilestone(id: number, milestone: { name: string; deadline?: { date: Date; time: string; recurring?: string } | null; achieved?: boolean }): Promise<Milestone> {
   // #region agent log
   fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:entry',message:'Updating milestone',data:{milestoneId:id,name:milestone.name,hasDeadline:!!milestone.deadline,deadlineDate:milestone.deadline?.date?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
   // #endregion
@@ -942,6 +971,11 @@ export async function updateMilestone(id: number, milestone: { name: string; dea
     updateData.deadline_date = formattedDate
   } else {
     updateData.deadline_date = null
+  }
+  
+  // Handle achieved status (using completed field in database)
+  if (milestone.achieved !== undefined) {
+    updateData.completed = milestone.achieved
   }
   
   // #region agent log

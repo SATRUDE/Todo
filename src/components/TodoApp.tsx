@@ -11,6 +11,7 @@ import { CalendarSync } from "./CalendarSync";
 import { CommonTasks } from "./CommonTasks";
 import { Goals } from "./Goals";
 import { GoalDetail } from "./GoalDetail";
+import { MilestoneDetail } from "./MilestoneDetail";
 import { ReviewMissedDeadlinesBox } from "./ReviewMissedDeadlinesBox";
 import { ReviewMissedDeadlinesModal } from "./ReviewMissedDeadlinesModal";
 import { DeadlineModal } from "./DeadlineModal";
@@ -64,6 +65,7 @@ interface Todo {
   group?: string;
   description?: string | null;
   listId?: number; // -1 for completed, 0 for today, positive numbers for custom lists
+  milestoneId?: number; // Foreign key to milestones table
   deadline?: {
     date: Date;
     time: string;
@@ -80,7 +82,7 @@ interface ListItem {
   isShared: boolean;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "goals" | "goalDetail" | "resetPassword";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -102,6 +104,8 @@ export function TodoApp() {
   const [currentPage, setCurrentPage] = useState<Page>("today");
   const [selectedList, setSelectedList] = useState<ListItem | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
+  const [allMilestonesWithGoals, setAllMilestonesWithGoals] = useState<Array<{ id: number; name: string; goalId: number; goalName: string }>>([]);
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [timeRangeFilter, setTimeRangeFilter] = useState<"today" | "week" | "month" | null>(null);
   const [loading, setLoading] = useState(true);
@@ -264,6 +268,27 @@ export function TodoApp() {
           fetchCommonTasks(),
           fetchGoals()
         ]);
+        
+        // Fetch all milestones with goal info for milestone selection
+        if (goalsData.status === 'fulfilled') {
+          try {
+            const allMilestones: Array<{ id: number; name: string; goalId: number; goalName: string }> = [];
+            for (const goal of goalsData.value) {
+              const goalMilestones = await fetchMilestones(goal.id);
+              for (const milestone of goalMilestones) {
+                allMilestones.push({
+                  id: milestone.id,
+                  name: milestone.name,
+                  goalId: goal.id,
+                  goalName: goal.text
+                });
+              }
+            }
+            setAllMilestonesWithGoals(allMilestones);
+          } catch (error) {
+            console.error('Error fetching milestones:', error);
+          }
+        }
         
         // Handle tasks
         const tasksResult = tasksData.status === 'fulfilled' ? tasksData.value : [];
@@ -821,7 +846,7 @@ export function TodoApp() {
     }
   };
 
-  const addNewTask = async (taskText: string, description?: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => {
+  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }) => {
     const newTodo: Todo = {
       id: Date.now(), // Temporary ID
       text: taskText,
@@ -829,6 +854,7 @@ export function TodoApp() {
       time: deadline?.time,
       group: deadline ? undefined : "Group",
       listId: listId !== undefined ? listId : TODAY_LIST_ID,
+      milestoneId: milestoneId,
       deadline: deadline,
       description: description ?? null,
     };
@@ -872,6 +898,33 @@ export function TodoApp() {
       setTodos(displayTasks);
     } catch (error) {
       console.error('Error adding task to list:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      alert(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const addNewTaskToMilestone = async (taskText: string, description: string | undefined, milestoneId: number, deadline?: { date: Date; time: string; recurring?: string }) => {
+    const newTodo: Todo = {
+      id: Date.now(), // Temporary ID
+      text: taskText,
+      completed: false,
+      milestoneId: milestoneId,
+      deadline: deadline,
+      description: description ?? null,
+    };
+    
+    try {
+      console.log('Adding new task to milestone:', { taskText, description, milestoneId });
+      const createdTask = await createTask(newTodo);
+      console.log('Task created successfully:', createdTask);
+      const displayTodo = dbTodoToDisplayTodo(createdTask);
+      console.log('Converted to display format:', displayTodo);
+      // Reload all tasks to ensure consistency
+      const allTasks = await fetchTasks();
+      const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+      setTodos(displayTasks);
+    } catch (error) {
+      console.error('Error adding task to milestone:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
       alert(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -1028,7 +1081,7 @@ export function TodoApp() {
     }
   };
 
-  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => {
+  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => {
     try {
       const todo = todos.find(t => t.id === taskId);
       if (!todo) return;
@@ -1039,6 +1092,7 @@ export function TodoApp() {
         text,
         completed: todo.completed,
         listId: listId !== undefined ? listId : todo.listId,
+        milestoneId: milestoneId !== undefined ? milestoneId : todo.milestoneId,
         time: deadline?.time || todo.time || null,
         group: deadline ? undefined : (todo.group || null),
       };
@@ -1134,6 +1188,11 @@ export function TodoApp() {
   const handleTaskClick = (task: Todo) => {
     setSelectedTask(task);
     setIsTaskDetailOpen(true);
+  };
+
+  const getTasksForMilestone = (milestoneId: number) => {
+    // Filter out completed tasks - they should only show in the completed list
+    return todos.filter(todo => todo.milestoneId === milestoneId && !todo.completed);
   };
 
   const getTasksForList = (listId: number) => {
@@ -1998,12 +2057,90 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             const created = await createMilestone({ goal_id: goalId, name, deadline: deadline || undefined });
             return created;
           }}
-          onUpdateMilestone={async (id, name, deadline) => {
-            const updated = await updateMilestone(id, { name, deadline: deadline || undefined });
+          onUpdateMilestone={async (id, name, deadline, achieved) => {
+            const updated = await updateMilestone(id, { name, deadline: deadline || undefined, achieved });
             return updated;
           }}
           onDeleteMilestone={async (id) => {
             await deleteMilestone(id);
+          }}
+          onSelectMilestone={(milestone) => {
+            setSelectedMilestone(milestone);
+            setCurrentPage("milestoneDetail");
+          }}
+        />
+      ) : currentPage === "milestoneDetail" && selectedMilestone ? (
+        <MilestoneDetail
+          milestone={selectedMilestone}
+          goal={selectedGoal!}
+          onBack={() => {
+            setCurrentPage("goalDetail");
+            setSelectedMilestone(null);
+          }}
+          tasks={getTasksForMilestone(selectedMilestone.id)}
+          onToggleTask={toggleTodo}
+          onAddTask={(taskText, description, deadline) => addNewTaskToMilestone(taskText, description, selectedMilestone.id, deadline)}
+          onTaskClick={handleTaskClick}
+          onUpdateMilestone={async (id, name, deadline, achieved) => {
+            const updated = await updateMilestone(id, { name, deadline: deadline || undefined, achieved });
+            setSelectedMilestone(updated);
+            // Refresh milestones with goals
+            if (selectedGoal) {
+              const goalMilestones = await fetchMilestones(selectedGoal.id);
+              const allMilestones: Array<{ id: number; name: string; goalId: number; goalName: string }> = [];
+              for (const goal of goals) {
+                const ms = await fetchMilestones(goal.id);
+                for (const m of ms) {
+                  allMilestones.push({
+                    id: m.id,
+                    name: m.name,
+                    goalId: goal.id,
+                    goalName: goal.text
+                  });
+                }
+              }
+              setAllMilestonesWithGoals(allMilestones);
+            }
+          }}
+          onToggleAchieved={async (id, achieved) => {
+            if (selectedMilestone && selectedMilestone.id === id) {
+              const updated = await updateMilestone(id, { 
+                name: selectedMilestone.name, 
+                deadline: selectedMilestone.deadline_date ? { 
+                  date: new Date(selectedMilestone.deadline_date), 
+                  time: '', 
+                  recurring: undefined 
+                } : null, 
+                achieved 
+              });
+              setSelectedMilestone(updated);
+              // Refresh milestones for the goal
+              if (selectedGoal) {
+                const goalMilestones = await fetchMilestones(selectedGoal.id);
+                // Also refresh all milestones with goals
+                const allMilestones: Array<{ id: number; name: string; goalId: number; goalName: string }> = [];
+                for (const goal of goals) {
+                  const ms = await fetchMilestones(goal.id);
+                  for (const m of ms) {
+                    allMilestones.push({
+                      id: m.id,
+                      name: m.name,
+                      goalId: goal.id,
+                      goalName: goal.text
+                    });
+                  }
+                }
+                setAllMilestonesWithGoals(allMilestones);
+              }
+            }
+          }}
+          onDeleteMilestone={async (id) => {
+            await deleteMilestone(id);
+            setCurrentPage("goalDetail");
+            setSelectedMilestone(null);
+          }}
+          onFetchMilestones={async (goalId) => {
+            return await fetchMilestones(goalId);
           }}
         />
       ) : currentPage === "resetPassword" ? (
@@ -2044,6 +2181,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               onDeleteList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : deleteList}
               onTaskClick={handleTaskClick}
               lists={lists}
+              milestones={allMilestonesWithGoals}
               dateFilter={dateFilter}
               timeRangeFilter={timeRangeFilter}
               onClearDateFilter={() => {
@@ -2238,6 +2376,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         onClose={() => setIsModalOpen(false)}
         onAddTask={addNewTask}
         lists={lists}
+        milestones={allMilestonesWithGoals}
       />
 
       {/* Task Detail Modal */}
@@ -2252,6 +2391,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onUpdateTask={updateTask}
           onDeleteTask={deleteTask}
           lists={lists}
+          milestones={allMilestonesWithGoals}
         />
       )}
 
