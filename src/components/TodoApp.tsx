@@ -10,6 +10,7 @@ import { Dashboard } from "./Dashboard";
 import { CalendarSync } from "./CalendarSync";
 import { CommonTasks } from "./CommonTasks";
 import { Goals } from "./Goals";
+import { GoalDetail } from "./GoalDetail";
 import { ReviewMissedDeadlinesBox } from "./ReviewMissedDeadlinesBox";
 import { ReviewMissedDeadlinesModal } from "./ReviewMissedDeadlinesModal";
 import { DeadlineModal } from "./DeadlineModal";
@@ -40,7 +41,12 @@ import {
   updateGoal,
   deleteGoal,
   Goal,
-  dbGoalToDisplayGoal
+  dbGoalToDisplayGoal,
+  fetchMilestones,
+  createMilestone,
+  updateMilestone,
+  deleteMilestone,
+  Milestone
 } from "../lib/database";
 import { 
   requestNotificationPermission, 
@@ -74,7 +80,7 @@ interface ListItem {
   isShared: boolean;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "goals" | "resetPassword";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "goals" | "goalDetail" | "resetPassword";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -95,6 +101,7 @@ export function TodoApp() {
   const [selectedTask, setSelectedTask] = useState<Todo | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("today");
   const [selectedList, setSelectedList] = useState<ListItem | null>(null);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [timeRangeFilter, setTimeRangeFilter] = useState<"today" | "week" | "month" | null>(null);
   const [loading, setLoading] = useState(true);
@@ -990,6 +997,10 @@ export function TodoApp() {
       const updatedGoal = await updateGoal(id, { text, description, is_active });
       const displayGoal = dbGoalToDisplayGoal(updatedGoal);
       setGoals(goals.map(goal => goal.id === id ? displayGoal : goal));
+      // Update selectedGoal if it's the one being updated
+      if (selectedGoal && selectedGoal.id === id) {
+        setSelectedGoal(displayGoal);
+      }
     } catch (error) {
       console.error('Error updating goal:', error);
       alert(`Failed to update goal: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -1962,6 +1973,38 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onUpdateGoal={handleUpdateGoal}
           onCreateGoal={handleCreateGoal}
           onDeleteGoal={handleDeleteGoal}
+          onSelectGoal={(goal) => {
+            setSelectedGoal(goal);
+            setCurrentPage("goalDetail");
+          }}
+        />
+      ) : currentPage === "goalDetail" && selectedGoal ? (
+        <GoalDetail
+          goal={selectedGoal}
+          onBack={() => {
+            setCurrentPage("goals");
+            setSelectedGoal(null);
+          }}
+          onUpdateGoal={async (id, text, description, is_active) => {
+            await handleUpdateGoal(id, text, description, is_active);
+            // Update the selected goal in state
+            setSelectedGoal({ ...selectedGoal, text, description, is_active });
+          }}
+          onDeleteGoal={handleDeleteGoal}
+          onFetchMilestones={async (goalId) => {
+            return await fetchMilestones(goalId);
+          }}
+          onCreateMilestone={async (goalId, name, deadline) => {
+            const created = await createMilestone({ goal_id: goalId, name, deadline: deadline || undefined });
+            return created;
+          }}
+          onUpdateMilestone={async (id, name, deadline) => {
+            const updated = await updateMilestone(id, { name, deadline: deadline || undefined });
+            return updated;
+          }}
+          onDeleteMilestone={async (id) => {
+            await deleteMilestone(id);
+          }}
         />
       ) : currentPage === "resetPassword" ? (
         <ResetPassword 

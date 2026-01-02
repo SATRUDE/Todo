@@ -69,7 +69,7 @@ export function GoalDetailModal({
     try {
       if (goal.id < 0 && onCreateGoal) {
         // New goal - check if we can create it as active
-        // The database function will enforce the 3 active goals limit
+        // The database function will enforce the 4 active goals limit
         await onCreateGoal(goalInput, goalDescription || null, isActive);
       } else {
         // Update existing goal
@@ -77,7 +77,7 @@ export function GoalDetailModal({
       }
       onClose();
     } catch (error) {
-      if (error instanceof Error && error.message.includes('3 active goals')) {
+      if (error instanceof Error && error.message.includes('4 active goals')) {
         alert(error.message);
       } else {
         console.error('Error saving goal:', error);

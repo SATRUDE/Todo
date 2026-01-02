@@ -14,6 +14,7 @@ interface GoalsProps {
   onUpdateGoal: (id: number, text: string, description?: string | null, is_active?: boolean) => Promise<void>;
   onCreateGoal: (text: string, description?: string | null, is_active?: boolean) => Promise<void>;
   onDeleteGoal: (id: number) => Promise<void>;
+  onSelectGoal: (goal: Goal) => void;
 }
 
 export function Goals({ 
@@ -21,14 +22,14 @@ export function Goals({
   goals, 
   onUpdateGoal,
   onCreateGoal,
-  onDeleteGoal
+  onDeleteGoal,
+  onSelectGoal
 }: GoalsProps) {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleGoalClick = (goal: Goal) => {
-    setSelectedGoal(goal);
-    setIsModalOpen(true);
+    onSelectGoal(goal);
   };
 
   const handleCloseModal = () => {
@@ -109,7 +110,7 @@ export function Goals({
 
           {/* Goals count */}
           <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]">
-            {activeGoals.length}/3 Goals set
+            {activeGoals.length}/4 Goals set
           </p>
 
           {/* Goals List */}
@@ -198,8 +199,8 @@ export function Goals({
         </div>
       </div>
 
-      {/* Goal Detail Modal */}
-      {selectedGoal && (
+      {/* Goal Detail Modal - Only for creating new goals */}
+      {selectedGoal && selectedGoal.id < 0 && (
         <GoalDetailModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}

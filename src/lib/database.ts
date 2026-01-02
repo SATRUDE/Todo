@@ -105,6 +105,16 @@ export interface Goal {
   updated_at?: string
 }
 
+export interface Milestone {
+  id: number
+  goal_id: number
+  name: string
+  days?: number // Deprecated - calculated from deadline_date
+  deadline_date?: string | null // YYYY-MM-DD string
+  created_at?: string
+  updated_at?: string
+}
+
 // Convert database Todo to app Todo format
 export function dbTodoToAppTodo(dbTodo: any): Todo {
   return {
@@ -683,7 +693,7 @@ export async function fetchGoals(): Promise<Goal[]> {
 export async function createGoal(goal: { text: string; description?: string | null; is_active?: boolean }): Promise<Goal> {
   const userId = await ensureAuthenticated()
   
-  // If setting to active, check if there are already 3 active goals
+  // If setting to active, check if there are already 4 active goals
   const isActive = goal.is_active !== false; // Default to true if not specified
   
   if (isActive) {
@@ -698,8 +708,8 @@ export async function createGoal(goal: { text: string; description?: string | nu
       throw countError
     }
     
-    if (activeGoals && activeGoals.length >= 3) {
-      throw new Error('You can only have 3 active goals at a time. Please deactivate or delete an existing goal first.')
+    if (activeGoals && activeGoals.length >= 4) {
+      throw new Error('You can only have 4 active goals at a time. Please deactivate or delete an existing goal first.')
     }
   }
   
@@ -727,7 +737,7 @@ export async function createGoal(goal: { text: string; description?: string | nu
 export async function updateGoal(id: number, goal: { text: string; description?: string | null; is_active?: boolean }): Promise<Goal> {
   const userId = await ensureAuthenticated()
   
-  // If setting to active, check if there are already 3 active goals
+  // If setting to active, check if there are already 4 active goals
   if (goal.is_active !== false) {
     const { data: activeGoals, error: countError } = await supabase
       .from('goals')
@@ -741,8 +751,8 @@ export async function updateGoal(id: number, goal: { text: string; description?:
       throw countError
     }
     
-    if (activeGoals && activeGoals.length >= 3) {
-      throw new Error('You can only have 3 active goals at a time. Please deactivate another goal first.')
+    if (activeGoals && activeGoals.length >= 4) {
+      throw new Error('You can only have 4 active goals at a time. Please deactivate another goal first.')
     }
   }
   
@@ -793,6 +803,203 @@ export function dbGoalToDisplayGoal(dbGoal: Goal): any {
     text: dbGoal.text,
     description: dbGoal.description || undefined,
     is_active: dbGoal.is_active !== false, // Default to true if not set
+  }
+}
+
+// Milestones
+export async function fetchMilestones(goalId: number): Promise<Milestone[]> {
+  const userId = await ensureAuthenticated()
+  
+  // Verify the goal belongs to the user
+  const { data: goal } = await supabase
+    .from('goals')
+    .select('id')
+    .eq('id', goalId)
+    .eq('user_id', userId)
+    .single()
+  
+  if (!goal) {
+    throw new Error('Goal not found or access denied')
+  }
+  
+  const { data, error } = await supabase
+    .from('milestones')
+    .select('*')
+    .eq('goal_id', goalId)
+    .order('days', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching milestones:', error)
+    throw error
+  }
+
+  return data || []
+}
+
+export async function createMilestone(milestone: { goal_id: number; name: string; deadline?: { date: Date; time: string; recurring?: string } | null }): Promise<Milestone> {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createMilestone:entry',message:'Creating milestone',data:{goalId:milestone.goal_id,name:milestone.name,hasDeadline:!!milestone.deadline,deadlineDate:milestone.deadline?.date?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+  
+  const userId = await ensureAuthenticated()
+  
+  // Verify the goal belongs to the user
+  const { data: goal } = await supabase
+    .from('goals')
+    .select('id')
+    .eq('id', milestone.goal_id)
+    .eq('user_id', userId)
+    .single()
+  
+  if (!goal) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createMilestone:goalNotFound',message:'Goal not found',data:{goalId:milestone.goal_id,userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    throw new Error('Goal not found or access denied')
+  }
+  
+  const insertData: any = {
+    goal_id: milestone.goal_id,
+    name: milestone.name,
+  }
+  
+  if (milestone.deadline) {
+    const formattedDate = formatLocalDate(milestone.deadline.date)
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createMilestone:formattingDeadline',message:'Formatting deadline date',data:{originalDate:milestone.deadline.date?.toISOString(),formattedDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    insertData.deadline_date = formattedDate
+  } else {
+    insertData.deadline_date = null
+  }
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createMilestone:beforeInsert',message:'Before Supabase insert',data:{insertData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
+  
+  const { data, error } = await supabase
+    .from('milestones')
+    .insert(insertData)
+    .select()
+    .single()
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createMilestone:afterInsert',message:'After Supabase insert',data:{hasError:!!error,errorCode:error?.code,errorMessage:error?.message,errorDetails:error ? JSON.stringify(error) : null,hasData:!!data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+  // #endregion
+
+  if (error) {
+    console.error('Error creating milestone:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function updateMilestone(id: number, milestone: { name: string; deadline?: { date: Date; time: string; recurring?: string } | null }): Promise<Milestone> {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:entry',message:'Updating milestone',data:{milestoneId:id,name:milestone.name,hasDeadline:!!milestone.deadline,deadlineDate:milestone.deadline?.date?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+  // #endregion
+  
+  const userId = await ensureAuthenticated()
+  
+  // Verify the milestone's goal belongs to the user
+  const { data: milestoneData } = await supabase
+    .from('milestones')
+    .select('goal_id')
+    .eq('id', id)
+    .single()
+  
+  if (!milestoneData) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:milestoneNotFound',message:'Milestone not found',data:{milestoneId:id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    throw new Error('Milestone not found')
+  }
+  
+  const { data: goalData } = await supabase
+    .from('goals')
+    .select('user_id')
+    .eq('id', milestoneData.goal_id)
+    .eq('user_id', userId)
+    .single()
+  
+  if (!goalData) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:accessDenied',message:'Access denied',data:{milestoneId:id,goalId:milestoneData.goal_id,userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+    // #endregion
+    throw new Error('Milestone not found or access denied')
+  }
+  
+  const updateData: any = {
+    name: milestone.name,
+  }
+  
+  if (milestone.deadline) {
+    const formattedDate = formatLocalDate(milestone.deadline.date)
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:formattingDeadline',message:'Formatting deadline date',data:{originalDate:milestone.deadline.date?.toISOString(),formattedDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+    // #endregion
+    updateData.deadline_date = formattedDate
+  } else {
+    updateData.deadline_date = null
+  }
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:beforeUpdate',message:'Before Supabase update',data:{milestoneId:id,updateData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+  // #endregion
+  
+  const { data, error } = await supabase
+    .from('milestones')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single()
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:afterUpdate',message:'After Supabase update',data:{hasError:!!error,errorCode:error?.code,errorMessage:error?.message,errorDetails:error ? JSON.stringify(error) : null,hasData:!!data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
+  // #endregion
+
+  if (error) {
+    console.error('Error updating milestone:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function deleteMilestone(id: number): Promise<void> {
+  const userId = await ensureAuthenticated()
+  
+  // Verify the milestone's goal belongs to the user
+  const { data: milestoneData } = await supabase
+    .from('milestones')
+    .select('goal_id')
+    .eq('id', id)
+    .single()
+  
+  if (!milestoneData) {
+    throw new Error('Milestone not found')
+  }
+  
+  const { data: goalData } = await supabase
+    .from('goals')
+    .select('user_id')
+    .eq('id', milestoneData.goal_id)
+    .eq('user_id', userId)
+    .single()
+  
+  if (!goalData) {
+    throw new Error('Milestone not found or access denied')
+  }
+  
+  const { error } = await supabase
+    .from('milestones')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error deleting milestone:', error)
+    throw error
   }
 }
 
