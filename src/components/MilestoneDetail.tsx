@@ -125,10 +125,10 @@ export function MilestoneDetail({
         <div className="w-full">
           <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
             {/* Header */}
-            <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-              <div className="content-stretch flex gap-[16px] items-center relative shrink-0">
+            <div className="content-stretch flex items-center justify-between relative shrink-0 w-full gap-[16px]">
+              <div className="content-stretch flex gap-[16px] items-center relative shrink-0 min-w-0 flex-1">
                 <div 
-                  className="relative shrink-0 size-[32px] cursor-pointer"
+                  className="relative shrink-0 size-[32px] cursor-pointer flex-shrink-0"
                   onClick={onBack}
                 >
                   <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
@@ -144,16 +144,16 @@ export function MilestoneDetail({
                   </svg>
                 </div>
                 <div 
-                  className="content-stretch flex flex-col items-start relative shrink-0 cursor-pointer"
+                  className="content-stretch flex flex-col items-start relative shrink-0 cursor-pointer min-w-0 flex-1 overflow-hidden"
                   onClick={handleMilestoneClick}
                 >
-                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">
+                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-white tracking-[-0.308px] truncate w-full">
                     {milestone.name}
                   </p>
                 </div>
               </div>
               <div 
-                className="relative shrink-0 size-[32px] cursor-pointer"
+                className="relative shrink-0 size-[32px] cursor-pointer flex-shrink-0"
                 onClick={() => setIsAddTaskModalOpen(true)}
               >
                 <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">

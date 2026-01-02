@@ -355,8 +355,14 @@ export function TodoApp() {
 
   // Initialize notification permission status
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:useEffect:notificationPermission',message:'Initializing notification permission check',data:{hasWindow:typeof window !== 'undefined',hasNotification:'Notification' in window,permission:typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'N/A'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'1'})}).catch(()=>{});
+    // #endregion
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setNotificationPermission(Notification.permission);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:useEffect:notificationPermission:set',message:'Notification permission set',data:{permission:Notification.permission},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'1'})}).catch(()=>{});
+      // #endregion
     }
   }, []);
 
@@ -367,10 +373,19 @@ export function TodoApp() {
       setNotificationPermission(permission);
       
       if (permission === 'granted') {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleEnableNotifications:permissionGranted',message:'Permission granted, subscribing to push',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
+        // #endregion
         const subscription = await subscribeToPushNotifications();
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleEnableNotifications:subscriptionResult',message:'Push subscription result',data:{hasSubscription:!!subscription,subscriptionEndpoint:subscription?.endpoint?.substring(0,50)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
+        // #endregion
         if (subscription) {
           console.log('📱 Push subscription created, sending to server...');
           const success = await sendSubscriptionToServer(subscription);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleEnableNotifications:subscriptionSaved',message:'Subscription save result',data:{success},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
+          // #endregion
           if (success) {
             console.log('✅ Subscription saved to server successfully');
             alert('Notifications enabled! You will receive reminders for due todos.');
@@ -380,6 +395,9 @@ export function TodoApp() {
           }
         } else {
           console.error('❌ Failed to create push subscription');
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleEnableNotifications:subscriptionFailed',message:'Failed to create push subscription',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
+          // #endregion
         }
       } else if (permission === 'denied') {
         alert('Notification permission was previously denied. Please enable notifications in your browser settings to receive reminders.');
@@ -1156,7 +1174,7 @@ export function TodoApp() {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleUpdateDeadline:beforeUpdate',message:'Calling updateTask',data:{taskId,todoText:todo.text},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
-      await updateTask(taskId, todo.text, todo.description, todo.listId, deadline);
+      await updateTask(taskId, todo.text, todo.description, todo.listId, todo.milestoneId, deadline);
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleUpdateDeadline:afterUpdate',message:'UpdateTask completed successfully',data:{taskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion

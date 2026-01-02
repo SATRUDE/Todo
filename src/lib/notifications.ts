@@ -21,6 +21,9 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 export async function subscribeToPushNotifications(): Promise<PushSubscription | null> {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:entry',message:'Starting push subscription',data:{hasServiceWorker:'serviceWorker' in navigator,hasPushManager:'PushManager' in window},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
+  // #endregion
   if (!('serviceWorker' in navigator)) {
     console.warn('Service workers are not supported');
     return null;
@@ -33,10 +36,19 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
 
   try {
     // Register service worker if not already registered
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:waitingForSW',message:'Waiting for service worker ready',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
+    // #endregion
     const registration = await navigator.serviceWorker.ready;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:swReady',message:'Service worker ready',data:{hasRegistration:!!registration},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
+    // #endregion
 
     // Check if already subscribed
     let subscription = await registration.pushManager.getSubscription();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:checkExisting',message:'Checking existing subscription',data:{hasSubscription:!!subscription},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
+    // #endregion
     
     if (subscription) {
       console.log('Already subscribed to push notifications');
@@ -45,6 +57,9 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
 
     // Request notification permission first
     const permission = await requestNotificationPermission();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:permissionCheck',message:'Notification permission check',data:{permission},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
+    // #endregion
     if (permission !== 'granted') {
       console.warn('Notification permission not granted');
       return null;
@@ -55,6 +70,9 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
     // Generate keys with: web-push generate-vapid-keys
     // Add VITE_VAPID_PUBLIC_KEY to your .env file
     const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:vapidCheck',message:'Checking VAPID key',data:{hasVapidKey:!!vapidPublicKey,vapidKeyLength:vapidPublicKey?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'4'})}).catch(()=>{});
+    // #endregion
     
     if (!vapidPublicKey) {
       console.warn('VAPID public key not found. Push notifications will not work.');
@@ -63,10 +81,16 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
       return null;
     }
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:beforeSubscribe',message:'About to subscribe to push',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
+    // #endregion
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
     });
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:subscribed',message:'Successfully subscribed',data:{hasSubscription:!!subscription,subscriptionEndpoint:subscription?.endpoint?.substring(0,50)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
+    // #endregion
 
     console.log('Successfully subscribed to push notifications');
     return subscription;
