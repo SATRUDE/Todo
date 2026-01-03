@@ -71,6 +71,7 @@ interface Todo {
     time: string;
     recurring?: string;
   };
+  effort?: number; // Effort level out of 10 (0-10)
   updatedAt?: string; // ISO timestamp string
 }
 
@@ -864,7 +865,7 @@ export function TodoApp() {
     }
   };
 
-  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }) => {
+  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number) => {
     const newTodo: Todo = {
       id: Date.now(), // Temporary ID
       text: taskText,
@@ -875,6 +876,7 @@ export function TodoApp() {
       milestoneId: milestoneId,
       deadline: deadline,
       description: description ?? null,
+      effort: effort,
     };
     
     try {
@@ -1099,7 +1101,7 @@ export function TodoApp() {
     }
   };
 
-  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => {
+  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number) => {
     try {
       const todo = todos.find(t => t.id === taskId);
       if (!todo) return;
@@ -1113,6 +1115,7 @@ export function TodoApp() {
         milestoneId: milestoneId !== undefined ? milestoneId : todo.milestoneId,
         time: deadline?.time || todo.time || null,
         group: deadline ? undefined : (todo.group || null),
+        effort: effort !== undefined ? effort : todo.effort,
       };
 
       if (description !== undefined) {
@@ -1174,7 +1177,7 @@ export function TodoApp() {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleUpdateDeadline:beforeUpdate',message:'Calling updateTask',data:{taskId,todoText:todo.text},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
-      await updateTask(taskId, todo.text, todo.description, todo.listId, todo.milestoneId, deadline);
+      await updateTask(taskId, todo.text, todo.description, todo.listId, todo.milestoneId, deadline, todo.effort);
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleUpdateDeadline:afterUpdate',message:'UpdateTask completed successfully',data:{taskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
@@ -1422,6 +1425,66 @@ export function TodoApp() {
   };
 
   const todayTasks = getFilteredTasks();
+  
+  // Calculate total effort for Today and Tomorrow (for tab labels)
+  const getTotalEffort = (timeRange: "today" | "tomorrow") => {
+    const tasks = todos.filter(todo => {
+      if (!todo.deadline || todo.completed) return false;
+      const taskDate = todo.deadline.date;
+      if (timeRange === "today") {
+        return isToday(taskDate);
+      } else {
+        return isTomorrow(taskDate);
+      }
+    });
+    return tasks.reduce((sum, task) => sum + (task.effort || 0), 0);
+  };
+  
+  const todayEffort = getTotalEffort("today");
+  const tomorrowEffort = getTotalEffort("tomorrow");
+
+  // Calculate total effort for the current time range (for status card)
+  const getEffortForTimeRange = () => {
+    const tasks = todos.filter(todo => {
+      if (!todo.deadline) return false;
+      const taskDate = todo.deadline.date;
+      const today = new Date();
+      
+      switch (selectedTimeRange) {
+        case "today":
+          return isToday(taskDate);
+        case "tomorrow":
+          return isTomorrow(taskDate);
+        case "week":
+          // Get tasks for this week (Monday to Sunday)
+          const dayOfWeek = today.getDay();
+          const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() + daysToMonday);
+          weekStart.setHours(0, 0, 0, 0);
+          const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+          const weekEnd = new Date(today);
+          weekEnd.setDate(today.getDate() + daysUntilSunday);
+          weekEnd.setHours(23, 59, 59, 999);
+          return taskDate >= weekStart && taskDate <= weekEnd;
+        case "month":
+          // Get tasks for this month
+          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+          monthStart.setHours(0, 0, 0, 0);
+          const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          monthEnd.setHours(23, 59, 59, 999);
+          return taskDate >= monthStart && taskDate <= monthEnd;
+        case "allTime":
+          return true; // All tasks with deadlines
+        default:
+          return false;
+      }
+    });
+    const totalEffort = tasks.reduce((sum, task) => sum + (task.effort || 0), 0);
+    return { total: totalEffort, max: 10 };
+  };
+  
+  const effortForTimeRange = getEffortForTimeRange();
 
   // Calculate missed deadlines (tasks with deadlines that have passed and are not completed)
   // Use currentTime state to trigger re-renders when time passes
@@ -1799,43 +1862,149 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               
                 
 
-              {/* Status Boxes */}
-              {(missedDeadlines.length > 0 || shouldShowCompletedBox) && (
-                <div className="flex flex-col gap-[16px] w-full px-[20px]">
-                  {missedDeadlines.length > 0 && (
-                    <ReviewMissedDeadlinesBox
-                      missedCount={missedDeadlines.length}
-                      onClick={() => {
-                        setIsReviewMissedDeadlinesOpen(true);
-                      }}
-                    />
-                  )}
-
-                  {shouldShowCompletedBox && (
-                    <CompletedTasksBox
-                      completedCount={tasksCompletedForTimeRange.length}
-                      onClick={() => {
-                        const completedList: ListItem = {
-                          id: COMPLETED_LIST_ID,
-                          name: "Completed list",
-                          color: "#00C853",
-                          count: tasksCompletedForTimeRange.length,
-                          isShared: false,
-                        };
-                        // Set the time range filter based on the selected tab
-                        // For "allTime", set to null to show all completed tasks without filtering
-                        const newTimeRangeFilter = selectedTimeRange === "today" ? "today" : selectedTimeRange === "week" ? "week" : selectedTimeRange === "month" ? "month" : selectedTimeRange === "allTime" ? null : null;
-                        // #region agent log
-                        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:CompletedTasksBox:onClick',message:'Setting timeRangeFilter before opening completed list',data:{selectedTimeRange,newTimeRangeFilter,completedCount:tasksCompletedForTimeRange.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                        // #endregion
-                        setTimeRangeFilter(newTimeRangeFilter);
-                        setDateFilter(null); // Clear date filter when using time range filter
-                        handleSelectList(completedList, null);
-                      }}
-                    />
-                  )}
+              {/* Status Cards */}
+              <div 
+                className="content-stretch flex items-start relative shrink-0 w-full px-[20px]"
+                style={{ gap: '16px' }}
+              >
+                {/* Effort Card - Only show on Today and Tomorrow */}
+                {(selectedTimeRange === "today" || selectedTimeRange === "tomorrow") && (
+                  <div 
+                    className="content-stretch flex items-end justify-between relative rounded-[8px]"
+                    style={{ 
+                      backgroundColor: '#1f2022', 
+                      borderRadius: '8px',
+                      padding: '12px',
+                      flex: 1
+                    }}
+                  >
+                  <div className="flex flex-col gap-[10px] w-full">
+                    <div className="flex items-start justify-between w-full" style={{ width: '100%' }}>
+                      <div className="relative shrink-0 size-[24px]">
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          strokeWidth="1.5" 
+                          stroke="#e1e6ee" 
+                          className="size-6"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z" />
+                        </svg>
+                      </div>
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]" style={{ textAlign: 'right' }}>
+                        {effortForTimeRange.total}/{effortForTimeRange.max}
+                      </p>
+                    </div>
+                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px]">
+                      Effort
+                    </p>
+                  </div>
                 </div>
-              )}
+                )}
+
+                {/* Done Card */}
+                <div 
+                  className={`content-stretch flex items-end justify-between relative rounded-[8px] ${tasksCompletedForTimeRange.length > 0 ? 'cursor-pointer hover:opacity-90' : ''}`}
+                  style={{ 
+                    backgroundColor: '#1f2022', 
+                    borderRadius: '8px',
+                    padding: '12px',
+                    flex: 1
+                  }}
+                  onClick={() => {
+                    if (tasksCompletedForTimeRange.length > 0) {
+                      const completedList: ListItem = {
+                        id: COMPLETED_LIST_ID,
+                        name: "Completed list",
+                        color: "#00C853",
+                        count: tasksCompletedForTimeRange.length,
+                        isShared: false,
+                      };
+                      // Set the time range filter based on the selected tab
+                      // For "allTime", set to null to show all completed tasks without filtering
+                      const newTimeRangeFilter = selectedTimeRange === "today" ? "today" : selectedTimeRange === "week" ? "week" : selectedTimeRange === "month" ? "month" : selectedTimeRange === "allTime" ? null : null;
+                      setTimeRangeFilter(newTimeRangeFilter);
+                      setDateFilter(null); // Clear date filter when using time range filter
+                      handleSelectList(completedList, null);
+                    }
+                  }}
+                >
+                  <div className="flex flex-col gap-[10px] w-full">
+                    <div className="flex items-start justify-between w-full" style={{ width: '100%' }}>
+                      <div className="relative shrink-0 size-[24px]">
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          strokeWidth="1.5" 
+                          stroke="#00c853"
+                          className="size-6"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" 
+                          />
+                        </svg>
+                      </div>
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]" style={{ textAlign: 'right' }}>
+                        {tasksCompletedForTimeRange.length}
+                      </p>
+                    </div>
+                    <p 
+                      className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]" 
+                      style={{ color: '#00c853' }}
+                    >
+                      Done
+                    </p>
+                  </div>
+                </div>
+
+                {/* Overdue Card */}
+                <div 
+                  className={`content-stretch flex items-end justify-between relative rounded-[8px] ${missedDeadlines.length > 0 ? 'cursor-pointer hover:opacity-90' : ''}`}
+                  style={{ 
+                    backgroundColor: '#1f2022', 
+                    borderRadius: '8px',
+                    padding: '12px',
+                    flex: 1
+                  }}
+                  onClick={() => {
+                    if (missedDeadlines.length > 0) {
+                      setIsReviewMissedDeadlinesOpen(true);
+                    }
+                  }}
+                >
+                  <div className="flex flex-col gap-[10px] w-full">
+                    <div className="flex items-start justify-between w-full" style={{ width: '100%' }}>
+                      <div className="relative shrink-0 size-[24px]">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth="1.5"
+                          stroke="#ef4123"
+                          className="size-6"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3"
+                          />
+                        </svg>
+                      </div>
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]" style={{ textAlign: 'right' }}>
+                        {missedDeadlines.length}
+                      </p>
+                    </div>
+                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]" style={{ color: '#ef4123' }}>
+                      Overdue
+                    </p>
+                  </div>
+                </div>
+              </div>
 
             
             {/* Todo List */}

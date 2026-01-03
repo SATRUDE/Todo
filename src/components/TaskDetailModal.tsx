@@ -35,15 +35,16 @@ interface Todo {
     time: string;
     recurring?: string;
   };
+  effort?: number;
 }
 
 interface TaskDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   task: Todo;
-  onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => void;
+  onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number) => void;
   onDeleteTask: (taskId: number) => void;
-  onCreateTask?: (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => void;
+  onCreateTask?: (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number) => void;
   lists?: ListItem[];
   milestones?: MilestoneWithGoal[];
 }
@@ -57,6 +58,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   const [selectedListId, setSelectedListId] = useState<number | null>(task.listId !== undefined && task.listId !== 0 && task.listId !== -1 ? task.listId : null);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<number | null>(task.milestoneId || null);
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(task.deadline || null);
+  const [effort, setEffort] = useState<number>(task.effort || 0);
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -67,6 +69,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     setSelectedListId(task.listId !== undefined && task.listId !== 0 && task.listId !== -1 ? task.listId : null);
     setSelectedMilestoneId(task.milestoneId || null);
     setDeadline(task.deadline || null);
+    setEffort(task.effort || 0);
     
     // Auto-resize textareas when task changes
     setTimeout(() => {
@@ -85,9 +88,9 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     if (taskInput.trim() === "") return;
     // Check if this is a new task (temporary ID < 0) and we have onCreateTask
     if (task.id < 0 && onCreateTask) {
-      onCreateTask(taskInput, taskDescription || null, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline);
+      onCreateTask(taskInput, taskDescription || null, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, effort > 0 ? effort : undefined);
     } else {
-      onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline);
+      onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, effort > 0 ? effort : undefined);
     }
     onClose();
   };
@@ -305,6 +308,22 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                     <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getSelectedMilestoneName()}</p>
                   </div>
                 )}
+
+                {/* Effort Button */}
+                <div 
+                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                  onClick={() => {
+                    if (effort < 10) {
+                      setEffort(effort + 1);
+                    } else {
+                      setEffort(0);
+                    }
+                  }}
+                >
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                    Effort {effort}
+                  </p>
+                </div>
 
                 {/* Copy Button */}
                 <div 

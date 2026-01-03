@@ -24,7 +24,7 @@ interface MilestoneWithGoal {
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddTask: (task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }) => void;
+  onAddTask: (task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number) => void;
   lists?: ListItem[];
   defaultListId?: number;
   milestones?: MilestoneWithGoal[];
@@ -39,6 +39,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
 
   const [taskInput, setTaskInput] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
+  const [effort, setEffort] = useState<number>(0);
   const [isSelectListOpen, setIsSelectListOpen] = useState(false);
   const [isSelectMilestoneOpen, setIsSelectMilestoneOpen] = useState(false);
   const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
@@ -65,6 +66,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
       setTaskInput("");
       setDeadline(getDefaultDeadline());
       setTaskDescription("");
+      setEffort(undefined);
     }
   }, [isOpen, defaultListId, defaultMilestoneId]);
 
@@ -73,12 +75,13 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
       if (isBulkAddMode) {
         await handleBulkAdd();
       } else {
-        await onAddTask(taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined);
+        await onAddTask(taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined, effort > 0 ? effort : undefined);
         setTaskInput("");
         setSelectedListId(null);
         setSelectedMilestoneId(null);
         setDeadline(getDefaultDeadline());
         setTaskDescription("");
+        setEffort(0);
         onClose();
       }
     }
@@ -332,6 +335,22 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
                         <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getSelectedMilestoneName()}</p>
                       </div>
                     )}
+
+                    {/* Effort Button */}
+                    <div 
+                      className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                      onClick={() => {
+                        if (effort < 10) {
+                          setEffort(effort + 1);
+                        } else {
+                          setEffort(0);
+                        }
+                      }}
+                    >
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                        Effort {effort}
+                      </p>
+                    </div>
 
                     {/* Generate Task Button */}
                     <div 

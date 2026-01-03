@@ -71,6 +71,7 @@ export interface Todo {
   deadline_date?: string // YYYY-MM-DD string
   deadline_time?: string
   deadline_recurring?: string
+  effort?: number // Effort level out of 10 (0-10)
   created_at?: string
   updated_at?: string
 }
@@ -131,6 +132,7 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     deadline_date: dbTodo.deadline_date,
     deadline_time: dbTodo.deadline_time,
     deadline_recurring: dbTodo.deadline_recurring,
+    effort: dbTodo.effort,
     created_at: dbTodo.created_at,
     updated_at: dbTodo.updated_at,
   }
@@ -202,6 +204,11 @@ export function appTodoToDbTodo(todo: any): any {
     dbTodo.deadline_recurring = null
   }
   
+  // Handle effort
+  if (todo.effort !== undefined && todo.effort !== null) {
+    dbTodo.effort = Math.max(0, Math.min(10, Math.round(todo.effort))) // Clamp between 0-10
+  }
+  
   return dbTodo
 }
 
@@ -250,6 +257,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     listId: dbTodo.list_id,
     milestoneId: dbTodo.milestone_id,
     deadline,
+    effort: dbTodo.effort,
     updatedAt: dbTodo.updated_at,
   }
 }
