@@ -1378,7 +1378,43 @@ export function TodoApp() {
         });
       }
       
-      return allTasks;
+      // Sort tasks by date using the same logic as Month view (soonest first)
+      const sortedTasks = [...allTasks].sort((a, b) => {
+        // If either task doesn't have a deadline, put it at the end
+        if (!a.deadline && !b.deadline) return 0; // Both without deadlines: maintain order
+        if (!a.deadline) return 1; // a without deadline goes after b
+        if (!b.deadline) return -1; // b without deadline goes after a
+        
+        // Both have deadlines - use same sorting logic as Month view
+        // Compare dates first
+        const dateA = a.deadline.date.getTime();
+        const dateB = b.deadline.date.getTime();
+        
+        if (dateA !== dateB) {
+          return dateA - dateB; // Soonest date first
+        }
+        
+        // If same date, compare times
+        const timeA = a.deadline.time || "";
+        const timeB = b.deadline.time || "";
+        
+        if (timeA && timeB) {
+          // Parse time strings (HH:MM format)
+          const [hoursA, minutesA] = timeA.split(':').map(Number);
+          const [hoursB, minutesB] = timeB.split(':').map(Number);
+          const totalMinutesA = hoursA * 60 + minutesA;
+          const totalMinutesB = hoursB * 60 + minutesB;
+          return totalMinutesA - totalMinutesB; // Earliest time first
+        }
+        
+        // If one has time and other doesn't, prioritize the one with time
+        if (timeA && !timeB) return -1;
+        if (!timeA && timeB) return 1;
+        
+        return 0;
+      });
+      
+      return sortedTasks;
     } else if (listId === COMPLETED_LIST_ID) {
       let completedTasks = todos.filter(todo => todo.listId === COMPLETED_LIST_ID);
       
@@ -1523,11 +1559,15 @@ export function TodoApp() {
       return !todo.completed || recentlyCompleted.has(todo.id);
     });
     
-    // Sort by deadline for "This week" and "This month" views (soonest first)
-    if (selectedTimeRange === "week" || selectedTimeRange === "month") {
+    // Sort by deadline for "This week", "This month", and "All time" views (soonest first)
+    if (selectedTimeRange === "week" || selectedTimeRange === "month" || selectedTimeRange === "allTime") {
       return filtered.sort((a, b) => {
-        if (!a.deadline || !b.deadline) return 0;
+        // If either task doesn't have a deadline, put it at the end
+        if (!a.deadline && !b.deadline) return 0; // Both without deadlines: maintain order
+        if (!a.deadline) return 1; // a without deadline goes after b
+        if (!b.deadline) return -1; // b without deadline goes after a
         
+        // Both have deadlines - use same sorting logic as All tasks list
         // Compare dates first
         const dateA = a.deadline.date.getTime();
         const dateB = b.deadline.date.getTime();
@@ -1738,6 +1778,55 @@ export function TodoApp() {
   const getDayOfWeek = (date: Date) => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return days[date.getDay()];
+  };
+
+  // Format date as "MONDAY 24TH JANUARY" (all caps)
+  const formatDateHeading = (date: Date): string => {
+    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+    
+    const dayName = days[date.getDay()];
+    const day = date.getDate();
+    const monthName = months[date.getMonth()];
+    
+    // Get ordinal suffix (1st, 2nd, 3rd, 4th, etc.)
+    const getOrdinalSuffix = (n: number): string => {
+      if (n > 3 && n < 21) return 'TH';
+      switch (n % 10) {
+        case 1: return 'ST';
+        case 2: return 'ND';
+        case 3: return 'RD';
+        default: return 'TH';
+      }
+    };
+    
+    return `${dayName} ${day}${getOrdinalSuffix(day)} ${monthName}`;
+  };
+
+  // Group tasks by date for week, month, and allTime tabs
+  const groupTasksByDate = (tasks: Todo[]): Array<{ date: Date; dateKey: string; tasks: Todo[] }> => {
+    const grouped = new Map<string, { date: Date; tasks: Todo[] }>();
+    
+    tasks.forEach(task => {
+      if (!task.deadline) return;
+      
+      const taskDate = task.deadline.date;
+      // Create a key based on year, month, and day (ignore time)
+      const dateKey = `${taskDate.getFullYear()}-${taskDate.getMonth()}-${taskDate.getDate()}`;
+      
+      if (!grouped.has(dateKey)) {
+        // Create a new date object with time set to midnight for consistent grouping
+        const dateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+        grouped.set(dateKey, { date: dateOnly, tasks: [] });
+      }
+      
+      grouped.get(dateKey)!.tasks.push(task);
+    });
+    
+    // Convert to array and sort by date
+    return Array.from(grouped.entries())
+      .map(([dateKey, { date, tasks }]) => ({ date, dateKey, tasks }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
   };
 
   const getFormattedDate = () => {
@@ -2145,16 +2234,32 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             
             {/* Todo List */}
             <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full px-[20px]">
-              {todayTasks.map((todo) => {
-                const isRecentlyCompleted = recentlyCompleted.has(todo.id);
-                return (
-                <div
-                  key={todo.id}
-                  className={`content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer transition-opacity duration-1000 ${
-                    isRecentlyCompleted ? 'opacity-100' : 'opacity-100'
-                  }`}
-                  onClick={() => handleTaskClick(todo)}
-                >
+              {(() => {
+                // For week, month, and allTime tabs, group tasks by date
+                if (selectedTimeRange === "week" || selectedTimeRange === "month" || selectedTimeRange === "allTime") {
+                  const groupedTasks = groupTasksByDate(todayTasks);
+                  
+                  return groupedTasks.map(({ date, tasks: dateTasks }) => (
+                    <div key={date.toISOString()} className="w-full flex flex-col gap-[24px]">
+                      {/* Date Subheading */}
+                      <p 
+                        className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px] uppercase"
+                        style={{ fontSize: '12px' }}
+                      >
+                        {formatDateHeading(date)}
+                      </p>
+                      
+                      {/* Tasks for this date */}
+                      {dateTasks.map((todo) => {
+                        const isRecentlyCompleted = recentlyCompleted.has(todo.id);
+                        return (
+                          <div
+                            key={todo.id}
+                            className={`content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer transition-opacity duration-1000 ${
+                              isRecentlyCompleted ? 'opacity-100' : 'opacity-100'
+                            }`}
+                            onClick={() => handleTaskClick(todo)}
+                          >
                   {/* Task Name Row */}
                   <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
                     {/* Checkbox */}
@@ -2307,8 +2412,178 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                     })()}
                   </div>
                 </div>
-                );
-              })}
+                        );
+                      })}
+                    </div>
+                  ));
+                } else {
+                  // For today and tomorrow tabs, render tasks normally without date grouping
+                  return todayTasks.map((todo) => {
+                    const isRecentlyCompleted = recentlyCompleted.has(todo.id);
+                    return (
+                      <div
+                        key={todo.id}
+                        className={`content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer transition-opacity duration-1000 ${
+                          isRecentlyCompleted ? 'opacity-100' : 'opacity-100'
+                        }`}
+                        onClick={() => handleTaskClick(todo)}
+                      >
+                        {/* Task Name Row */}
+                        <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+                          {/* Checkbox */}
+                          <div
+                            className="relative shrink-0 size-[24px] cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleTodo(todo.id);
+                            }}
+                          >
+                            <svg
+                              className="block size-full"
+                              fill="none"
+                              preserveAspectRatio="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                cx="12"
+                                cy="12"
+                                r="11.25"
+                                stroke="#E1E6EE"
+                                strokeWidth="1.5"
+                                fill={todo.completed ? "#E1E6EE" : "none"}
+                              />
+                              {todo.completed && (
+                                <path
+                                  d="M7 12L10.5 15.5L17 9"
+                                  stroke="#110c10"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              )}
+                            </svg>
+                          </div>
+                          <p
+                            className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] truncate tracking-[-0.198px] ${
+                              todo.completed ? "line-through text-[#5b5d62]" : "text-white"
+                            }`}
+                          >
+                            {todo.text}
+                          </p>
+                        </div>
+
+                        {/* Description */}
+                        {todo.description && todo.description.trim() && (
+                          <div 
+                            className="w-full pl-[32px] overflow-hidden"
+                            style={{ maxWidth: '100%', boxSizing: 'border-box' }}
+                          >
+                            <p 
+                              className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                              style={{ 
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                maxWidth: '100%',
+                                width: '100%'
+                              }}
+                            >
+                              {todo.description}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Metadata Row */}
+                        <div className="content-stretch flex gap-[8px] items-start relative shrink-0 pl-[32px]">
+                          {/* Time */}
+                          {todo.time && (
+                            <div className="box-border content-stretch flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">
+                              <div className="relative shrink-0 size-[20px]">
+                                <svg
+                                  className="block size-full"
+                                  fill="none"
+                                  preserveAspectRatio="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <g>
+                                    <path
+                                      d={svgPathsToday.p19fddb00}
+                                      stroke="#5B5D62"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="1.5"
+                                    />
+                                  </g>
+                                </svg>
+                              </div>
+                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                                {todo.time}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Day Due */}
+                          {todo.deadline && (
+                            <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                              <div className="relative shrink-0 size-[20px]">
+                                <svg
+                                  className="block size-full"
+                                  fill="none"
+                                  preserveAspectRatio="none"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <g>
+                                    <path
+                                      d={svgPathsToday.p31f04100}
+                                      stroke="#5B5D62"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="1.25"
+                                    />
+                                  </g>
+                                </svg>
+                              </div>
+                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                                {getDayOfWeek(todo.deadline.date)}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* List */}
+                          {(() => {
+                            const list = getListById(todo.listId);
+                            return list ? (
+                              <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                                <div className="relative shrink-0 size-[20px]">
+                                  <svg
+                                    className="block size-full"
+                                    fill="none"
+                                    preserveAspectRatio="none"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <g>
+                                      <path
+                                        d={svgPathsToday.p1c6a4380}
+                                        stroke={list.color}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="1.5"
+                                      />
+                                    </g>
+                                  </svg>
+                                </div>
+                                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                                  {list.name}
+                                </p>
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+                      </div>
+                    );
+                  });
+                }
+              })()}
             </div>
             {/* Spacer to prevent bottom nav from covering content */}
             <div className="w-full" style={{ height: '20px' }} />

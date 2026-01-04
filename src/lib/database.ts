@@ -158,29 +158,46 @@ export function appTodoToDbTodo(todo: any): any {
   }
   // If description is null/undefined/empty, we don't include it in the insert
   
-  // Handle milestone_id
-  if (todo.milestoneId !== undefined) {
-    dbTodo.milestone_id = todo.milestoneId
-  } else if (todo.milestone_id !== undefined) {
+  // Handle milestone_id - only set if it's a valid number
+  if (todo.milestoneId !== undefined && todo.milestoneId !== null) {
+    // Only set milestone_id if it's a valid number (not an object)
+    if (typeof todo.milestoneId === 'number') {
+      dbTodo.milestone_id = todo.milestoneId
+    } else {
+      // Log warning if milestoneId is not a number (likely a parameter mismatch bug)
+      console.warn('Invalid milestoneId type - expected number, got:', typeof todo.milestoneId, todo.milestoneId);
+      // Don't set milestone_id if it's not a number
+    }
+  } else if (todo.milestone_id !== undefined && todo.milestone_id !== null && typeof todo.milestone_id === 'number') {
     dbTodo.milestone_id = todo.milestone_id
   }
   
   if (todo.deadline) {
-    dbTodo.deadline_date = formatLocalDate(todo.deadline.date)
+    // Ensure deadline.date is a Date object (it might be a string if serialized)
+    let deadlineDate: Date;
+    if (todo.deadline.date instanceof Date) {
+      deadlineDate = todo.deadline.date;
+    } else if (typeof todo.deadline.date === 'string') {
+      deadlineDate = new Date(todo.deadline.date);
+    } else {
+      console.error('Invalid deadline.date type:', typeof todo.deadline.date, todo.deadline.date);
+      deadlineDate = new Date();
+    }
+    
+    dbTodo.deadline_date = formatLocalDate(deadlineDate)
     
     // Convert local time to UTC for storage
     // The user sets a time in their local timezone (e.g., 21:20 in Norway UTC+1)
     // We need to convert it to UTC so the backend can work in UTC
     if (todo.deadline.time && todo.deadline.time.trim() !== '') {
       // Parse the local date and time
-      const localDate = todo.deadline.date
       const [hours, minutes] = todo.deadline.time.split(':').map(Number)
       
       // Create a date object in the user's local timezone
       const localDateTime = new Date(
-        localDate.getFullYear(),
-        localDate.getMonth(),
-        localDate.getDate(),
+        deadlineDate.getFullYear(),
+        deadlineDate.getMonth(),
+        deadlineDate.getDate(),
         hours,
         minutes,
         0,
@@ -203,6 +220,10 @@ export function appTodoToDbTodo(todo: any): any {
     dbTodo.deadline_time = null
     dbTodo.deadline_recurring = null
   }
+  
+  // Explicitly exclude the deadline object from dbTodo to prevent it from being inserted
+  // The deadline should only be stored as deadline_date, deadline_time, and deadline_recurring
+  delete (dbTodo as any).deadline
   
   // Handle effort
   if (todo.effort !== undefined && todo.effort !== null) {
@@ -327,17 +348,33 @@ export async function createTask(todo: any): Promise<Todo> {
   const userId = await ensureAuthenticated()
   const dbTodo = appTodoToDbTodo(todo)
   dbTodo.user_id = userId
-  console.log('Converted to DB format:', dbTodo)
+  
+  // Ensure we only include valid database fields
+  // Remove any unexpected fields that might cause issues
+  const validFields = [
+    'text', 'completed', 'time', 'group', 'list_id', 'milestone_id',
+    'deadline_date', 'deadline_time', 'deadline_recurring',
+    'description', 'effort', 'user_id'
+  ]
+  const cleanedDbTodo: any = {}
+  for (const field of validFields) {
+    if (field in dbTodo) {
+      cleanedDbTodo[field] = dbTodo[field]
+    }
+  }
+  
+  console.log('Converted to DB format:', cleanedDbTodo)
   
   const { data, error } = await supabase
     .from('todos')
-    .insert(dbTodo)
+    .insert(cleanedDbTodo)
     .select()
     .single()
 
   if (error) {
     console.error('Error creating task:', error)
     console.error('Error details:', JSON.stringify(error, null, 2))
+    console.error('Attempted to insert:', JSON.stringify(cleanedDbTodo, null, 2))
     throw error
   }
 

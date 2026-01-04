@@ -36,6 +36,7 @@ export function CalendarSync({ onBack, onAddTask, lists = [] }: CalendarSyncProp
           suggestion.text,
           suggestion.description,
           0, // TODAY_LIST_ID
+          undefined, // milestoneId - not used for calendar tasks
           suggestion.deadline ? {
             date: suggestion.deadline.date,
             time: suggestion.deadline.time
