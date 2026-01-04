@@ -89,16 +89,37 @@ export function CommonTaskDetailModal({
     };
   }, [isOpen]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (taskInput.trim() === "") return;
-    // Only allow saving for new common tasks (temporary ID < 0)
-    // For existing common tasks, we don't update them - they remain as templates
+    // For new common tasks (temporary ID < 0), create them
     if (task.id < 0 && onCreateTask) {
-      onCreateTask(taskInput, taskDescription || null, taskTime || null, deadline === null ? null : deadline);
+      await onCreateTask(taskInput, taskDescription || null, taskTime || null, deadline === null ? null : deadline);
       onClose();
+    } 
+    // For existing common tasks (id >= 0), update them
+    else if (task.id >= 0) {
+      // Update the common task
+      await onUpdateTask(task.id, taskInput, taskDescription || null, taskTime || null, deadline === null ? null : deadline);
+      
+      // If deadline or list is set, also add the task to the list
+      if (deadline || selectedListId !== null) {
+        const listIdToUse = selectedListId !== null ? selectedListId : (deadline ? 0 : null);
+        if (listIdToUse !== null) {
+          const updatedTask = {
+            ...task,
+            text: taskInput,
+            description: taskDescription || null,
+            time: taskTime || null,
+            deadline: deadline || undefined,
+          };
+          await onAddToList(updatedTask, listIdToUse);
+        } else {
+          onClose();
+        }
+      } else {
+        onClose();
+      }
     }
-    // For existing common tasks (id >= 0), the save button does nothing
-    // Users should use deadline or "Add to list" to create tasks from the template
   };
 
   const handleAddTask = () => {
@@ -341,45 +362,43 @@ export function CommonTaskDetailModal({
                     </div>
                   </div>
                 ) : (
-                  /* For existing common tasks, show plus button when deadline or list is selected */
-                  (deadline || selectedListId !== null) && (
-                    <div 
-                      className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
-                      style={{
-                        width: '35px',
-                        height: '35px',
-                        padding: '3px',
-                        flexShrink: 0,
-                        backgroundColor: '#0b64f9'
-                      }}
-                      onClick={handleAddTask}
-                    >
-                      <div className="relative" style={{ width: '24px', height: '24px' }}>
-                        <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '24px', height: '24px' }}>
-                          <g>
-                            <line
-                              x1="12"
-                              y1="6"
-                              x2="12"
-                              y2="18"
-                              stroke="#E1E6EE"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                            />
-                            <line
-                              x1="6"
-                              y1="12"
-                              x2="18"
-                              y2="12"
-                              stroke="#E1E6EE"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                            />
-                          </g>
-                        </svg>
-                      </div>
+                  /* For existing common tasks, always show save button (which also adds task if deadline/list is set) */
+                  <div 
+                    className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
+                    style={{
+                      width: '35px',
+                      height: '35px',
+                      padding: '3px',
+                      flexShrink: 0,
+                      backgroundColor: taskInput.trim() ? '#0b64f9' : '#5b5d62'
+                    }}
+                    onClick={handleSave}
+                  >
+                    <div className="relative" style={{ width: '24px', height: '24px' }}>
+                      <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '24px', height: '24px' }}>
+                        <g>
+                          <line
+                            x1="12"
+                            y1="6"
+                            x2="12"
+                            y2="18"
+                            stroke="#E1E6EE"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                          <line
+                            x1="6"
+                            y1="12"
+                            x2="18"
+                            y2="12"
+                            stroke="#E1E6EE"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                        </g>
+                      </svg>
                     </div>
-                  )
+                  </div>
                 )}
               </div>
             </div>

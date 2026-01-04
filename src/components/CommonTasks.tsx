@@ -78,6 +78,21 @@ export function CommonTasks({
     return time;
   };
 
+  const formatRecurring = (recurring: string, date: Date) => {
+    switch (recurring) {
+      case "daily":
+        return "Every day";
+      case "weekly":
+        return `Every ${getDayOfWeek(date)}`;
+      case "weekday":
+        return "Every weekday";
+      case "monthly":
+        return "Every month";
+      default:
+        return "";
+    }
+  };
+
   const handleDeleteTask = async (id: number) => {
     await onDeleteCommonTask(id);
     handleCloseModal();
@@ -227,6 +242,32 @@ export function CommonTasks({
                             {getDayOfWeek(task.deadline.date)}
                           </p>
                         </div>
+                        {/* Recurring Pattern */}
+                        {task.deadline.recurring && (
+                          <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                            <div className="relative shrink-0 size-[20px]">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth="1.5"
+                                stroke="currentColor"
+                                className="size-6"
+                                style={{ width: '20px', height: '20px' }}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                                  stroke="#5B5D62"
+                                />
+                              </svg>
+                            </div>
+                            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
+                              {formatRecurring(task.deadline.recurring, task.deadline.date)}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

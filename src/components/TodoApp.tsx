@@ -328,6 +328,9 @@ export function TodoApp() {
         // Convert goals from database format to display format
         const displayGoals = goalsResult.map(dbGoalToDisplayGoal);
         setGoals(displayGoals);
+        
+        // Generate tasks from common tasks with deadlines (after todos and commonTasks are loaded)
+        await generateTasksFromCommonTasks(displayCommonTasks, appTodos);
       } catch (error: any) {
         console.error('Error loading data:', error);
         
@@ -781,6 +784,29 @@ export function TodoApp() {
         
         setTodos(updatedTodos);
         
+        // Check if this task came from a common task and maintain buffer
+        const matchingCommonTask = commonTasks.find(ct => 
+          ct.text === todo.text && 
+          ct.deadline?.recurring === todo.deadline.recurring
+        );
+        
+        if (matchingCommonTask) {
+          // Count how many future tasks exist for this common task
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const futureTasks = updatedTodos.filter(t => {
+            if (t.text !== matchingCommonTask.text || t.completed || !t.deadline) return false;
+            const taskDate = new Date(t.deadline.date);
+            taskDate.setHours(0, 0, 0, 0);
+            return taskDate.getTime() >= today.getTime();
+          });
+          
+          // If we have fewer than 4 future tasks, generate more
+          if (futureTasks.length < 4) {
+            await generateTasksFromCommonTasks([matchingCommonTask], updatedTodos);
+          }
+        }
+        
         // Note: Calendar sync is manual only - users must explicitly sync from the calendar sync page
         
         // If it's a today task, show it as completed for 1 second
@@ -1010,7 +1036,11 @@ export function TodoApp() {
     try {
       const updatedTask = await updateCommonTask(id, { text, description, time, deadline: deadline || undefined });
       const displayTask = dbCommonTaskToDisplayCommonTask(updatedTask);
-      setCommonTasks(commonTasks.map(task => task.id === id ? displayTask : task));
+      const updatedCommonTasks = commonTasks.map(task => task.id === id ? displayTask : task);
+      setCommonTasks(updatedCommonTasks);
+      
+      // Don't generate tasks on update - task generation happens on app load and when maintaining buffer
+      // This prevents creating duplicate tasks when just updating the common task details
     } catch (error) {
       console.error('Error updating common task:', error);
       alert(`Failed to update common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -1031,7 +1061,13 @@ export function TodoApp() {
     try {
       const createdTask = await createCommonTask({ text, description, time, deadline: deadline || undefined });
       const displayTask = dbCommonTaskToDisplayCommonTask(createdTask);
-      setCommonTasks([...commonTasks, displayTask]);
+      const updatedCommonTasks = [...commonTasks, displayTask];
+      setCommonTasks(updatedCommonTasks);
+      
+      // Generate tasks if deadline is set (only for new common tasks)
+      if (deadline) {
+        await generateTasksFromCommonTasks([displayTask], todos);
+      }
     } catch (error) {
       console.error('Error creating common task:', error);
       alert(`Failed to create common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -1061,6 +1097,106 @@ export function TodoApp() {
     } catch (error) {
       console.error('Error adding common task to list:', error);
       alert(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Generate tasks from common tasks based on deadlines
+  const generateTasksFromCommonTasks = async (commonTasksToCheck: CommonTask[], existingTodos: Todo[] = todos) => {
+    try {
+      const commonTasksWithDeadlines = commonTasksToCheck.filter(ct => ct.deadline);
+      
+      if (commonTasksWithDeadlines.length === 0) return; // No common tasks with deadlines
+      
+      let tasksGenerated = false;
+      
+      for (const commonTask of commonTasksWithDeadlines) {
+        if (!commonTask.deadline) continue;
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        let datesToGenerate: Date[] = [];
+        
+        if (commonTask.deadline.recurring) {
+          // For recurring tasks, generate tasks for the next few occurrences
+          const recurring = commonTask.deadline.recurring;
+          let currentDate = new Date(commonTask.deadline.date);
+          currentDate.setHours(0, 0, 0, 0);
+          
+          // If the initial date is in the past, calculate the next occurrence
+          while (currentDate < today) {
+            currentDate = getNextRecurringDate(currentDate, recurring);
+          }
+          
+          // Generate tasks for the next 4 occurrences (or until we're 30 days out)
+          const maxDate = new Date(today);
+          maxDate.setDate(maxDate.getDate() + 30);
+          
+          let checkDate = new Date(currentDate);
+          let count = 0;
+          while (checkDate <= maxDate && count < 4) {
+            datesToGenerate.push(new Date(checkDate));
+            checkDate = getNextRecurringDate(checkDate, recurring);
+            count++;
+          }
+        } else {
+          // For one-time deadlines, only generate if deadline is today or in the future
+          const deadlineDate = new Date(commonTask.deadline.date);
+          deadlineDate.setHours(0, 0, 0, 0);
+          
+          if (deadlineDate >= today) {
+            datesToGenerate.push(deadlineDate);
+          }
+        }
+        
+        // Check if tasks already exist for these dates and generate missing ones
+        for (const targetDate of datesToGenerate) {
+          // Check if a task with the same text and deadline date already exists
+          const existingTask = existingTodos.find(todo => {
+            if (todo.text !== commonTask.text) return false;
+            if (!todo.deadline) return false;
+            const todoDate = new Date(todo.deadline.date);
+            todoDate.setHours(0, 0, 0, 0);
+            const targetDateNormalized = new Date(targetDate);
+            targetDateNormalized.setHours(0, 0, 0, 0);
+            return todoDate.getTime() === targetDateNormalized.getTime();
+          });
+          
+          if (!existingTask) {
+            // Generate the task
+            const newTodo: Todo = {
+              id: Date.now() + Math.random(), // Temporary ID
+              text: commonTask.text,
+              completed: false,
+              listId: TODAY_LIST_ID, // Default to today list
+              description: commonTask.description ?? null,
+              time: commonTask.time ?? undefined,
+              deadline: {
+                date: targetDate,
+                time: commonTask.deadline.time,
+                recurring: commonTask.deadline.recurring,
+              },
+            };
+            
+            try {
+              await createTask(newTodo);
+              tasksGenerated = true;
+            } catch (error) {
+              console.error(`Error generating task from common task ${commonTask.id}:`, error);
+              // Continue with other tasks even if one fails
+            }
+          }
+        }
+      }
+      
+      // Reload tasks after generation if any were created
+      if (tasksGenerated) {
+        const allTasks = await fetchTasks();
+        const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+        setTodos(displayTasks);
+      }
+    } catch (error) {
+      console.error('Error generating tasks from common tasks:', error);
     }
   };
 
