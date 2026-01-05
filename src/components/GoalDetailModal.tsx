@@ -120,12 +120,9 @@ export function GoalDetailModal({
       
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto">
-        <div 
-          className="bg-[#110c10] box-border flex flex-col rounded-tl-[32px] rounded-tr-[32px] w-full" 
-          style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
-        >
+        <div className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full">
           {/* Handle */}
-          <div className="flex flex-col gap-[10px] items-center relative shrink-0 w-full pt-[20px] pb-[10px]">
+          <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
             <div className="h-[20px] relative shrink-0 w-[100px]">
               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
                 <g>
@@ -135,14 +132,8 @@ export function GoalDetailModal({
             </div>
           </div>
 
-          {/* Scrollable Content */}
-          <div 
-            className="flex flex-col pb-[60px] px-0 relative w-full"
-            style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', maxHeight: 'calc(90vh - 80px)', height: 'calc(90vh - 80px)', minHeight: 0, overflowX: 'hidden' }}
-          >
-            {/* Content */}
-            <div className="box-border flex flex-col gap-[40px] items-center px-0 relative w-full">
-              <div className="box-border flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
+          {/* Content */}
+          <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full">
                 {/* Title and Description Section */}
                 <div className="flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
                   {/* Goal Name Input */}
@@ -264,8 +255,6 @@ export function GoalDetailModal({
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>,

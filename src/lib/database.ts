@@ -111,6 +111,7 @@ export interface Milestone {
   id: number
   goal_id: number
   name: string
+  description?: string | null
   days?: number // Deprecated - calculated from deadline_date
   deadline_date?: string | null // YYYY-MM-DD string
   completed?: boolean
@@ -910,7 +911,7 @@ export async function fetchMilestones(goalId: number): Promise<Milestone[]> {
   return data || []
 }
 
-export async function createMilestone(milestone: { goal_id: number; name: string; deadline?: { date: Date; time: string; recurring?: string } | null }): Promise<Milestone> {
+export async function createMilestone(milestone: { goal_id: number; name: string; description?: string | null; deadline?: { date: Date; time: string; recurring?: string } | null }): Promise<Milestone> {
   // #region agent log
   fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createMilestone:entry',message:'Creating milestone',data:{goalId:milestone.goal_id,name:milestone.name,hasDeadline:!!milestone.deadline,deadlineDate:milestone.deadline?.date?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
   // #endregion
@@ -935,6 +936,7 @@ export async function createMilestone(milestone: { goal_id: number; name: string
   const insertData: any = {
     goal_id: milestone.goal_id,
     name: milestone.name,
+    description: milestone.description || null,
   }
   
   if (milestone.deadline) {
@@ -969,7 +971,7 @@ export async function createMilestone(milestone: { goal_id: number; name: string
   return data
 }
 
-export async function updateMilestone(id: number, milestone: { name: string; deadline?: { date: Date; time: string; recurring?: string } | null; achieved?: boolean }): Promise<Milestone> {
+export async function updateMilestone(id: number, milestone: { name: string; description?: string | null; deadline?: { date: Date; time: string; recurring?: string } | null; achieved?: boolean }): Promise<Milestone> {
   // #region agent log
   fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:entry',message:'Updating milestone',data:{milestoneId:id,name:milestone.name,hasDeadline:!!milestone.deadline,deadlineDate:milestone.deadline?.date?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
   // #endregion
@@ -1006,6 +1008,7 @@ export async function updateMilestone(id: number, milestone: { name: string; dea
   
   const updateData: any = {
     name: milestone.name,
+    description: milestone.description !== undefined ? (milestone.description || null) : undefined,
   }
   
   if (milestone.deadline) {

@@ -13,6 +13,7 @@ interface Milestone {
   id: number;
   goal_id: number;
   name: string;
+  description?: string | null;
   days?: number;
   deadline_date?: string | null;
   completed?: boolean;
@@ -30,8 +31,8 @@ interface GoalDetailProps {
   onUpdateGoal: (id: number, text: string, description?: string | null, is_active?: boolean) => Promise<void>;
   onDeleteGoal: (id: number) => Promise<void>;
   onFetchMilestones: (goalId: number) => Promise<Milestone[]>;
-  onCreateMilestone: (goalId: number, name: string, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<Milestone>;
-  onUpdateMilestone: (id: number, name: string, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<Milestone>;
+  onCreateMilestone: (goalId: number, name: string, description?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<Milestone>;
+  onUpdateMilestone: (id: number, name: string, description?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<Milestone>;
   onDeleteMilestone: (id: number) => Promise<void>;
   onSelectMilestone?: (milestone: Milestone) => void;
   todos?: Todo[]; // Tasks to check milestone completion
@@ -103,14 +104,14 @@ export function GoalDetail({
     setSelectedMilestone(null);
   };
 
-  const handleCreateMilestone = async (name: string, deadline?: { date: Date; time: string; recurring?: string } | null) => {
-    const created = await onCreateMilestone(goal.id, name, deadline);
+  const handleCreateMilestone = async (name: string, description?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => {
+    const created = await onCreateMilestone(goal.id, name, description, deadline);
     setMilestones([...milestones, created]);
     handleCloseMilestoneModal();
   };
 
-  const handleUpdateMilestone = async (id: number, name: string, deadline?: { date: Date; time: string; recurring?: string } | null) => {
-    const updated = await onUpdateMilestone(id, name, deadline);
+  const handleUpdateMilestone = async (id: number, name: string, description?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => {
+    const updated = await onUpdateMilestone(id, name, description, deadline);
     setMilestones(milestones.map(m => m.id === id ? updated : m));
     handleCloseMilestoneModal();
   };
@@ -207,7 +208,7 @@ export function GoalDetail({
             </div>
           </div>
 
-          {/* Description */}
+          {/* Goal Description */}
           {goal.description && goal.description.trim() !== "" && (
             <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
               <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">

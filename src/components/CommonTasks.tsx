@@ -21,6 +21,7 @@ interface CommonTasksProps {
   onCreateCommonTask: (text: string, description?: string | null, time?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<void>;
   onDeleteCommonTask: (id: number) => Promise<void>;
   onAddTaskToList: (task: CommonTask, listId: number) => Promise<void>;
+  onSelectCommonTask?: (task: CommonTask) => void;
   lists: Array<{ id: number; name: string; color: string; count: number; isShared: boolean }>;
 }
 
@@ -31,14 +32,20 @@ export function CommonTasks({
   onCreateCommonTask,
   onDeleteCommonTask,
   onAddTaskToList,
+  onSelectCommonTask,
   lists
 }: CommonTasksProps) {
   const [selectedTask, setSelectedTask] = useState<CommonTask | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleTaskClick = (task: CommonTask) => {
-    setSelectedTask(task);
-    setIsModalOpen(true);
+    if (onSelectCommonTask) {
+      onSelectCommonTask(task);
+    } else {
+      // Fallback to modal if onSelectCommonTask is not provided
+      setSelectedTask(task);
+      setIsModalOpen(true);
+    }
   };
 
   const handleCloseModal = () => {

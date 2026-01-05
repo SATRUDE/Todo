@@ -9,6 +9,7 @@ import { Settings } from "./Settings";
 import { Dashboard } from "./Dashboard";
 import { CalendarSync } from "./CalendarSync";
 import { CommonTasks } from "./CommonTasks";
+import { CommonTaskDetail } from "./CommonTaskDetail";
 import { Goals } from "./Goals";
 import { GoalDetail } from "./GoalDetail";
 import { MilestoneDetail } from "./MilestoneDetail";
@@ -16,6 +17,7 @@ import { ReviewMissedDeadlinesBox } from "./ReviewMissedDeadlinesBox";
 import { ReviewMissedDeadlinesModal } from "./ReviewMissedDeadlinesModal";
 import { DeadlineModal } from "./DeadlineModal";
 import { CompletedTasksBox } from "./CompletedTasksBox";
+import { FilterListsModal } from "./FilterListsModal";
 import { CalendarTaskSuggestions } from "./CalendarTaskSuggestions";
 import { SignIn } from "./SignIn";
 import { ResetPassword } from "./ResetPassword";
@@ -83,7 +85,7 @@ interface ListItem {
   isShared: boolean;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -106,6 +108,8 @@ export function TodoApp() {
   const [selectedList, setSelectedList] = useState<ListItem | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
+  // selectedCommonTask uses display format (with deadline object), not database format
+  const [selectedCommonTask, setSelectedCommonTask] = useState<{ id: number; text: string; description?: string | null; time?: string | null; deadline?: { date: Date; time: string; recurring?: string } } | null>(null);
   const [allMilestonesWithGoals, setAllMilestonesWithGoals] = useState<Array<{ id: number; name: string; goalId: number; goalName: string }>>([]);
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [timeRangeFilter, setTimeRangeFilter] = useState<"today" | "week" | "month" | null>(null);
@@ -122,6 +126,8 @@ export function TodoApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [selectedTimeRange, setSelectedTimeRange] = useState<"today" | "tomorrow" | "week" | "month" | "allTime">("today");
+  const [selectedListFilterIds, setSelectedListFilterIds] = useState<Set<number>>(new Set());
+  const [isFilterListsModalOpen, setIsFilterListsModalOpen] = useState(false);
   
   // Check if we're on the reset password route
   useEffect(() => {
@@ -1525,7 +1531,7 @@ export function TodoApp() {
     return taskDate >= today && taskDate <= lastDayOfMonth;
   };
 
-  // Filter tasks based on selected time range
+  // Filter tasks based on selected time range and list filter
   const getFilteredTasks = () => {
     const filtered = todos.filter(todo => {
       if (!todo.deadline) return false;
@@ -1552,6 +1558,14 @@ export function TodoApp() {
       }
       
       if (!matchesRange) return false;
+      
+      // Apply list filter if any lists are selected
+      if (selectedListFilterIds.size > 0) {
+        const taskListId = todo.listId ?? 0; // Default to 0 (Today) if listId is undefined
+        if (!selectedListFilterIds.has(taskListId)) {
+          return false;
+        }
+      }
       
       // Show task if:
       // 1. It's not completed, OR
@@ -1917,9 +1931,30 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           <div className="w-full">
             <div className="box-border content-stretch flex flex-col gap-[32px] items-start pt-0 relative w-full h-fit overflow-x-hidden" style={{ paddingBottom: '150px' }}>
               {/* Header with Tasks and Date */}
-              <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre px-[20px]">
-                <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Tasks</p>
-                <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">{getFormattedDate()}</p>
+              <div className="content-stretch flex gap-[32px] items-start relative shrink-0 w-full px-[20px]">
+                <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative flex-1 min-w-0 text-nowrap whitespace-pre">
+                  <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Tasks</p>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">{getFormattedDate()}</p>
+                </div>
+                {/* Filter Icon - Right aligned to Tasks title */}
+                <div className="basis-0 content-stretch flex grow items-center justify-end min-h-px min-w-px overflow-clip p-[3px] relative shrink-0">
+                  <div 
+                    className="relative shrink-0 size-[32px] cursor-pointer"
+                    onClick={() => setIsFilterListsModalOpen(true)}
+                  >
+                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '32px', height: '32px' }}>
+                      <g>
+                        <path
+                          d="M22 3H2L10 12.46V19L14 21V12.46L22 3Z"
+                          stroke="#E1E6EE"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </g>
+                    </svg>
+                  </div>
+                </div>
               </div>
 
               {/* Inline style tag to force inactive tab color */}
@@ -2231,6 +2266,64 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 </div>
               </div>
 
+              {/* Filter Tags - Show active list filters */}
+              {selectedListFilterIds.size > 0 && (
+                <div 
+                  className="content-stretch flex items-start relative shrink-0 w-full px-[20px]"
+                  style={{ gap: '8px', flexWrap: 'wrap' }}
+                >
+                  {Array.from(selectedListFilterIds).map((listId) => {
+                    // Get list name - handle "Today" (id 0) specially
+                    let listName = "Today";
+                    let listColor = "#E1E6EE";
+                    
+                    if (listId !== 0) {
+                      const list = lists.find(l => l.id === listId);
+                      if (list) {
+                        listName = list.name;
+                        listColor = list.color;
+                      } else {
+                        return null; // Skip if list not found
+                      }
+                    }
+                    
+                    return (
+                      <div
+                        key={listId}
+                        className="bg-[rgba(225,230,238,0.1)] box-border flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer w-fit hover:opacity-90"
+                        onClick={() => {
+                          const newSelected = new Set(selectedListFilterIds);
+                          newSelected.delete(listId);
+                          setSelectedListFilterIds(newSelected);
+                        }}
+                      >
+                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          {listName}
+                        </p>
+                        {/* X Icon */}
+                        <div className="relative shrink-0 size-[20px]">
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            strokeWidth="1.5" 
+                            stroke="currentColor" 
+                            className="size-6"
+                            style={{ width: '20px', height: '20px', color: '#e1e6ee' }}
+                          >
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              d="M6 18 18 6M6 6l12 12" 
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
             
             {/* Todo List */}
             <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full px-[20px]">
@@ -2350,33 +2443,6 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                         </div>
                         <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
                           {todo.time}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Day Due */}
-                    {todo.deadline && (
-                      <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
-                        <div className="relative shrink-0 size-[20px]">
-                          <svg
-                            className="block size-full"
-                            fill="none"
-                            preserveAspectRatio="none"
-                            viewBox="0 0 20 20"
-                          >
-                            <g>
-                              <path
-                                d={svgPathsToday.p31f04100}
-                                stroke="#5B5D62"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="1.25"
-                              />
-                            </g>
-                          </svg>
-                        </div>
-                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                          {getDayOfWeek(todo.deadline.date)}
                         </p>
                       </div>
                     )}
@@ -2522,33 +2588,6 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                             </div>
                           )}
 
-                          {/* Day Due */}
-                          {todo.deadline && (
-                            <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
-                              <div className="relative shrink-0 size-[20px]">
-                                <svg
-                                  className="block size-full"
-                                  fill="none"
-                                  preserveAspectRatio="none"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <g>
-                                    <path
-                                      d={svgPathsToday.p31f04100}
-                                      stroke="#5B5D62"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="1.25"
-                                    />
-                                  </g>
-                                </svg>
-                              </div>
-                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                                {getDayOfWeek(todo.deadline.date)}
-                              </p>
-                            </div>
-                          )}
-
                           {/* List */}
                           {(() => {
                             const list = getListById(todo.listId);
@@ -2621,6 +2660,41 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onCreateCommonTask={handleCreateCommonTask}
           onDeleteCommonTask={handleDeleteCommonTask}
           onAddTaskToList={handleAddCommonTaskToList}
+          onSelectCommonTask={(task) => {
+            setSelectedCommonTask(task);
+            setCurrentPage("commonTaskDetail");
+          }}
+          lists={lists}
+        />
+      ) : currentPage === "commonTaskDetail" && selectedCommonTask ? (
+        <CommonTaskDetail
+          commonTask={selectedCommonTask}
+          onBack={() => {
+            setCurrentPage("commonTasks");
+            setSelectedCommonTask(null);
+          }}
+          tasks={todos}
+          onToggleTask={toggleTodo}
+          onTaskClick={(task) => {
+            setSelectedTask(task);
+            setIsTaskDetailOpen(true);
+          }}
+          onUpdateCommonTask={async (id, text, description, time, deadline) => {
+            await handleUpdateCommonTask(id, text, description, time, deadline);
+            // Update selectedCommonTask if it's the one being updated
+            if (selectedCommonTask && selectedCommonTask.id === id) {
+              const updatedTask = {
+                ...selectedCommonTask,
+                text,
+                description,
+                time,
+                deadline: deadline || undefined,
+              };
+              setSelectedCommonTask(updatedTask);
+            }
+          }}
+          onDeleteCommonTask={handleDeleteCommonTask}
+          onAddTaskToList={handleAddCommonTaskToList}
           lists={lists}
         />
       ) : currentPage === "goals" ? (
@@ -2651,12 +2725,12 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onFetchMilestones={async (goalId) => {
             return await fetchMilestones(goalId);
           }}
-          onCreateMilestone={async (goalId, name, deadline) => {
-            const created = await createMilestone({ goal_id: goalId, name, deadline: deadline || undefined });
+          onCreateMilestone={async (goalId, name, description, deadline) => {
+            const created = await createMilestone({ goal_id: goalId, name, description, deadline: deadline || undefined });
             return created;
           }}
-          onUpdateMilestone={async (id, name, deadline, achieved) => {
-            const updated = await updateMilestone(id, { name, deadline: deadline || undefined, achieved });
+          onUpdateMilestone={async (id, name, description, deadline, achieved) => {
+            const updated = await updateMilestone(id, { name, description, deadline: deadline || undefined, achieved });
             return updated;
           }}
           onDeleteMilestone={async (id) => {
@@ -2679,8 +2753,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onToggleTask={toggleTodo}
           onAddTask={(taskText, description, deadline) => addNewTaskToMilestone(taskText, description, selectedMilestone.id, deadline)}
           onTaskClick={handleTaskClick}
-          onUpdateMilestone={async (id, name, deadline, achieved) => {
-            const updated = await updateMilestone(id, { name, deadline: deadline || undefined, achieved });
+          onUpdateMilestone={async (id, name, description, deadline, achieved) => {
+            const updated = await updateMilestone(id, { name, description, deadline: deadline || undefined, achieved });
             setSelectedMilestone(updated);
             // Refresh milestones with goals
             if (selectedGoal) {
@@ -2703,7 +2777,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onToggleAchieved={async (id, achieved) => {
             if (selectedMilestone && selectedMilestone.id === id) {
               const updated = await updateMilestone(id, { 
-                name: selectedMilestone.name, 
+                name: selectedMilestone.name,
+                description: selectedMilestone.description,
                 deadline: selectedMilestone.deadline_date ? { 
                   date: new Date(selectedMilestone.deadline_date), 
                   time: '', 
@@ -3008,6 +3083,30 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           setIsTaskDetailOpen(true);
         }}
         onNewDeadlineClick={handleNewDeadlineClick}
+      />
+
+      {/* Filter Lists Modal */}
+      <FilterListsModal
+        isOpen={isFilterListsModalOpen}
+        onClose={() => setIsFilterListsModalOpen(false)}
+        lists={lists}
+        selectedListIds={selectedListFilterIds}
+        onApplyFilter={(selectedIds) => {
+          setSelectedListFilterIds(selectedIds);
+        }}
+        includeToday={true}
+      />
+
+      {/* Filter Lists Modal */}
+      <FilterListsModal
+        isOpen={isFilterListsModalOpen}
+        onClose={() => setIsFilterListsModalOpen(false)}
+        lists={lists}
+        selectedListIds={selectedListFilterIds}
+        onApplyFilter={(selectedIds) => {
+          setSelectedListFilterIds(selectedIds);
+        }}
+        includeToday={true}
       />
 
       {/* Deadline Modal for updating missed deadlines */}

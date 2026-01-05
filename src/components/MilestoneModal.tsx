@@ -7,6 +7,7 @@ interface Milestone {
   id: number;
   goal_id: number;
   name: string;
+  description?: string | null;
   days?: number;
   deadline_date?: string | null;
 }
@@ -15,8 +16,8 @@ interface MilestoneModalProps {
   isOpen: boolean;
   onClose: () => void;
   milestone: Milestone | null;
-  onUpdateMilestone: (id: number, name: string, deadline?: { date: Date; time: string; recurring?: string } | null) => void;
-  onCreateMilestone: (name: string, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<void>;
+  onUpdateMilestone: (id: number, name: string, description?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => void;
+  onCreateMilestone: (name: string, description?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<void>;
   onDeleteMilestone: (id: number) => void;
 }
 
@@ -29,13 +30,16 @@ export function MilestoneModal({
   onDeleteMilestone
 }: MilestoneModalProps) {
   const [milestoneName, setMilestoneName] = useState(milestone?.name || "");
+  const [milestoneDescription, setMilestoneDescription] = useState(milestone?.description || "");
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(null);
   const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
   const nameInputRef = useRef<HTMLTextAreaElement>(null);
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setMilestoneName(milestone?.name || "");
+    setMilestoneDescription(milestone?.description || "");
     
     // Parse deadline_date if it exists
     if (milestone?.deadline_date) {
@@ -49,11 +53,15 @@ export function MilestoneModal({
       setDeadline(null);
     }
     
-    // Auto-resize textarea when milestone changes
+    // Auto-resize textareas when milestone changes
     setTimeout(() => {
       if (nameInputRef.current) {
         nameInputRef.current.style.height = 'auto';
         nameInputRef.current.style.height = nameInputRef.current.scrollHeight + 'px';
+      }
+      if (descriptionInputRef.current) {
+        descriptionInputRef.current.style.height = 'auto';
+        descriptionInputRef.current.style.height = descriptionInputRef.current.scrollHeight + 'px';
       }
     }, 0);
   }, [milestone, isOpen]);
@@ -100,13 +108,13 @@ export function MilestoneModal({
         fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MilestoneModal.tsx:handleSave:updating',message:'Updating existing milestone',data:{milestoneId:milestone.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
         // #endregion
         // Update existing milestone
-        await onUpdateMilestone(milestone.id, milestoneName, deadline || null);
+        await onUpdateMilestone(milestone.id, milestoneName, milestoneDescription || null, deadline || null);
       } else if (milestone) {
         // #region agent log
         fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MilestoneModal.tsx:handleSave:creating',message:'Creating new milestone',data:{goalId:milestone.goal_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'N'})}).catch(()=>{});
         // #endregion
         // Create new milestone
-        await onCreateMilestone(milestoneName, deadline || null);
+        await onCreateMilestone(milestoneName, milestoneDescription || null, deadline || null);
       }
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MilestoneModal.tsx:handleSave:success',message:'Milestone saved successfully',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'O'})}).catch(()=>{});
@@ -214,6 +222,25 @@ export function MilestoneModal({
                   milestoneName.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
                 }`}
                 autoFocus
+                rows={1}
+                style={{ overflow: 'hidden' }}
+              />
+              {/* Description Input - Always visible */}
+              <textarea
+                ref={descriptionInputRef}
+                value={milestoneDescription}
+                onChange={(e) => {
+                  setMilestoneDescription(e.target.value);
+                  // Auto-resize
+                  if (descriptionInputRef.current) {
+                    descriptionInputRef.current.style.height = 'auto';
+                    descriptionInputRef.current.style.height = descriptionInputRef.current.scrollHeight + 'px';
+                  }
+                }}
+                placeholder="Description"
+                className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] tracking-[-0.198px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[28px] ${
+                  milestoneDescription.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                }`}
                 rows={1}
                 style={{ overflow: 'hidden' }}
               />

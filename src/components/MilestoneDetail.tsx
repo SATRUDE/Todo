@@ -22,6 +22,7 @@ interface Milestone {
   id: number;
   goal_id: number;
   name: string;
+  description?: string | null;
   deadline_date?: string | null;
   completed?: boolean; // Used for "achieved" status
 }
@@ -41,7 +42,7 @@ interface MilestoneDetailProps {
   onToggleTask: (id: number) => void;
   onAddTask: (taskText: string, description?: string, deadline?: { date: Date; time: string; recurring?: string }) => void;
   onTaskClick?: (task: Todo) => void;
-  onUpdateMilestone: (id: number, name: string, deadline?: { date: Date; time: string; recurring?: string } | null, achieved?: boolean) => Promise<void>;
+  onUpdateMilestone: (id: number, name: string, description?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null, achieved?: boolean) => Promise<void>;
   onToggleAchieved?: (id: number, achieved: boolean) => Promise<void>;
   onDeleteMilestone: (id: number) => Promise<void>;
   onFetchMilestones: (goalId: number) => Promise<Milestone[]>;
@@ -78,8 +79,8 @@ export function MilestoneDetail({
     setIsMilestoneModalOpen(false);
   };
 
-  const handleUpdateMilestone = async (id: number, name: string, deadline?: { date: Date; time: string; recurring?: string } | null) => {
-    await onUpdateMilestone(id, name, deadline);
+  const handleUpdateMilestone = async (id: number, name: string, description?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => {
+    await onUpdateMilestone(id, name, description, deadline);
     handleCloseMilestoneModal();
   };
 
@@ -115,7 +116,7 @@ export function MilestoneDetail({
       await onToggleAchieved(milestone.id, newAchieved);
     } else if (onUpdateMilestone) {
       // Fallback to onUpdateMilestone if onToggleAchieved is not provided
-      await onUpdateMilestone(milestone.id, milestone.name, milestoneDeadline ? { date: milestoneDeadline, time: '', recurring: undefined } : null, newAchieved);
+      await onUpdateMilestone(milestone.id, milestone.name, milestone.description, milestoneDeadline ? { date: milestoneDeadline, time: '', recurring: undefined } : null, newAchieved);
     }
   };
 
@@ -182,6 +183,30 @@ export function MilestoneDetail({
                 <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Achieved</p>
               </div>
             </div>
+
+            {/* Description Section */}
+            {milestone.description && milestone.description.trim() !== "" && (
+              <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+                {/* Description Subheading */}
+                <div className="content-stretch flex items-center relative shrink-0">
+                  <p 
+                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]"
+                    style={{ fontSize: '12px' }}
+                  >
+                    DESCRIPTION
+                  </p>
+                </div>
+                {/* Description Text */}
+                <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                  <p 
+                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-white text-[18px] tracking-[-0.198px]"
+                    style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}
+                  >
+                    {milestone.description}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Tasks */}
             <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
