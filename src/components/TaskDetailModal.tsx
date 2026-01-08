@@ -5,6 +5,7 @@ import deleteIconPaths from "../imports/svg-u66msu10qs";
 import { SelectListModal } from "./SelectListModal";
 import { SelectMilestoneModal } from "./SelectMilestoneModal";
 import { DeadlineModal } from "./DeadlineModal";
+import { linkifyText } from "../lib/textUtils";
 
 interface ListItem {
   id: number;
@@ -49,6 +50,23 @@ interface TaskDetailModalProps {
   milestones?: MilestoneWithGoal[];
 }
 
+// Helper function to get all text nodes in an element
+function getTextNodes(element: Node): Text[] {
+  const textNodes: Text[] = [];
+  const walker = document.createTreeWalker(
+    element,
+    NodeFilter.SHOW_TEXT,
+    null
+  );
+  
+  let node;
+  while (node = walker.nextNode()) {
+    textNodes.push(node as Text);
+  }
+  
+  return textNodes;
+}
+
 export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [] }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
   const [taskDescription, setTaskDescription] = useState(task.description || "");
@@ -60,7 +78,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(task.deadline || null);
   const [effort, setEffort] = useState<number>(task.effort || 0);
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
-  const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
+  const descriptionInputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -78,6 +96,10 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
         taskInputRef.current.style.height = taskInputRef.current.scrollHeight + 'px';
       }
       if (descriptionInputRef.current) {
+        // Update contentEditable div content
+        const plainText = task.description || "";
+        descriptionInputRef.current.textContent = plainText;
+        // Auto-resize
         descriptionInputRef.current.style.height = 'auto';
         descriptionInputRef.current.style.height = descriptionInputRef.current.scrollHeight + 'px';
       }
@@ -199,8 +221,8 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
       />
       
       {/* Bottom Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto">
-        <div className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full">
+      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
+        <div className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
           {/* Handle */}
           <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
             <div className="h-[20px] relative shrink-0 w-[100px]">
@@ -238,24 +260,230 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                 style={{ overflow: 'hidden' }}
               />
               {/* Description Input - Always visible */}
-              <textarea
+              <div
                 ref={descriptionInputRef}
-                value={taskDescription}
-                onChange={(e) => {
-                  setTaskDescription(e.target.value);
+                contentEditable
+                suppressContentEditableWarning
+                onInput={(e) => {
+                  const text = e.currentTarget.textContent || "";
+                  setTaskDescription(text);
+                  
+                  // Preserve cursor position
+                  const selection = window.getSelection();
+                  const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+                  const cursorOffset = range ? range.startOffset : 0;
+                  
                   // Auto-resize
                   if (descriptionInputRef.current) {
                     descriptionInputRef.current.style.height = 'auto';
                     descriptionInputRef.current.style.height = descriptionInputRef.current.scrollHeight + 'px';
                   }
+                  
+                  // Render links in real-time if URLs are detected
+                  if (text.trim() && /(https?:\/\/|www\.)/.test(text)) {
+                    // URL regex pattern
+                    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)/g;
+                    const parts: string[] = [];
+                    let lastIndex = 0;
+                    let match;
+                    let urlCount = 0;
+                    
+                    while ((match = urlRegex.exec(text)) !== null) {
+                      urlCount++;
+                      // Add text before URL
+                      if (match.index > lastIndex) {
+                        const beforeText = text.substring(lastIndex, match.index);
+                        parts.push(beforeText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+                      }
+                      
+                      // Add URL as clickable link
+                      let url = match[0];
+                      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                        url = 'https://' + url;
+                      }
+                      const escapedUrl = url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                      const escapedText = match[0].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                      parts.push(`<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer" class="description-link" onclick="event.stopPropagation(); window.open('${escapedUrl}', '_blank', 'noopener,noreferrer'); return false;">${escapedText}</a>`);
+                      
+                      lastIndex = match.index + match[0].length;
+                    }
+                    
+                    // Add remaining text
+                    if (lastIndex < text.length) {
+                      const remainingText = text.substring(lastIndex);
+                      parts.push(remainingText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+                    }
+                    
+                    // Render with links if URLs were found
+                    if (urlCount > 0 && descriptionInputRef.current) {
+                      const htmlToRender = parts.join('');
+                      const currentHTML = descriptionInputRef.current.innerHTML;
+                      
+                      // Only update if HTML changed to avoid cursor jumping
+                      if (currentHTML !== htmlToRender) {
+                        // Set HTML with links
+                        descriptionInputRef.current.innerHTML = htmlToRender;
+                        
+                        // Restore cursor position
+                        setTimeout(() => {
+                          if (descriptionInputRef.current) {
+                            try {
+                              const newSelection = window.getSelection();
+                              if (newSelection) {
+                                const textNodes = getTextNodes(descriptionInputRef.current);
+                                let currentOffset = 0;
+                                let targetNode: Text | null = null;
+                                let targetOffset = 0;
+                                
+                                for (const node of textNodes) {
+                                  const nodeLength = node.textContent?.length || 0;
+                                  if (currentOffset + nodeLength >= cursorOffset) {
+                                    targetNode = node;
+                                    targetOffset = Math.min(cursorOffset - currentOffset, nodeLength);
+                                    break;
+                                  }
+                                  currentOffset += nodeLength;
+                                }
+                                
+                                if (targetNode) {
+                                  const newRange = document.createRange();
+                                  newRange.setStart(targetNode, targetOffset);
+                                  newRange.setEnd(targetNode, targetOffset);
+                                  newSelection.removeAllRanges();
+                                  newSelection.addRange(newRange);
+                                }
+                              }
+                            } catch (err) {
+                              // If cursor restoration fails, place at end
+                              const newSelection = window.getSelection();
+                              if (newSelection && descriptionInputRef.current.lastChild) {
+                                const newRange = document.createRange();
+                                newRange.selectNodeContents(descriptionInputRef.current);
+                                newRange.collapse(false);
+                                newSelection.removeAllRanges();
+                                newSelection.addRange(newRange);
+                              }
+                            }
+                          }
+                        }, 0);
+                      }
+                    }
+                  }
                 }}
-                placeholder="Description"
-                className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] tracking-[-0.198px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[28px] ${
+                onBlur={(e) => {
+                  // Render links when not editing
+                  if (descriptionInputRef.current) {
+                    const text = descriptionInputRef.current.textContent || "";
+                    setTaskDescription(text);
+                    
+                    if (text.trim()) {
+                      // URL regex pattern
+                      const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)/g;
+                      const parts: string[] = [];
+                      let lastIndex = 0;
+                      let match;
+                      let urlCount = 0;
+                      
+                    while ((match = urlRegex.exec(text)) !== null) {
+                      urlCount++;
+                      // Add text before URL (with proper escaping)
+                        if (match.index > lastIndex) {
+                          const beforeText = text.substring(lastIndex, match.index);
+                          parts.push(beforeText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+                        }
+                        
+                        // Add URL as clickable link
+                        let url = match[0];
+                        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                          url = 'https://' + url;
+                        }
+                        const escapedUrl = url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                        const escapedText = match[0].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        parts.push(`<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer" class="description-link" onclick="event.stopPropagation(); window.open('${escapedUrl}', '_blank', 'noopener,noreferrer'); return false;">${escapedText}</a>`);
+                        
+                        lastIndex = match.index + match[0].length;
+                      }
+                      
+                      // Add remaining text
+                      if (lastIndex < text.length) {
+                        const remainingText = text.substring(lastIndex);
+                        parts.push(remainingText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+                      }
+                      
+                      // Update innerHTML if URLs were found, otherwise keep plain text
+                      if (urlCount > 0) {
+                        const htmlToRender = parts.join('');
+                        // Small delay to ensure blur completes before rendering
+                        setTimeout(() => {
+                          if (descriptionInputRef.current && !descriptionInputRef.current.matches(':focus')) {
+                            descriptionInputRef.current.innerHTML = htmlToRender;
+                          }
+                        }, 10);
+                      } else {
+                        descriptionInputRef.current.textContent = text;
+                      }
+                    } else {
+                      descriptionInputRef.current.textContent = text;
+                    }
+                  }
+                }}
+                onFocus={(e) => {
+                  // Show plain text when editing, but not if clicking on a link
+                  const target = e.target as HTMLElement;
+                  if (target.tagName !== 'A' && descriptionInputRef.current) {
+                    const text = descriptionInputRef.current.textContent || taskDescription || "";
+                    descriptionInputRef.current.textContent = text;
+                  }
+                }}
+                onMouseDown={(e) => {
+                  // Handle link clicks before focus event
+                  const target = e.target as HTMLElement;
+                  if (target.tagName === 'A' || target.closest('a')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const link = (target.tagName === 'A' ? target : target.closest('a')) as HTMLAnchorElement;
+                    if (link && link.href) {
+                      window.open(link.href, '_blank', 'noopener,noreferrer');
+                    }
+                    // Prevent focus on the contentEditable
+                    setTimeout(() => {
+                      if (descriptionInputRef.current) {
+                        descriptionInputRef.current.blur();
+                      }
+                    }, 0);
+                    return false;
+                  }
+                }}
+                className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] tracking-[-0.198px] bg-transparent border-none outline-none w-full resize-none min-h-[28px] ${
                   taskDescription.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
                 }`}
-                rows={1}
-                style={{ overflow: 'hidden' }}
+                style={{ 
+                  overflow: 'hidden',
+                  whiteSpace: 'pre-wrap',
+                  wordWrap: 'break-word'
+                }}
+                data-placeholder="Description"
               />
+              <style>{`
+                [contenteditable][data-placeholder]:empty:before {
+                  content: attr(data-placeholder);
+                  color: #5b5d62;
+                  pointer-events: none;
+                }
+                [contenteditable] .description-link {
+                  color: #5b5d62 !important;
+                  text-decoration: underline !important;
+                  cursor: pointer !important;
+                }
+                [contenteditable] .description-link:hover {
+                  opacity: 0.8;
+                }
+                [contenteditable] a.description-link {
+                  color: #5b5d62 !important;
+                  text-decoration: underline !important;
+                  cursor: pointer !important;
+                }
+              `}</style>
             </div>
 
             {/* Buttons Container */}

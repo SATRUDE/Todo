@@ -3,6 +3,7 @@ import svgPaths from "../imports/svg-obs7av64ch";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { AddTaskModal } from "./AddTaskModal";
 import { AddListModal } from "./AddListModal";
+import { linkifyText } from "../lib/textUtils";
 
 interface Todo {
   id: number;
@@ -286,7 +287,7 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                           width: '100%'
                         }}
                       >
-                        {todo.description}
+                        {linkifyText(todo.description)}
                       </p>
                     </div>
                   )}

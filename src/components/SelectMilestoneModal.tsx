@@ -43,9 +43,9 @@ export function SelectMilestoneModal({ isOpen, onClose, milestones, selectedMile
       />
       
       {/* Bottom Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto">
+      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
         <div 
-          className="bg-[#110c10] box-border flex flex-col rounded-tl-[32px] rounded-tr-[32px] w-full" 
+          className="bg-[#110c10] box-border flex flex-col rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet" 
           style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
         >
           {/* Handle */}

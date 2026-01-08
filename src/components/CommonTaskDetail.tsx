@@ -1,6 +1,7 @@
 import { useState } from "react";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { CommonTaskDetailModal } from "./CommonTaskDetailModal";
+import { linkifyText } from "../lib/textUtils";
 
 interface CommonTask {
   id: number;
@@ -251,7 +252,7 @@ export function CommonTaskDetail({
                             width: '100%'
                           }}
                         >
-                          {todo.description}
+                          {linkifyText(todo.description)}
                         </p>
                       </div>
                     )}

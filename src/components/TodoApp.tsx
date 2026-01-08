@@ -23,6 +23,7 @@ import { SignIn } from "./SignIn";
 import { ResetPassword } from "./ResetPassword";
 import { APP_VERSION } from "../lib/version";
 import { supabase } from "../lib/supabase";
+import { linkifyText } from "../lib/textUtils";
 import { 
   fetchTasks, 
   createTask, 
@@ -1925,8 +1926,9 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
 
   return (
     <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-start pt-[60px] pb-[100px] px-0 relative w-full min-h-screen overflow-x-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
-      {/* Main Content */}
-      {currentPage === "today" ? (
+      {/* Main Content Container - 700px max-width on desktop, centered */}
+      <div className="w-full desktop-container">
+        {currentPage === "today" ? (
         <div className="relative shrink-0 w-full">
           <div className="w-full">
             <div className="box-border content-stretch flex flex-col gap-[32px] items-start pt-0 relative w-full h-fit overflow-x-hidden" style={{ paddingBottom: '150px' }}>
@@ -2171,7 +2173,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                     backgroundColor: '#1f2022', 
                     borderRadius: '8px',
                     padding: '12px',
-                    flex: 1
+                    flex: 1,
+                    opacity: tasksCompletedForTimeRange.length === 0 ? 0.25 : 1
                   }}
                   onClick={() => {
                     if (tasksCompletedForTimeRange.length > 0) {
@@ -2229,7 +2232,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                     backgroundColor: '#1f2022', 
                     borderRadius: '8px',
                     padding: '12px',
-                    flex: 1
+                    flex: 1,
+                    opacity: missedDeadlines.length === 0 ? 0.25 : 1
                   }}
                   onClick={() => {
                     if (missedDeadlines.length > 0) {
@@ -2413,7 +2417,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                           width: '100%'
                         }}
                       >
-                        {todo.description}
+                        {linkifyText(todo.description)}
                       </p>
                     </div>
                   )}
@@ -2901,6 +2905,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           }}
         />
       ) : null}
+      </div>
 
       {/* Bottom Navigation */}
       <div className="box-border content-stretch flex gap-[40px] items-center justify-center pb-[60px] pt-[20px] px-0 fixed bottom-0 left-0 right-0 w-full bg-[#110c10] z-[1000]">

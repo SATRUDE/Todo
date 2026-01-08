@@ -92,8 +92,8 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
       />
       
       {/* Bottom Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto max-h-[90vh] flex flex-col">
-        <div className="bg-[#110c10] box-border flex flex-col gap-[32px] items-center overflow-hidden pb-[40px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full flex-1 min-h-0">
+      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto max-h-[90vh] flex flex-col items-center">
+        <div className="bg-[#110c10] box-border flex flex-col gap-[32px] items-center overflow-hidden pb-[40px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet flex-1 min-h-0">
           {/* Handle */}
           <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
             <div className="h-[20px] relative shrink-0 w-[100px]">

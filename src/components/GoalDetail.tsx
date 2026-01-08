@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { GoalDetailModal } from "./GoalDetailModal";
 import { MilestoneModal } from "./MilestoneModal";
+import { linkifyText } from "../lib/textUtils";
 
 interface Goal {
   id: number;
@@ -212,7 +213,7 @@ export function GoalDetail({
           {goal.description && goal.description.trim() !== "" && (
             <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
               <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
-                {goal.description}
+                {linkifyText(goal.description)}
               </p>
             </div>
           )}

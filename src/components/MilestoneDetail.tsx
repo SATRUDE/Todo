@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { AddTaskModal } from "./AddTaskModal";
 import { MilestoneModal } from "./MilestoneModal";
+import { linkifyText } from "../lib/textUtils";
 
 interface Todo {
   id: number;
@@ -202,7 +203,7 @@ export function MilestoneDetail({
                     className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-white text-[18px] tracking-[-0.198px]"
                     style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}
                   >
-                    {milestone.description}
+                    {linkifyText(milestone.description)}
                   </p>
                 </div>
               </div>
@@ -273,7 +274,7 @@ export function MilestoneDetail({
                             width: '100%'
                           }}
                         >
-                          {todo.description}
+                          {linkifyText(todo.description)}
                         </p>
                       </div>
                     )}
