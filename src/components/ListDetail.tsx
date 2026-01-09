@@ -18,6 +18,7 @@ interface Todo {
     time: string;
     recurring?: string;
   };
+  type?: 'task' | 'reminder';
 }
 
 interface ListItem {
@@ -57,6 +58,11 @@ interface ListDetailProps {
 export function ListDetail({ listId, listName, listColor, isShared, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList, onTaskClick, lists = [], milestones = [], dateFilter, timeRangeFilter, onClearDateFilter }: ListDetailProps) {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
+  const [isRemindersExpanded, setIsRemindersExpanded] = useState(true);
+  
+  // Filter tasks into reminders and regular tasks
+  const reminders = tasks.filter(todo => todo.type === 'reminder');
+  const regularTasks = tasks.filter(todo => todo.type !== 'reminder');
 
   const handleAddTask = (taskText: string, description?: string, _listId?: number, _deadline?: { date: Date; time: string; recurring?: string }) => {
     // onAddTask from parent expects just taskText and already knows the listId
@@ -227,9 +233,159 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
               })()
             )}
 
+            {/* Reminders Box */}
+            {reminders.length > 0 && (
+              <div 
+                className="content-stretch flex flex-col gap-[10px] items-start px-[16px] relative mb-[24px]"
+                style={{ 
+                  backgroundColor: '#1f2022',
+                  paddingTop: '16px',
+                  paddingBottom: '16px',
+                  borderRadius: '8px',
+                  marginLeft: '20px',
+                  marginRight: '20px',
+                  width: 'calc(100% - 40px)'
+                }}
+                ref={(el) => {
+                  // #region agent log
+                  if (el) {
+                    const computedStyle = window.getComputedStyle(el);
+                    const parentStyle = el.parentElement ? window.getComputedStyle(el.parentElement) : null;
+                    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ListDetail.tsx:RemindersBox:render',message:'Reminders box rendered in ListDetail',data:{remindersCount:reminders.length,className:el.className,inlineStyle:el.getAttribute('style'),paddingTop:computedStyle.paddingTop,paddingBottom:computedStyle.paddingBottom,paddingLeft:computedStyle.paddingLeft,paddingRight:computedStyle.paddingRight,backgroundColor:computedStyle.backgroundColor,marginLeft:computedStyle.marginLeft,marginRight:computedStyle.marginRight,borderRadius:computedStyle.borderRadius,width:computedStyle.width,parentPaddingLeft:parentStyle?.paddingLeft,parentPaddingRight:parentStyle?.paddingRight},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
+                  }
+                  // #endregion
+                }}
+              >
+                {/* Header */}
+                <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
+                  <div className="content-stretch flex items-center relative shrink-0">
+                    <p 
+                      className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
+                      style={{ fontSize: '12px' }}
+                      ref={(el) => {
+                        // #region agent log
+                        if (el) {
+                          const computedStyle = window.getComputedStyle(el);
+                          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ListDetail.tsx:RemindersTitle:render',message:'Reminders title rendered in ListDetail',data:{className:el.className,inlineStyle:el.getAttribute('style'),fontSize:computedStyle.fontSize,textContent:el.textContent},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
+                        }
+                        // #endregion
+                      }}
+                    >
+                      REMINDERS
+                    </p>
+                  </div>
+                  <div 
+                    className="content-stretch flex gap-[16px] items-start justify-end relative shrink-0 cursor-pointer"
+                    onClick={() => setIsRemindersExpanded(!isRemindersExpanded)}
+                  >
+                    <div className="content-stretch flex items-center relative shrink-0">
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
+                        {reminders.length}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center relative shrink-0">
+                      <div className={`flex-none ${isRemindersExpanded ? 'rotate-[180deg]' : ''} transition-transform`}>
+                        <div className="relative size-[20px]">
+                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                            <path
+                              d="M6 9L12 15L18 9"
+                              stroke="#E1E6EE"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reminders List */}
+                {isRemindersExpanded && (
+                  <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                    {reminders.map((todo) => (
+                      <div
+                        key={todo.id}
+                        className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
+                        onClick={() => onTaskClick && onTaskClick(todo)}
+                      >
+                        {/* Reminder Row */}
+                        <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+                          {/* Bell Icon */}
+                          <div className="relative shrink-0 size-[24px]">
+                            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                            </svg>
+                          </div>
+                          <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
+                            <div className="content-stretch flex items-center relative shrink-0 w-full">
+                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px]">
+                                {todo.text}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Time */}
+                        {(todo.deadline?.time || todo.time) && (
+                          <div className="content-stretch flex items-start relative shrink-0">
+                            <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
+                              <div className="relative shrink-0 size-[20px]">
+                                <svg
+                                  className="block size-full"
+                                  fill="none"
+                                  preserveAspectRatio="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <g>
+                                    <path
+                                      d={svgPathsToday.p19fddb00}
+                                      stroke="#5B5D62"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="1.5"
+                                    />
+                                  </g>
+                                </svg>
+                              </div>
+                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
+                                {todo.deadline?.time || todo.time}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Description */}
+                        {todo.description && todo.description.trim() && (
+                          <div 
+                            className="w-full pl-[32px] overflow-hidden"
+                            style={{ maxWidth: '100%', boxSizing: 'border-box' }}
+                          >
+                            <p 
+                              className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                              style={{ 
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                maxWidth: '100%',
+                                width: '100%'
+                              }}
+                            >
+                              {linkifyText(todo.description)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Tasks */}
             <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
-              {tasks.map((todo) => (
+              {regularTasks.map((todo) => (
                 <div
                   key={todo.id}
                   className="content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer"
@@ -237,33 +393,36 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                 >
                   {/* Task Name Row */}
                   <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
-                    <div 
-                      className="relative shrink-0 size-[24px] cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleTask(todo.id);
-                      }}
-                    >
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                        <circle 
-                          cx="12" 
-                          cy="12" 
-                          r="11.625" 
-                          stroke="#E1E6EE" 
-                          strokeWidth="0.75"
-                          fill={todo.completed ? "#E1E6EE" : "none"}
-                        />
-                        {todo.completed && (
-                          <path
-                            d="M7 12L10 15L17 8"
-                            stroke="#110c10"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                    {/* Only show checkbox for tasks, not reminders */}
+                    {todo.type !== 'reminder' && (
+                      <div 
+                        className="relative shrink-0 size-[24px] cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleTask(todo.id);
+                        }}
+                      >
+                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                          <circle 
+                            cx="12" 
+                            cy="12" 
+                            r="11.625" 
+                            stroke="#E1E6EE" 
+                            strokeWidth="0.75"
+                            fill={todo.completed ? "#E1E6EE" : "none"}
                           />
-                        )}
-                      </svg>
-                    </div>
+                          {todo.completed && (
+                            <path
+                              d="M7 12L10 15L17 8"
+                              stroke="#110c10"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          )}
+                        </svg>
+                      </div>
+                    )}
                     <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] truncate tracking-[-0.198px] ${
                       todo.completed ? "text-[#5b5d62] line-through" : "text-white"
                     }`}>

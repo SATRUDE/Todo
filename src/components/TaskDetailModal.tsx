@@ -37,15 +37,16 @@ interface Todo {
     recurring?: string;
   };
   effort?: number;
+  type?: 'task' | 'reminder';
 }
 
 interface TaskDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   task: Todo;
-  onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number) => void;
+  onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder') => void;
   onDeleteTask: (taskId: number) => void;
-  onCreateTask?: (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number) => void;
+  onCreateTask?: (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder') => void;
   lists?: ListItem[];
   milestones?: MilestoneWithGoal[];
 }
@@ -77,6 +78,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<number | null>(task.milestoneId || null);
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(task.deadline || null);
   const [effort, setEffort] = useState<number>(task.effort || 0);
+  const [taskType, setTaskType] = useState<'task' | 'reminder'>(task.type || 'task');
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
   const descriptionInputRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +90,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     setSelectedMilestoneId(task.milestoneId || null);
     setDeadline(task.deadline || null);
     setEffort(task.effort || 0);
+    setTaskType(task.type || 'task');
     
     // Auto-resize textareas when task changes
     setTimeout(() => {
@@ -110,9 +113,9 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     if (taskInput.trim() === "") return;
     // Check if this is a new task (temporary ID < 0) and we have onCreateTask
     if (task.id < 0 && onCreateTask) {
-      onCreateTask(taskInput, taskDescription || null, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, effort > 0 ? effort : undefined);
+      onCreateTask(taskInput, taskDescription || null, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, effort > 0 ? effort : undefined, taskType);
     } else {
-      onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, effort > 0 ? effort : undefined);
+      onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, effort > 0 ? effort : undefined, taskType);
     }
     onClose();
   };
@@ -490,6 +493,27 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
             <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
               {/* Button Row */}
               <div className="content-center flex flex-wrap gap-[8px] items-center relative shrink-0 w-full">
+                {/* Task Type Toggle Button */}
+                <div 
+                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                  onClick={() => setTaskType(taskType === 'task' ? 'reminder' : 'task')}
+                >
+                  <div className="relative shrink-0 size-[20px]">
+                    {taskType === 'task' ? (
+                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.242 5.992h12m-12 6.003H20.24m-12 5.999h12M4.117 7.495v-3.75H2.99m1.125 3.75H2.99m1.125 0H5.24m-1.92 2.577a1.125 1.125 0 1 1 1.591 1.59l-1.83 1.83h2.16M2.99 15.745h1.125a1.125 1.125 0 0 1 0 2.25H3.74m0-.002h.375a1.125 1.125 0 0 1 0 2.25H2.99" />
+                      </svg>
+                    ) : (
+                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                      </svg>
+                    )}
+                  </div>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                    {taskType === 'task' ? 'Task' : 'Reminder'}
+                  </p>
+                </div>
+
                 {/* Deadline Button */}
                 <div 
                   className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"

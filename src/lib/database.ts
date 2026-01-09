@@ -72,6 +72,7 @@ export interface Todo {
   deadline_time?: string
   deadline_recurring?: string
   effort?: number // Effort level out of 10 (0-10)
+  type?: 'task' | 'reminder' // Task type: 'task' or 'reminder'
   created_at?: string
   updated_at?: string
 }
@@ -134,6 +135,7 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     deadline_time: dbTodo.deadline_time,
     deadline_recurring: dbTodo.deadline_recurring,
     effort: dbTodo.effort,
+    type: dbTodo.type || 'task', // Default to 'task' if not set
     created_at: dbTodo.created_at,
     updated_at: dbTodo.updated_at,
   }
@@ -231,6 +233,14 @@ export function appTodoToDbTodo(todo: any): any {
     dbTodo.effort = Math.max(0, Math.min(10, Math.round(todo.effort))) // Clamp between 0-10
   }
   
+  // Handle type - always include it, default to 'task' if not specified
+  if (todo.type === 'task' || todo.type === 'reminder') {
+    dbTodo.type = todo.type
+  } else {
+    // Default to 'task' if type is undefined, null, or invalid
+    dbTodo.type = 'task'
+  }
+  
   return dbTodo
 }
 
@@ -280,6 +290,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     milestoneId: dbTodo.milestone_id,
     deadline,
     effort: dbTodo.effort,
+    type: dbTodo.type || 'task', // Default to 'task' if not set
     updatedAt: dbTodo.updated_at,
   }
 }
@@ -355,7 +366,7 @@ export async function createTask(todo: any): Promise<Todo> {
   const validFields = [
     'text', 'completed', 'time', 'group', 'list_id', 'milestone_id',
     'deadline_date', 'deadline_time', 'deadline_recurring',
-    'description', 'effort', 'user_id'
+    'description', 'effort', 'type', 'user_id'
   ]
   const cleanedDbTodo: any = {}
   for (const field of validFields) {
@@ -389,8 +400,16 @@ export async function updateTask(id: number, todo: any): Promise<Todo> {
   const userId = await ensureAuthenticated()
   const dbTodo = appTodoToDbTodo(todo)
   
+  // Ensure type field is always explicitly set - use the type from todo if it exists, otherwise default to 'task'
+  // This ensures the type is always saved even if appTodoToDbTodo didn't set it correctly
+  if (todo.type === 'task' || todo.type === 'reminder') {
+    dbTodo.type = todo.type
+  } else if (!dbTodo.type || (dbTodo.type !== 'task' && dbTodo.type !== 'reminder')) {
+    dbTodo.type = 'task' // Default to 'task' if type is missing or invalid
+  }
+  
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateTask:beforeUpdate',message:'Before Supabase update',data:{taskId:id,userId,dbTodo},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateTask:beforeUpdate',message:'Before Supabase update',data:{taskId:id,userId,dbTodo,originalTodo:todo},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
   // #endregion
   
   // First, check what user_id the task currently has

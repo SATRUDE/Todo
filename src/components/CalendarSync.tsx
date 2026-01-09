@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { CalendarTaskSuggestions } from "./CalendarTaskSuggestions";
+import { useState, useRef } from "react";
+import { CalendarTaskSuggestions, CalendarTaskSuggestionsRef } from "./CalendarTaskSuggestions";
 import { TaskDetailModal } from "./TaskDetailModal";
 import { markEventAsProcessed } from "../lib/calendar";
 
 interface CalendarSyncProps {
   onBack: () => void;
-  onAddTask?: (taskText: string, description?: string, listId?: number, deadline?: { date: Date; time: string; recurring?: string }) => void;
+  onAddTask?: (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number) => void;
   lists?: Array<{ id: number; name: string; color: string; count: number; isShared: boolean }>;
 }
 
@@ -27,51 +27,40 @@ interface Todo {
 export function CalendarSync({ onBack, onAddTask, lists = [] }: CalendarSyncProps) {
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<{ text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string } | null>(null);
-  const handleAcceptSuggestion = async (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => {
-    if (onAddTask) {
-      // CalendarTaskSuggestions already handles marking the event as processed
-      // Just add the task here
-      try {
-        await onAddTask(
-          suggestion.text,
-          suggestion.description,
-          0, // TODAY_LIST_ID
-          undefined, // milestoneId - not used for calendar tasks
-          suggestion.deadline ? {
-            date: suggestion.deadline.date,
-            time: suggestion.deadline.time
-          } : undefined
-        );
-      } catch (error) {
-        console.error('[CalendarSync] Error adding task:', error);
-        throw error; // Re-throw so CalendarTaskSuggestions can handle it
-      }
-    }
-  };
+  const suggestionsRef = useRef<CalendarTaskSuggestionsRef>(null);
 
   const handleTaskClick = (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => {
     setSelectedSuggestion(suggestion);
     setIsTaskDetailOpen(true);
   };
 
-  const handleCreateTask = async (text: string, description?: string | null, listId?: number, deadline?: { date: Date; time: string; recurring?: string } | null) => {
+  const handleCreateTask = async (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder') => {
     if (!onAddTask || !selectedSuggestion) return;
+
+    const eventId = selectedSuggestion.eventId;
 
     try {
       // Mark the event as processed
-      await markEventAsProcessed(selectedSuggestion.eventId);
+      await markEventAsProcessed(eventId);
       
-      // Add the task
+      // Add the task - note: onAddTask signature expects milestoneId and effort as separate parameters
       await onAddTask(
         text,
         description || undefined,
         listId,
+        milestoneId,
         deadline ? {
           date: deadline.date,
           time: deadline.time,
           recurring: deadline.recurring
-        } : undefined
+        } : undefined,
+        effort
       );
+
+      // Remove the suggestion from the list
+      if (suggestionsRef.current) {
+        suggestionsRef.current.removeSuggestion(eventId);
+      }
 
       // Close the modal
       setIsTaskDetailOpen(false);
@@ -129,7 +118,7 @@ export function CalendarSync({ onBack, onAddTask, lists = [] }: CalendarSyncProp
           {onAddTask && (
             <div className="w-full">
               <CalendarTaskSuggestions
-                onAcceptSuggestion={handleAcceptSuggestion}
+                ref={suggestionsRef}
                 onTaskClick={handleTaskClick}
               />
             </div>

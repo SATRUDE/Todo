@@ -1,13 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { fetchCalendarEvents, suggestTasksFromEvents, CalendarEvent, getProcessedEventIds, markEventAsProcessed, filterProcessedEvents } from "../lib/calendar";
 
 interface CalendarTaskSuggestionsProps {
-  onAcceptSuggestion: (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => void;
+  onAcceptSuggestion?: (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => void;
   onDismiss?: () => void;
   onTaskClick?: (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => void;
 }
 
-export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss, onTaskClick }: CalendarTaskSuggestionsProps) {
+export interface CalendarTaskSuggestionsRef {
+  removeSuggestion: (eventId: string) => void;
+}
+
+export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, CalendarTaskSuggestionsProps>(
+  ({ onAcceptSuggestion, onDismiss, onTaskClick }, ref) => {
   const [suggestions, setSuggestions] = useState<Array<{
     text: string;
     description?: string;
@@ -53,6 +58,13 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss, onTaskC
 
     loadSuggestions();
   }, []);
+
+  // Expose removeSuggestion method to parent via ref
+  useImperativeHandle(ref, () => ({
+    removeSuggestion: (eventId: string) => {
+      setSuggestions(prev => prev.filter(s => s.event.id !== eventId));
+    }
+  }));
 
   const handleDismissEvent = async (eventId: string) => {
     try {
@@ -207,7 +219,9 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss, onTaskC
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  handleAcceptSuggestion({ ...suggestion, eventId: suggestion.event.id });
+                  if (onTaskClick) {
+                    onTaskClick({ ...suggestion, eventId: suggestion.event.id });
+                  }
                 }}
                 className="px-[16px] py-[8px] bg-[#0b64f9] text-white text-[16px] rounded-lg border-none cursor-pointer hover:bg-[#0954d0] flex items-center gap-[8px]"
               >
@@ -222,5 +236,5 @@ export function CalendarTaskSuggestions({ onAcceptSuggestion, onDismiss, onTaskC
       </div>
     </div>
   );
-}
+});
 
