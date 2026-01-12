@@ -68,6 +68,7 @@ export interface Todo {
   description?: string | null
   list_id?: number // -1 for completed, 0 for today, positive numbers for custom lists
   milestone_id?: number // Foreign key to milestones table
+  daily_task_id?: number | null // Foreign key to daily_tasks table
   deadline_date?: string // YYYY-MM-DD string
   deadline_time?: string
   deadline_recurring?: string
@@ -92,6 +93,19 @@ export interface CommonTask {
   text: string
   description?: string | null
   time?: string | null
+  deadline_date?: string | null // YYYY-MM-DD string
+  deadline_time?: string | null // HH:MM string
+  deadline_recurring?: string | null // 'daily', 'weekly', 'weekday', 'monthly'
+  created_at?: string
+  updated_at?: string
+}
+
+export interface DailyTask {
+  id: number
+  text: string
+  description?: string | null
+  time?: string | null
+  list_id?: number | null
   deadline_date?: string | null // YYYY-MM-DD string
   deadline_time?: string | null // HH:MM string
   deadline_recurring?: string | null // 'daily', 'weekly', 'weekday', 'monthly'
@@ -131,6 +145,7 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     description: dbTodo.description,
     list_id: dbTodo.list_id,
     milestone_id: dbTodo.milestone_id,
+    daily_task_id: dbTodo.daily_task_id,
     deadline_date: dbTodo.deadline_date,
     deadline_time: dbTodo.deadline_time,
     deadline_recurring: dbTodo.deadline_recurring,
@@ -173,6 +188,17 @@ export function appTodoToDbTodo(todo: any): any {
     }
   } else if (todo.milestone_id !== undefined && todo.milestone_id !== null && typeof todo.milestone_id === 'number') {
     dbTodo.milestone_id = todo.milestone_id
+  }
+  
+  // Handle daily_task_id - only set if it's a valid number
+  if (todo.dailyTaskId !== undefined && todo.dailyTaskId !== null) {
+    if (typeof todo.dailyTaskId === 'number') {
+      dbTodo.daily_task_id = todo.dailyTaskId
+    } else {
+      console.warn('Invalid dailyTaskId type - expected number, got:', typeof todo.dailyTaskId, todo.dailyTaskId);
+    }
+  } else if (todo.daily_task_id !== undefined && todo.daily_task_id !== null && typeof todo.daily_task_id === 'number') {
+    dbTodo.daily_task_id = todo.daily_task_id
   }
   
   if (todo.deadline) {
@@ -288,6 +314,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     description: dbTodo.description || undefined,
     listId: dbTodo.list_id,
     milestoneId: dbTodo.milestone_id,
+    dailyTaskId: dbTodo.daily_task_id,
     deadline,
     effort: dbTodo.effort,
     type: dbTodo.type || 'task', // Default to 'task' if not set
@@ -364,7 +391,7 @@ export async function createTask(todo: any): Promise<Todo> {
   // Ensure we only include valid database fields
   // Remove any unexpected fields that might cause issues
   const validFields = [
-    'text', 'completed', 'time', 'group', 'list_id', 'milestone_id',
+    'text', 'completed', 'time', 'group', 'list_id', 'milestone_id', 'daily_task_id',
     'deadline_date', 'deadline_time', 'deadline_recurring',
     'description', 'effort', 'type', 'user_id'
   ]
@@ -763,6 +790,106 @@ export function dbCommonTaskToDisplayCommonTask(dbTask: CommonTask): any {
     description: dbTask.description || undefined,
     time: dbTask.time || undefined,
     deadline,
+  }
+}
+
+// Daily Tasks
+export async function fetchDailyTasks(): Promise<DailyTask[]> {
+  const userId = await ensureAuthenticated()
+  
+  const { data, error } = await supabase
+    .from('daily_tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching daily tasks:', error)
+    console.error('Error details:', JSON.stringify(error, null, 2))
+    throw error
+  }
+
+  return data || []
+}
+
+export async function createDailyTask(task: { text: string; description?: string | null; time?: string | null; listId?: number | null }): Promise<DailyTask> {
+  const userId = await ensureAuthenticated()
+  
+  const insertData: any = {
+    user_id: userId,
+    text: task.text,
+    description: task.description || null,
+    time: task.time || null,
+    list_id: task.listId || null,
+    deadline_date: null,
+    deadline_time: null,
+    deadline_recurring: null,
+  }
+  
+  const { data, error } = await supabase
+    .from('daily_tasks')
+    .insert(insertData)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating daily task:', error)
+    const errorMessage = error.message || error.details || error.hint || 'Unknown error'
+    throw new Error(`Failed to create daily task: ${errorMessage}`)
+  }
+
+  return data
+}
+
+export async function updateDailyTask(id: number, task: { text: string; description?: string | null; time?: string | null; listId?: number | null }): Promise<DailyTask> {
+  const userId = await ensureAuthenticated()
+  
+  const updateData: any = {
+    text: task.text,
+    description: task.description || null,
+    time: task.time || null,
+    list_id: task.listId !== undefined ? task.listId : null,
+  }
+  
+  const { data, error } = await supabase
+    .from('daily_tasks')
+    .update(updateData)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating daily task:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function deleteDailyTask(id: number): Promise<void> {
+  const userId = await ensureAuthenticated()
+  
+  const { error } = await supabase
+    .from('daily_tasks')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Error deleting daily task:', error)
+    throw error
+  }
+}
+
+// Convert database DailyTask to display format
+export function dbDailyTaskToDisplayDailyTask(dbTask: DailyTask): any {
+  return {
+    id: dbTask.id,
+    text: dbTask.text,
+    description: dbTask.description || undefined,
+    time: dbTask.time || undefined,
+    listId: dbTask.list_id || undefined,
   }
 }
 

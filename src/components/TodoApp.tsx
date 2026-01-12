@@ -10,6 +10,7 @@ import { Dashboard } from "./Dashboard";
 import { CalendarSync } from "./CalendarSync";
 import { CommonTasks } from "./CommonTasks";
 import { CommonTaskDetail } from "./CommonTaskDetail";
+import { DailyTasks } from "./DailyTasks";
 import { Goals } from "./Goals";
 import { GoalDetail } from "./GoalDetail";
 import { MilestoneDetail } from "./MilestoneDetail";
@@ -21,6 +22,7 @@ import { FilterListsModal } from "./FilterListsModal";
 import { CalendarTaskSuggestions } from "./CalendarTaskSuggestions";
 import { SignIn } from "./SignIn";
 import { ResetPassword } from "./ResetPassword";
+import { Workshop } from "./Workshop";
 import { APP_VERSION } from "../lib/version";
 import { supabase } from "../lib/supabase";
 import { linkifyText } from "../lib/textUtils";
@@ -40,6 +42,12 @@ import {
   deleteCommonTask,
   CommonTask,
   dbCommonTaskToDisplayCommonTask,
+  fetchDailyTasks,
+  createDailyTask,
+  updateDailyTask,
+  deleteDailyTask,
+  DailyTask,
+  dbDailyTaskToDisplayDailyTask,
   fetchGoals,
   createGoal,
   updateGoal,
@@ -69,6 +77,7 @@ interface Todo {
   description?: string | null;
   listId?: number; // -1 for completed, 0 for today, positive numbers for custom lists
   milestoneId?: number; // Foreign key to milestones table
+  dailyTaskId?: number | null; // Foreign key to daily_tasks table
   deadline?: {
     date: Date;
     time: string;
@@ -87,7 +96,7 @@ interface ListItem {
   isShared: boolean;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -99,6 +108,7 @@ export function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [lists, setLists] = useState<ListItem[]>([]);
   const [commonTasks, setCommonTasks] = useState<CommonTask[]>([]);
+  const [dailyTasks, setDailyTasks] = useState<DailyTask[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
@@ -130,7 +140,7 @@ export function TodoApp() {
   const [selectedTimeRange, setSelectedTimeRange] = useState<"today" | "tomorrow" | "week" | "month" | "allTime">("today");
   const [selectedListFilterIds, setSelectedListFilterIds] = useState<Set<number>>(new Set());
   const [isFilterListsModalOpen, setIsFilterListsModalOpen] = useState(false);
-  const [isRemindersExpanded, setIsRemindersExpanded] = useState(true);
+  const [isScheduledExpanded, setIsScheduledExpanded] = useState(true);
   
   // Check if we're on the reset password route
   useEffect(() => {
@@ -272,10 +282,11 @@ export function TodoApp() {
           return;
         }
         
-        const [tasksData, listsData, commonTasksData, goalsData] = await Promise.allSettled([
+        const [tasksData, listsData, commonTasksData, dailyTasksData, goalsData] = await Promise.allSettled([
           fetchTasks(),
           fetchLists(),
           fetchCommonTasks(),
+          fetchDailyTasks(),
           fetchGoals()
         ]);
         
@@ -304,6 +315,7 @@ export function TodoApp() {
         const tasksResult = tasksData.status === 'fulfilled' ? tasksData.value : [];
         const listsResult = listsData.status === 'fulfilled' ? listsData.value : [];
         const commonTasksResult = commonTasksData.status === 'fulfilled' ? commonTasksData.value : [];
+        const dailyTasksResult = dailyTasksData.status === 'fulfilled' ? dailyTasksData.value : [];
         const goalsResult = goalsData.status === 'fulfilled' ? goalsData.value : [];
         
         if (tasksData.status === 'rejected') {
@@ -314,6 +326,9 @@ export function TodoApp() {
         }
         if (commonTasksData.status === 'rejected') {
           console.error('Error fetching common tasks:', commonTasksData.reason);
+        }
+        if (dailyTasksData.status === 'rejected') {
+          console.error('Error fetching daily tasks:', dailyTasksData.reason);
         }
         if (goalsData.status === 'rejected') {
           console.error('Error fetching goals:', goalsData.reason);
@@ -334,12 +349,18 @@ export function TodoApp() {
         // Convert common tasks from database format to display format
         const displayCommonTasks = commonTasksResult.map(dbCommonTaskToDisplayCommonTask);
         setCommonTasks(displayCommonTasks);
+        // Convert daily tasks from database format to display format
+        const displayDailyTasks = dailyTasksResult.map(dbDailyTaskToDisplayDailyTask);
+        setDailyTasks(displayDailyTasks);
         // Convert goals from database format to display format
         const displayGoals = goalsResult.map(dbGoalToDisplayGoal);
         setGoals(displayGoals);
         
         // Generate tasks from common tasks with deadlines (after todos and commonTasks are loaded)
         await generateTasksFromCommonTasks(displayCommonTasks, appTodos);
+        
+        // Generate tasks from daily tasks for today
+        await generateTasksFromDailyTasks(displayDailyTasks, appTodos);
       } catch (error: any) {
         console.error('Error loading data:', error);
         
@@ -900,7 +921,7 @@ export function TodoApp() {
     }
   };
 
-  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number) => {
+  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number, type?: 'task' | 'reminder') => {
     const newTodo: Todo = {
       id: Date.now(), // Temporary ID
       text: taskText,
@@ -912,6 +933,7 @@ export function TodoApp() {
       deadline: deadline,
       description: description ?? null,
       effort: effort,
+      type: type || 'task',
     };
     
     try {
@@ -932,13 +954,14 @@ export function TodoApp() {
     }
   };
 
-  const addNewTaskToList = async (taskText: string, description: string | undefined, listId: number) => {
+  const addNewTaskToList = async (taskText: string, description: string | undefined, listId: number, type?: 'task' | 'reminder') => {
     const newTodo: Todo = {
       id: Date.now(), // Temporary ID
       text: taskText,
       completed: false,
       listId: listId,
       description: description ?? null,
+      type: type || 'task',
     };
     
     try {
@@ -1109,12 +1132,194 @@ export function TodoApp() {
     }
   };
 
+  // Generate tasks from daily tasks for today
+  const generateTasksFromDailyTasks = async (dailyTasksToCheck: any[], existingTodos?: Todo[]) => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const todosToCheck = existingTodos || todos;
+      
+      for (const dailyTask of dailyTasksToCheck) {
+        // Use the assigned list, or default to Today (0) if no list is assigned
+        const targetListId = dailyTask.listId !== undefined && dailyTask.listId !== null ? dailyTask.listId : 0;
+        
+        // Check if a task already exists for today from this daily task template
+        const existingTask = todosToCheck.find(todo => {
+          if (todo.completed) return false;
+          // Check if this task was created from the same daily task template
+          if (todo.dailyTaskId === dailyTask.id) {
+            // Check if it has today's date as deadline (for tasks with deadlines)
+            if (todo.deadline) {
+              const deadlineDate = new Date(todo.deadline.date);
+              deadlineDate.setHours(0, 0, 0, 0);
+              if (deadlineDate.getTime() === today.getTime()) {
+                return true;
+              }
+            }
+            // If no deadline but same dailyTaskId and in target list, it's a match
+            if (todo.listId === targetListId) {
+              return true;
+            }
+          }
+          return false;
+        });
+        
+        // If no task exists for today, create one
+        if (!existingTask) {
+          const newTodo: Todo = {
+            id: Date.now(), // Temporary ID
+            text: dailyTask.text,
+            completed: false,
+            listId: targetListId,
+            description: dailyTask.description ?? null,
+            time: dailyTask.time ?? undefined,
+            dailyTaskId: dailyTask.id, // Link to the daily task template
+            deadline: {
+              date: new Date(today),
+              time: dailyTask.time || '',
+              recurring: 'daily',
+            },
+          };
+          
+          try {
+            await createTask(newTodo);
+          } catch (error) {
+            console.error(`Error creating task from daily task ${dailyTask.id}:`, error);
+          }
+        }
+      }
+      
+      // Reload tasks after generation
+      const allTasks = await fetchTasks();
+      const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+      setTodos(displayTasks);
+    } catch (error) {
+      console.error('Error generating tasks from daily tasks:', error);
+    }
+  };
+
+  // Daily Tasks handlers
+  const handleUpdateDailyTask = async (id: number, text: string, description?: string | null, time?: string | null, listId?: number | null) => {
+    try {
+      const updatedTask = await updateDailyTask(id, { text, description, time, listId });
+      const displayTask = dbDailyTaskToDisplayDailyTask(updatedTask);
+      const updatedDailyTasks = dailyTasks.map(task => task.id === id ? displayTask : task);
+      setDailyTasks(updatedDailyTasks);
+    } catch (error) {
+      console.error('Error updating daily task:', error);
+      alert(`Failed to update daily task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleDeleteDailyTask = async (id: number) => {
+    try {
+      await deleteDailyTask(id);
+      setDailyTasks(dailyTasks.filter(task => task.id !== id));
+    } catch (error) {
+      console.error('Error deleting daily task:', error);
+      alert(`Failed to delete daily task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleCreateDailyTask = async (text: string, description?: string | null, time?: string | null, listId?: number | null) => {
+    try {
+      const createdTask = await createDailyTask({ text, description, time, listId });
+      const displayTask = dbDailyTaskToDisplayDailyTask(createdTask);
+      const updatedDailyTasks = [...dailyTasks, displayTask];
+      setDailyTasks(updatedDailyTasks);
+      
+      // Automatically create a task for today
+      await generateTasksFromDailyTasks([displayTask], todos);
+    } catch (error) {
+      console.error('Error creating daily task:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(`Failed to create daily task: ${errorMessage}`);
+    }
+  };
+
+  // Reset common tasks: remove all related tasks and regenerate them
+  const resetCommonTasks = async (commonTasksToReset: any[]) => {
+    try {
+      // Get all common tasks with deadlines
+      const commonTasksWithDeadlines = commonTasksToReset.filter(ct => ct.deadline);
+      
+      if (commonTasksWithDeadlines.length === 0) {
+        console.log('No common tasks with deadlines to reset');
+        return;
+      }
+
+      // Fetch all current tasks
+      const allTasks = await fetchTasks();
+      const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+
+      // Find and delete all tasks that match common tasks
+      const tasksToDelete: number[] = [];
+      
+      for (const commonTask of commonTasksWithDeadlines) {
+        if (!commonTask.deadline) continue;
+
+        // Find all tasks that match this common task
+        // Match by text and recurring pattern (if recurring)
+        const matchingTasks = displayTasks.filter(todo => {
+          if (todo.text !== commonTask.text) return false;
+          
+          // If common task has recurring, task must have the same recurring pattern
+          if (commonTask.deadline.recurring) {
+            return todo.deadline?.recurring === commonTask.deadline.recurring;
+          } else {
+            // For non-recurring, just match by text (and it should have a deadline)
+            return todo.deadline !== undefined;
+          }
+        });
+
+        // Collect task IDs to delete
+        matchingTasks.forEach(task => {
+          tasksToDelete.push(task.id);
+        });
+      }
+
+      // Delete all matching tasks
+      for (const taskId of tasksToDelete) {
+        try {
+          await deleteTaskDb(taskId);
+        } catch (error) {
+          console.error(`Error deleting task ${taskId}:`, error);
+        }
+      }
+
+      // Reload tasks after deletion
+      const remainingTasks = await fetchTasks();
+      const remainingDisplayTasks = remainingTasks.map(dbTodoToDisplayTodo);
+      setTodos(remainingDisplayTasks);
+
+      // Regenerate tasks from common tasks
+      await generateTasksFromCommonTasks(commonTasksWithDeadlines, remainingDisplayTasks);
+
+      console.log(`Reset common tasks: deleted ${tasksToDelete.length} tasks and regenerated`);
+    } catch (error) {
+      console.error('Error resetting common tasks:', error);
+      alert(`Failed to reset common tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   // Generate tasks from common tasks based on deadlines
-  const generateTasksFromCommonTasks = async (commonTasksToCheck: CommonTask[], existingTodos: Todo[] = todos) => {
+  const generateTasksFromCommonTasks = async (commonTasksToCheck: CommonTask[], existingTodos?: Todo[]) => {
     try {
       const commonTasksWithDeadlines = commonTasksToCheck.filter(ct => ct.deadline);
       
       if (commonTasksWithDeadlines.length === 0) return; // No common tasks with deadlines
+      
+      // Use provided existingTodos if available, otherwise fetch fresh from database
+      let displayExistingTasks: Todo[];
+      if (existingTodos !== undefined) {
+        // Use the provided todos list (e.g., from toggleTodo with updatedTodos)
+        displayExistingTasks = existingTodos;
+      } else {
+        // Fetch fresh tasks from database to prevent duplicates from stale state
+        const allExistingTasks = await fetchTasks();
+        displayExistingTasks = allExistingTasks.map(dbTodoToDisplayTodo);
+      }
       
       let tasksGenerated = false;
       
@@ -1160,8 +1365,8 @@ export function TodoApp() {
         
         // Check if tasks already exist for these dates and generate missing ones
         for (const targetDate of datesToGenerate) {
-          // Check if a task with the same text and deadline date already exists
-          const existingTask = existingTodos.find(todo => {
+          // Check if a task with the same text and deadline date already exists (check against fresh DB data)
+          const existingTask = displayExistingTasks.find(todo => {
             if (todo.text !== commonTask.text) return false;
             if (!todo.deadline) return false;
             const todoDate = new Date(todo.deadline.date);
@@ -1190,6 +1395,17 @@ export function TodoApp() {
             try {
               await createTask(newTodo);
               tasksGenerated = true;
+              // Immediately add to tracking list to prevent duplicates in this run
+              const targetDateNormalized = new Date(targetDate);
+              targetDateNormalized.setHours(0, 0, 0, 0);
+              displayExistingTasks.push({
+                ...newTodo,
+                deadline: {
+                  date: targetDate,
+                  time: commonTask.deadline.time,
+                  recurring: commonTask.deadline.recurring,
+                }
+              });
             } catch (error) {
               console.error(`Error generating task from common task ${commonTask.id}:`, error);
               // Continue with other tasks even if one fails
@@ -1630,7 +1846,9 @@ export function TodoApp() {
   
   // Filter reminders from regular tasks
   const reminders = todayTasks.filter(todo => todo.type === 'reminder');
-  const regularTasks = todayTasks.filter(todo => todo.type !== 'reminder');
+  // Filter daily tasks (only tasks created from daily task templates) - include completed ones so they can be shown/toggled
+  const dailyTaskItems = todayTasks.filter(todo => todo.dailyTaskId !== undefined && todo.dailyTaskId !== null);
+  const regularTasks = todayTasks.filter(todo => todo.type !== 'reminder' && (todo.dailyTaskId === undefined || todo.dailyTaskId === null));
   
   // Calculate total effort for Today and Tomorrow (for tab labels)
   const getTotalEffort = (timeRange: "today" | "tomorrow") => {
@@ -2342,152 +2560,334 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               )}
 
             
-            {/* Reminders Box - Only show at top for today/tomorrow views */}
-            {reminders.length > 0 && (selectedTimeRange === "today" || selectedTimeRange === "tomorrow") && (
-              <div 
-                className="content-stretch flex flex-col gap-[10px] items-start px-[16px] relative mb-[24px]"
-                style={{ 
-                  backgroundColor: '#1f2022',
-                  paddingTop: '16px',
-                  paddingBottom: '16px',
-                  marginLeft: '20px',
-                  marginRight: '20px',
-                  borderRadius: '8px',
-                  width: 'calc(100% - 40px)'
-                }}
-                ref={(el) => {
-                  // #region agent log
-                  if (el) {
-                    const computedStyle = window.getComputedStyle(el);
-                    const parentStyle = el.parentElement ? window.getComputedStyle(el.parentElement) : null;
-                    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:RemindersBox:render',message:'Reminders box rendered at top',data:{remindersCount:reminders.length,selectedTimeRange,className:el.className,inlineStyle:el.getAttribute('style'),paddingTop:computedStyle.paddingTop,paddingBottom:computedStyle.paddingBottom,paddingLeft:computedStyle.paddingLeft,paddingRight:computedStyle.paddingRight,backgroundColor:computedStyle.backgroundColor,marginLeft:computedStyle.marginLeft,marginRight:computedStyle.marginRight,borderRadius:computedStyle.borderRadius,width:computedStyle.width,parentPaddingLeft:parentStyle?.paddingLeft,parentPaddingRight:parentStyle?.paddingRight},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'E'})}).catch(()=>{});
-                  }
-                  // #endregion
-                }}
-              >
-                {/* Header */}
-                <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
-                  <div className="content-stretch flex items-center relative shrink-0">
-                    <p 
-                      className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
-                      style={{ fontSize: '12px' }}
+            {/* SCHEDULED Section - Reminders and Daily Tasks side by side */}
+            {((reminders.length > 0 || dailyTaskItems.length > 0) && (selectedTimeRange === "today" || selectedTimeRange === "tomorrow")) && (
+              <div className="content-stretch flex flex-col gap-[16px] items-start relative mb-[24px]" style={{ marginLeft: '20px', width: 'calc(100% - 40px)' }}>
+                {/* SCHEDULED Header */}
+                <div className="content-stretch flex items-center justify-between gap-[8px] relative shrink-0 w-full">
+                  <p 
+                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
+                    style={{ fontSize: '12px' }}
+                  >
+                    SCHEDULED
+                  </p>
+                  <div 
+                    className="relative shrink-0 cursor-pointer"
+                    onClick={() => setIsScheduledExpanded(!isScheduledExpanded)}
+                  >
+                    <svg 
+                      className={`block transition-transform ${isScheduledExpanded ? 'rotate-180' : ''}`} 
+                      width="20" 
+                      height="20" 
+                      fill="none" 
+                      preserveAspectRatio="none" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M6 9L12 15L18 9"
+                        stroke="#E1E6EE"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Side-by-side container - Horizontally scrollable */}
+                {isScheduledExpanded && (
+                <div
+                  className="scheduled-cards-scroll-container"
+                  style={{ 
+                    width: '100%',
+                    overflowX: 'auto',
+                    overflowY: 'hidden',
+                    scrollbarWidth: 'none', // Firefox
+                    msOverflowStyle: 'none', // IE/Edge
+                    WebkitOverflowScrolling: 'touch' // Smooth scrolling on iOS
+                  }}
+                >
+                  <style>{`
+                    .scheduled-cards-scroll-container::-webkit-scrollbar {
+                      display: none; /* Chrome, Safari, Opera */
+                    }
+                  `}</style>
+                  <div 
+                    className="flex gap-[12px] items-stretch"
+                    style={{ 
+                      width: 'max-content',
+                      minWidth: 'max-content',
+                      display: 'inline-flex',
+                      paddingRight: '20px'
+                    }}
+                  >
+                  {/* Reminders Box */}
+                  {reminders.length > 0 && (
+                    <div 
+                      className="flex flex-col gap-[10px] items-start px-[16px] relative"
+                      style={{ 
+                        backgroundColor: '#1f2022',
+                        paddingTop: '16px',
+                        paddingBottom: '16px',
+                        borderRadius: '8px',
+                        minWidth: '300px',
+                        width: '300px'
+                      }}
                       ref={(el) => {
                         // #region agent log
                         if (el) {
                           const computedStyle = window.getComputedStyle(el);
-                          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:RemindersTitle:render',message:'Reminders title rendered',data:{className:el.className,inlineStyle:el.getAttribute('style'),fontSize:computedStyle.fontSize,textContent:el.textContent},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'E'})}).catch(()=>{});
+                          const parentStyle = el.parentElement ? window.getComputedStyle(el.parentElement) : null;
+                          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:RemindersBox:render',message:'Reminders box rendered at top',data:{remindersCount:reminders.length,selectedTimeRange,className:el.className,inlineStyle:el.getAttribute('style'),paddingTop:computedStyle.paddingTop,paddingBottom:computedStyle.paddingBottom,paddingLeft:computedStyle.paddingLeft,paddingRight:computedStyle.paddingRight,backgroundColor:computedStyle.backgroundColor,marginLeft:computedStyle.marginLeft,marginRight:computedStyle.marginRight,borderRadius:computedStyle.borderRadius,width:computedStyle.width,parentPaddingLeft:parentStyle?.paddingLeft,parentPaddingRight:parentStyle?.paddingRight},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'E'})}).catch(()=>{});
                         }
                         // #endregion
                       }}
                     >
-                      REMINDERS
-                    </p>
-                  </div>
-                  <div 
-                    className="content-stretch flex gap-[16px] items-start justify-end relative shrink-0 cursor-pointer"
-                    onClick={() => setIsRemindersExpanded(!isRemindersExpanded)}
-                  >
-                    <div className="content-stretch flex items-center relative shrink-0">
-                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
-                        {reminders.length}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-center relative shrink-0">
-                      <div className={`flex-none ${isRemindersExpanded ? 'rotate-[180deg]' : ''} transition-transform`}>
-                        <div className="relative size-[20px]">
-                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                            <path
-                              d="M6 9L12 15L18 9"
-                              stroke="#E1E6EE"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                            />
-                          </svg>
+                      {/* Header */}
+                      <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
+                        <div className="content-stretch flex items-center relative shrink-0">
+                          <p 
+                            className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
+                            style={{ fontSize: '12px' }}
+                            ref={(el) => {
+                              // #region agent log
+                              if (el) {
+                                const computedStyle = window.getComputedStyle(el);
+                                fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:RemindersTitle:render',message:'Reminders title rendered',data:{className:el.className,inlineStyle:el.getAttribute('style'),fontSize:computedStyle.fontSize,textContent:el.textContent},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'E'})}).catch(()=>{});
+                              }
+                              // #endregion
+                            }}
+                          >
+                            REMINDERS
+                          </p>
+                        </div>
+                        <div className="content-stretch flex items-center relative shrink-0">
+                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
+                            {reminders.length}
+                          </p>
                         </div>
                       </div>
+
+                      {/* Reminders List */}
+                      <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                          {reminders.map((todo) => (
+                            <div
+                              key={todo.id}
+                              className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
+                              onClick={() => handleTaskClick(todo)}
+                            >
+                              {/* Reminder Row */}
+                              <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+                                {/* Bell Icon */}
+                                <div className="relative shrink-0 size-[24px]">
+                                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                                  </svg>
+                                </div>
+                                <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
+                                  <div className="content-stretch flex items-center relative shrink-0 w-full">
+                                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px]">
+                                      {todo.text}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Time */}
+                              {(todo.deadline?.time || todo.time) && (
+                                <div className="content-stretch flex items-start relative shrink-0">
+                                  <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
+                                    <div className="relative shrink-0 size-[20px]">
+                                      <svg
+                                        className="block size-full"
+                                        fill="none"
+                                        preserveAspectRatio="none"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <g>
+                                          <path
+                                            d={svgPathsToday.p19fddb00}
+                                            stroke="#5B5D62"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="1.5"
+                                          />
+                                        </g>
+                                      </svg>
+                                    </div>
+                                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
+                                      {todo.deadline?.time || todo.time}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Description */}
+                              {todo.description && todo.description.trim() && (
+                                <div 
+                                  className="w-full pl-[32px] overflow-hidden"
+                                  style={{ maxWidth: '100%', boxSizing: 'border-box' }}
+                                >
+                                  <p 
+                                    className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                                    style={{ 
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      maxWidth: '100%',
+                                      width: '100%'
+                                    }}
+                                  >
+                                    {linkifyText(todo.description)}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                      </div>
                     </div>
+                  )}
+
+                  {/* Daily Tasks Box */}
+                  {dailyTaskItems.length > 0 && (
+                    <div 
+                      className="flex flex-col gap-[10px] items-start px-[16px] relative"
+                      style={{ 
+                        backgroundColor: '#1f2022',
+                        paddingTop: '16px',
+                        paddingBottom: '16px',
+                        borderRadius: '8px',
+                        minWidth: '300px',
+                        width: '300px'
+                      }}
+                    >
+                      {/* Header */}
+                      <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
+                        <div className="content-stretch flex items-center relative shrink-0">
+                          <p 
+                            className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
+                            style={{ fontSize: '12px' }}
+                          >
+                            DAILY
+                          </p>
+                        </div>
+                        <div className="content-stretch flex items-center relative shrink-0">
+                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
+                            {dailyTaskItems.length}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Daily Tasks List */}
+                      <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                          {dailyTaskItems.map((todo) => (
+                            <div
+                              key={todo.id}
+                              className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
+                              onClick={() => handleTaskClick(todo)}
+                            >
+                              {/* Daily Task Row */}
+                              <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+                                {/* Checkbox */}
+                                <div
+                                  className="relative shrink-0 size-[24px] cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleTodo(todo.id);
+                                  }}
+                                >
+                                  <svg
+                                    className="block size-full"
+                                    fill="none"
+                                    preserveAspectRatio="none"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <circle
+                                      cx="12"
+                                      cy="12"
+                                      r="11.25"
+                                      stroke="#E1E6EE"
+                                      strokeWidth="1.5"
+                                      fill={todo.completed ? "#E1E6EE" : "none"}
+                                    />
+                                    {todo.completed && (
+                                      <path
+                                        d="M7 12L10 15L17 8"
+                                        stroke="#110c10"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    )}
+                                  </svg>
+                                </div>
+                                <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
+                                  <div className="content-stretch flex items-center relative shrink-0 w-full">
+                                    <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] ${
+                                      todo.completed ? "text-[#5b5d62] line-through" : "text-white"
+                                    }`}>
+                                      {todo.text}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Time */}
+                              {(todo.deadline?.time || todo.time) && (
+                                <div className="content-stretch flex items-start relative shrink-0">
+                                  <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
+                                    <div className="relative shrink-0 size-[20px]">
+                                      <svg
+                                        className="block size-full"
+                                        fill="none"
+                                        preserveAspectRatio="none"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <g>
+                                          <path
+                                            d={svgPathsToday.p19fddb00}
+                                            stroke="#5B5D62"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="1.5"
+                                          />
+                                        </g>
+                                      </svg>
+                                    </div>
+                                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
+                                      {todo.deadline?.time || todo.time}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Description */}
+                              {todo.description && todo.description.trim() && (
+                                <div 
+                                  className="w-full pl-[32px] overflow-hidden"
+                                  style={{ maxWidth: '100%', boxSizing: 'border-box' }}
+                                >
+                                  <p 
+                                    className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                                    style={{ 
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      maxWidth: '100%',
+                                      width: '100%'
+                                    }}
+                                  >
+                                    {linkifyText(todo.description)}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                   </div>
                 </div>
-
-                {/* Reminders List */}
-                {isRemindersExpanded && (
-                  <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                    {reminders.map((todo) => (
-                      <div
-                        key={todo.id}
-                        className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
-                        onClick={() => handleTaskClick(todo)}
-                      >
-                        {/* Reminder Row */}
-                        <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
-                          {/* Bell Icon */}
-                          <div className="relative shrink-0 size-[24px]">
-                            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                            </svg>
-                          </div>
-                          <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                            <div className="content-stretch flex items-center relative shrink-0 w-full">
-                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px]">
-                                {todo.text}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Time */}
-                        {(todo.deadline?.time || todo.time) && (
-                          <div className="content-stretch flex items-start relative shrink-0">
-                            <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
-                              <div className="relative shrink-0 size-[20px]">
-                                <svg
-                                  className="block size-full"
-                                  fill="none"
-                                  preserveAspectRatio="none"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <g>
-                                    <path
-                                      d={svgPathsToday.p19fddb00}
-                                      stroke="#5B5D62"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="1.5"
-                                    />
-                                  </g>
-                                </svg>
-                              </div>
-                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
-                                {todo.deadline?.time || todo.time}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Description */}
-                        {todo.description && todo.description.trim() && (
-                          <div 
-                            className="w-full pl-[32px] overflow-hidden"
-                            style={{ maxWidth: '100%', boxSizing: 'border-box' }}
-                          >
-                            <p 
-                              className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
-                              style={{ 
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                maxWidth: '100%',
-                                width: '100%'
-                              }}
-                            >
-                              {linkifyText(todo.description)}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
                 )}
               </div>
             )}
@@ -2499,10 +2899,12 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 if (selectedTimeRange === "week" || selectedTimeRange === "month" || selectedTimeRange === "allTime") {
                   const groupedTasks = groupTasksByDate(regularTasks);
                   const groupedReminders = groupTasksByDate(reminders);
+                  const groupedDailyTasks = groupTasksByDate(dailyTaskItems);
                   
                   // Create maps for easy lookup
                   const tasksByDate = new Map<string, Todo[]>();
                   const remindersByDate = new Map<string, Todo[]>();
+                  const dailyTasksByDate = new Map<string, Todo[]>();
                   const allDatesMap = new Map<string, Date>();
                   
                   groupedTasks.forEach(({ date, dateKey, tasks }) => {
@@ -2517,6 +2919,13 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                     }
                   });
                   
+                  groupedDailyTasks.forEach(({ date, dateKey, tasks: dailyTaskTasks }) => {
+                    dailyTasksByDate.set(dateKey, dailyTaskTasks);
+                    if (!allDatesMap.has(dateKey)) {
+                      allDatesMap.set(dateKey, date);
+                    }
+                  });
+                  
                   // Combine all dates and sort
                   const allDates = Array.from(allDatesMap.entries())
                     .map(([dateKey, date]) => ({ date, dateKey }))
@@ -2525,6 +2934,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   return allDates.map(({ date, dateKey }) => {
                     const dateTasks = tasksByDate.get(dateKey) || [];
                     const dateReminders = remindersByDate.get(dateKey) || [];
+                    const dateDailyTasks = dailyTasksByDate.get(dateKey) || [];
                     
                     // #region agent log
                     fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:DateGroup:render',message:'Date group rendered',data:{date:date.toISOString(),dateKey,regularTasksCount:dateTasks.length,remindersCount:dateReminders.length,selectedTimeRange},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
@@ -2540,6 +2950,146 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                           {formatDateHeading(date)}
                         </p>
                         
+                        {/* Daily Tasks Box for this date */}
+                        {dateDailyTasks.length > 0 && (
+                          <div 
+                            className="content-stretch flex flex-col gap-[10px] items-start px-[16px] relative mb-[0px]"
+                            style={{ 
+                              backgroundColor: '#1f2022',
+                              paddingTop: '16px',
+                              paddingBottom: '16px',
+                              borderRadius: '8px',
+                              marginLeft: '0px',
+                              marginRight: '0px',
+                              width: '100%'
+                            }}
+                          >
+                            {/* Header */}
+                            <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
+                              <div className="content-stretch flex items-center relative shrink-0">
+                                <p 
+                                  className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
+                                  style={{ fontSize: '12px' }}
+                                >
+                                  DAILY
+                                </p>
+                              </div>
+                              <div className="content-stretch flex items-center relative shrink-0">
+                                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
+                                  {dateDailyTasks.length}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Daily Tasks List */}
+                            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                              {dateDailyTasks.map((todo) => (
+                                <div
+                                  key={todo.id}
+                                  className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
+                                  onClick={() => handleTaskClick(todo)}
+                                >
+                                  {/* Daily Task Row */}
+                                  <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+                                    {/* Checkbox */}
+                                    <div
+                                      className="relative shrink-0 size-[24px] cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleTodo(todo.id);
+                                      }}
+                                    >
+                                      <svg
+                                        className="block size-full"
+                                        fill="none"
+                                        preserveAspectRatio="none"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <circle
+                                          cx="12"
+                                          cy="12"
+                                          r="11.25"
+                                          stroke="#E1E6EE"
+                                          strokeWidth="1.5"
+                                          fill={todo.completed ? "#E1E6EE" : "none"}
+                                        />
+                                        {todo.completed && (
+                                          <path
+                                            d="M7 12L10 15L17 8"
+                                            stroke="#110c10"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                          />
+                                        )}
+                                      </svg>
+                                    </div>
+                                    <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
+                                      <div className="content-stretch flex items-center relative shrink-0 w-full">
+                                        <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] ${
+                                          todo.completed ? "text-[#5b5d62] line-through" : "text-white"
+                                        }`}>
+                                          {todo.text}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Time */}
+                                  {(todo.deadline?.time || todo.time) && (
+                                    <div className="content-stretch flex items-start relative shrink-0">
+                                      <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
+                                        <div className="relative shrink-0 size-[20px]">
+                                          <svg
+                                            className="block size-full"
+                                            fill="none"
+                                            preserveAspectRatio="none"
+                                            viewBox="0 0 24 24"
+                                          >
+                                            <g>
+                                              <path
+                                                d={svgPathsToday.p19fddb00}
+                                                stroke="#5B5D62"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="1.5"
+                                              />
+                                            </g>
+                                          </svg>
+                                        </div>
+                                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
+                                          {todo.deadline?.time || todo.time}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Description */}
+                                  {todo.description && todo.description.trim() && (
+                                    <div 
+                                      className="w-full pl-[32px] overflow-hidden"
+                                      style={{ maxWidth: '100%', boxSizing: 'border-box' }}
+                                    >
+                                      <p 
+                                        className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                                        style={{ 
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                          maxWidth: '100%',
+                                          width: '100%'
+                                        }}
+                                      >
+                                        {linkifyText(todo.description)}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Reminders Box for this date */}
                         {dateReminders.length > 0 && (
                           <div 
@@ -2968,7 +3518,9 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onAddTask={addNewTask}
           onNavigateToCalendarSync={() => setCurrentPage("calendarSync")}
           onNavigateToCommonTasks={() => setCurrentPage("commonTasks")}
+          onNavigateToDailyTasks={() => setCurrentPage("dailyTasks")}
           onNavigateToGoals={() => setCurrentPage("goals")}
+          onNavigateToWorkshop={() => setCurrentPage("workshop")}
         />
       ) : currentPage === "calendarSync" ? (
         <CalendarSync 
@@ -3021,6 +3573,17 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onAddTaskToList={handleAddCommonTaskToList}
           lists={lists}
         />
+      ) : currentPage === "dailyTasks" ? (
+        <DailyTasks 
+          onBack={() => setCurrentPage("dashboard")}
+          dailyTasks={dailyTasks}
+          onUpdateDailyTask={handleUpdateDailyTask}
+          onCreateDailyTask={handleCreateDailyTask}
+          onDeleteDailyTask={handleDeleteDailyTask}
+          lists={lists}
+        />
+      ) : currentPage === "workshop" ? (
+        <Workshop onBack={() => setCurrentPage("dashboard")} />
       ) : currentPage === "goals" ? (
         <Goals 
           onBack={() => setCurrentPage("dashboard")}
@@ -3173,7 +3736,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               } : handleBackFromList}
               tasks={getTasksForList(selectedList.id)}
               onToggleTask={toggleTodo}
-              onAddTask={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : (taskText, description) => addNewTaskToList(taskText, description, selectedList.id)}
+              onAddTask={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : (taskText, description, type) => addNewTaskToList(taskText, description, selectedList.id, type)}
               onUpdateList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : updateList}
               onDeleteList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : deleteList}
               onTaskClick={handleTaskClick}
@@ -3228,6 +3791,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
       </div>
 
       {/* Bottom Navigation */}
+      {currentPage !== "workshop" && (
       <div className="box-border content-stretch flex gap-[40px] items-center justify-center pb-[60px] pt-[20px] px-0 fixed bottom-0 left-0 right-0 w-full bg-[#110c10] z-[1000]">
         <div
           aria-hidden="true"
@@ -3367,6 +3931,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           </svg>
         </div>
       </div>
+      )}
 
       {/* Add Task Modal */}
       <AddTaskModal

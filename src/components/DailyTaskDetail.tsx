@@ -1,18 +1,13 @@
 import { useState } from "react";
 import svgPathsToday from "../imports/svg-z2a631st9g";
-import { CommonTaskDetailModal } from "./CommonTaskDetailModal";
+import { DailyTaskDetailModal } from "./DailyTaskDetailModal";
 import { linkifyText } from "../lib/textUtils";
 
-interface CommonTask {
+interface DailyTask {
   id: number;
   text: string;
   description?: string | null;
   time?: string | null;
-  deadline?: {
-    date: Date;
-    time: string;
-    recurring?: string;
-  };
 }
 
 interface Todo {
@@ -37,34 +32,32 @@ interface ListItem {
   isShared: boolean;
 }
 
-interface CommonTaskDetailProps {
-  commonTask: CommonTask;
+interface DailyTaskDetailProps {
+  dailyTask: DailyTask;
   onBack: () => void;
   tasks: Todo[];
   onToggleTask: (id: number) => void;
   onTaskClick?: (task: Todo) => void;
-  onUpdateCommonTask: (id: number, text: string, description?: string | null, time?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<void>;
-  onDeleteCommonTask: (id: number) => Promise<void>;
-  onAddTaskToList: (task: CommonTask, listId: number) => Promise<void>;
+  onUpdateDailyTask: (id: number, text: string, description?: string | null, time?: string | null) => Promise<void>;
+  onDeleteDailyTask: (id: number) => Promise<void>;
   lists: ListItem[];
 }
 
-export function CommonTaskDetail({
-  commonTask,
+export function DailyTaskDetail({
+  dailyTask,
   onBack,
   tasks,
   onToggleTask,
   onTaskClick,
-  onUpdateCommonTask,
-  onDeleteCommonTask,
-  onAddTaskToList,
+  onUpdateDailyTask,
+  onDeleteDailyTask,
   lists
-}: CommonTaskDetailProps) {
+}: DailyTaskDetailProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Safety check - if commonTask is not properly initialized, show error
-  if (!commonTask || !commonTask.text) {
-    console.error('CommonTaskDetail: commonTask is missing or invalid', commonTask);
+  // Safety check - if dailyTask is not properly initialized, show error
+  if (!dailyTask || !dailyTask.text) {
+    console.error('DailyTaskDetail: dailyTask is missing or invalid', dailyTask);
     return (
       <div className="relative shrink-0 w-full">
         <div className="w-full">
@@ -103,8 +96,8 @@ export function CommonTaskDetail({
       if (task.completed) {
         return false;
       }
-      const textMatches = task.text === commonTask.text;
-      const descriptionMatches = (task.description || null) === (commonTask.description || null);
+      const textMatches = task.text === dailyTask.text;
+      const descriptionMatches = (task.description || null) === (dailyTask.description || null);
       return textMatches && descriptionMatches;
     } catch (error) {
       console.error('Error filtering tasks:', error);
@@ -129,20 +122,15 @@ export function CommonTaskDetail({
     setIsModalOpen(false);
   };
 
-  const handleUpdateTask = async (id: number, text: string, description?: string | null, time?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => {
-    await onUpdateCommonTask(id, text, description, time, deadline);
+  const handleUpdateTask = async (id: number, text: string, description?: string | null, time?: string | null) => {
+    await onUpdateDailyTask(id, text, description, time);
     handleCloseModal();
   };
 
   const handleDeleteTask = async (id: number) => {
-    await onDeleteCommonTask(id);
+    await onDeleteDailyTask(id);
     handleCloseModal();
     onBack(); // Navigate back after deletion
-  };
-
-  const handleAddToList = async (task: CommonTask, listId: number) => {
-    await onAddTaskToList(task, listId);
-    handleCloseModal();
   };
 
   const formatDate = (date: Date) => {
@@ -190,7 +178,7 @@ export function CommonTaskDetail({
                   onClick={handleTitleClick}
                 >
                   <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">
-                    {commonTask.text}
+                    {dailyTask.text}
                   </p>
                 </div>
               </div>
@@ -363,15 +351,14 @@ export function CommonTaskDetail({
         </div>
       </div>
 
-      {/* Common Task Detail Modal */}
-      {commonTask && (
-        <CommonTaskDetailModal
+      {/* Daily Task Detail Modal */}
+      {dailyTask && (
+        <DailyTaskDetailModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
-          task={commonTask}
+          task={dailyTask}
           onUpdateTask={handleUpdateTask}
           onDeleteTask={handleDeleteTask}
-          onAddToList={handleAddToList}
           lists={lists}
         />
       )}

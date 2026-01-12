@@ -20,3 +20,5 @@ CREATE POLICY "Users can manage their own processed calendar events" ON calendar
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+
+

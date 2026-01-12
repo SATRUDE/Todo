@@ -44,7 +44,7 @@ interface ListDetailProps {
   onBack: () => void;
   tasks: Todo[];
   onToggleTask: (id: number) => void;
-  onAddTask: (taskText: string, description?: string) => void;
+  onAddTask: (taskText: string, description?: string, type?: 'task' | 'reminder') => void;
   onUpdateList: (listId: number, listName: string, isShared: boolean, color: string) => void;
   onDeleteList: (listId: number) => void;
   onTaskClick?: (task: Todo) => void;
@@ -64,10 +64,10 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
   const reminders = tasks.filter(todo => todo.type === 'reminder');
   const regularTasks = tasks.filter(todo => todo.type !== 'reminder');
 
-  const handleAddTask = (taskText: string, description?: string, _listId?: number, _deadline?: { date: Date; time: string; recurring?: string }) => {
+  const handleAddTask = (taskText: string, description?: string, _listId?: number, _deadline?: { date: Date; time: string; recurring?: string }, _effort?: number, type?: 'task' | 'reminder') => {
     // onAddTask from parent expects just taskText and already knows the listId
     // The listId from the modal will be the current list (via defaultListId)
-    onAddTask(taskText, description);
+    onAddTask(taskText, description, type);
     setIsAddTaskModalOpen(false);
   };
 
@@ -564,6 +564,8 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                 </div>
               ))}
             </div>
+            {/* Spacer to prevent bottom nav from covering content */}
+            <div className="w-full" style={{ height: '20px' }} />
           </div>
         </div>
       </div>

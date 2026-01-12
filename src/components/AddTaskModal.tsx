@@ -24,7 +24,7 @@ interface MilestoneWithGoal {
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddTask: (task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number) => void;
+  onAddTask: (task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number, type?: 'task' | 'reminder') => void;
   lists?: ListItem[];
   defaultListId?: number;
   milestones?: MilestoneWithGoal[];
@@ -40,6 +40,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
   const [taskInput, setTaskInput] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [effort, setEffort] = useState<number>(0);
+  const [taskType, setTaskType] = useState<'task' | 'reminder'>('task');
   const [isSelectListOpen, setIsSelectListOpen] = useState(false);
   const [isSelectMilestoneOpen, setIsSelectMilestoneOpen] = useState(false);
   const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
@@ -67,6 +68,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
       setDeadline(getDefaultDeadline());
       setTaskDescription("");
       setEffort(undefined);
+      setTaskType('task');
     }
   }, [isOpen, defaultListId, defaultMilestoneId]);
 
@@ -75,13 +77,14 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
       if (isBulkAddMode) {
         await handleBulkAdd();
       } else {
-        await onAddTask(taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined, effort > 0 ? effort : undefined);
+        await onAddTask(taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined, effort > 0 ? effort : undefined, taskType);
         setTaskInput("");
         setSelectedListId(null);
         setSelectedMilestoneId(null);
         setDeadline(getDefaultDeadline());
         setTaskDescription("");
         setEffort(0);
+        setTaskType('task');
         onClose();
       }
     }
@@ -171,7 +174,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
     // Add all tasks sequentially to ensure they all get added
     for (const line of lines) {
       if (line.trim()) {
-        await onAddTask(line.trim(), "", selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined);
+        await onAddTask(line.trim(), "", selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined, undefined, taskType);
       }
     }
     
@@ -289,6 +292,27 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
                 <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
                   {/* Button Row */}
                   <div className="content-center flex flex-wrap gap-[8px] items-center relative shrink-0 w-full">
+                    {/* Task Type Toggle Button */}
+                    <div 
+                      className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                      onClick={() => setTaskType(taskType === 'task' ? 'reminder' : 'task')}
+                    >
+                      <div className="relative shrink-0 size-[20px]">
+                        {taskType === 'task' ? (
+                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.242 5.992h12m-12 6.003H20.24m-12 5.999h12M4.117 7.495v-3.75H2.99m1.125 3.75H2.99m1.125 0H5.24m-1.92 2.577a1.125 1.125 0 1 1 1.591 1.59l-1.83 1.83h2.16M2.99 15.745h1.125a1.125 1.125 0 0 1 0 2.25H3.74m0-.002h.375a1.125 1.125 0 0 1 0 2.25H2.99" />
+                          </svg>
+                        ) : (
+                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                          </svg>
+                        )}
+                      </div>
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                        {taskType === 'task' ? 'Task' : 'Reminder'}
+                      </p>
+                    </div>
+
                     {/* Deadline Button */}
                     <div 
                       className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"

@@ -222,6 +222,8 @@ export function Lists({ onSelectList, todos, lists, onAddList, onUpdateList, onD
               </div>
             </div>
           </div>
+          {/* Spacer to prevent bottom nav from covering content */}
+          <div className="w-full" style={{ height: '20px' }} />
         </div>
       </div>
     </div>
