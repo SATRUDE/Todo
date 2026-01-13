@@ -768,6 +768,10 @@ export function TodoApp() {
         completed: false,
         time: todo.deadline.time,
         listId: todo.listId,
+        description: todo.description,
+        dailyTaskId: todo.dailyTaskId, // Preserve dailyTaskId for daily tasks
+        milestoneId: todo.milestoneId,
+        effort: todo.effort,
         deadline: {
           date: nextDate,
           time: todo.deadline.time,
@@ -1846,8 +1850,12 @@ export function TodoApp() {
   
   // Filter reminders from regular tasks
   const reminders = todayTasks.filter(todo => todo.type === 'reminder');
-  // Filter daily tasks (only tasks created from daily task templates) - include completed ones so they can be shown/toggled
-  const dailyTaskItems = todayTasks.filter(todo => todo.dailyTaskId !== undefined && todo.dailyTaskId !== null);
+  // Filter daily tasks (only tasks created from daily task templates) - exclude completed ones
+  const dailyTaskItems = todayTasks.filter(todo => {
+    const hasDailyTaskId = todo.dailyTaskId !== undefined && todo.dailyTaskId !== null;
+    const isNotCompleted = !todo.completed;
+    return hasDailyTaskId && isNotCompleted;
+  });
   
   // Create a set of daily task texts for efficient lookup
   const dailyTaskTexts = new Set(dailyTaskItems.map(todo => todo.text.trim().toLowerCase()));
