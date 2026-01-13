@@ -1848,7 +1848,17 @@ export function TodoApp() {
   const reminders = todayTasks.filter(todo => todo.type === 'reminder');
   // Filter daily tasks (only tasks created from daily task templates) - include completed ones so they can be shown/toggled
   const dailyTaskItems = todayTasks.filter(todo => todo.dailyTaskId !== undefined && todo.dailyTaskId !== null);
-  const regularTasks = todayTasks.filter(todo => todo.type !== 'reminder' && (todo.dailyTaskId === undefined || todo.dailyTaskId === null));
+  
+  // Create a set of daily task texts for efficient lookup
+  const dailyTaskTexts = new Set(dailyTaskItems.map(todo => todo.text.trim().toLowerCase()));
+  
+  const regularTasks = todayTasks.filter(todo => {
+    const isNotReminder = todo.type !== 'reminder';
+    const isNotDaily = todo.dailyTaskId === undefined || todo.dailyTaskId === null;
+    // Also exclude tasks that have the same text as a daily task (to handle duplicates)
+    const isNotDuplicateDailyText = !dailyTaskTexts.has(todo.text.trim().toLowerCase());
+    return isNotReminder && isNotDaily && isNotDuplicateDailyText;
+  });
   
   // Calculate total effort for Today and Tomorrow (for tab labels)
   const getTotalEffort = (timeRange: "today" | "tomorrow") => {
