@@ -24,8 +24,9 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
   const [selectedTime, setSelectedTime] = useState(currentDeadline?.time || "");
   const [recurring, setRecurring] = useState(currentDeadline?.recurring || "none");
   const [noTime, setNoTime] = useState(!currentDeadline?.time || currentDeadline.time.trim() === "");
+  const [noDate, setNoDate] = useState(!currentDeadline?.date);
 
-  // Set default time when modal opens
+  // Set default time and date when modal opens
   useEffect(() => {
     if (isOpen) {
       if (currentDeadline?.time && currentDeadline.time.trim() !== "") {
@@ -35,6 +36,13 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
         // If no time exists, default to "no time" being checked
         setSelectedTime("");
         setNoTime(true);
+      }
+      if (currentDeadline?.date) {
+        setSelectedDate(currentDeadline.date);
+        setNoDate(false);
+      } else {
+        setSelectedDate(undefined);
+        setNoDate(true);
       }
     }
   }, [isOpen, currentDeadline]);
@@ -48,24 +56,17 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
 
 
   const handleConfirm = () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeadlineModal.tsx:handleConfirm:entry',message:'Handle confirm called',data:{hasSelectedDate:!!selectedDate,selectedTime,noTime,recurring},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
-    if (selectedDate) {
-      // If "no time" is selected, pass empty string for time
-      const timeToSet = noTime ? "" : selectedTime;
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeadlineModal.tsx:handleConfirm:beforeCallback',message:'Calling onSetDeadline',data:{date:selectedDate.toISOString(),timeToSet,recurring:recurring !== "none" ? recurring : undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      onSetDeadline(selectedDate, timeToSet, recurring !== "none" ? recurring : undefined);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeadlineModal.tsx:handleConfirm:afterCallback',message:'onSetDeadline called successfully',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
+    if (noDate || !selectedDate) {
+      // If "no date" is selected, clear the deadline
+      if (onClearDeadline) {
+        onClearDeadline();
+      }
       onClose();
     } else {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeadlineModal.tsx:handleConfirm:noDate',message:'No selected date',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
+      // If "no time" is selected, pass empty string for time
+      const timeToSet = noTime ? "" : selectedTime;
+      onSetDeadline(selectedDate, timeToSet, recurring !== "none" ? recurring : undefined);
+      onClose();
     }
   };
 
@@ -81,6 +82,18 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
     }
   };
 
+  const handleNoDateToggle = () => {
+    const newNoDate = !noDate;
+    setNoDate(newNoDate);
+    if (newNoDate) {
+      // Clear date when "no date" is enabled
+      setSelectedDate(undefined);
+    } else {
+      // Set to today when "no date" is disabled
+      setSelectedDate(new Date());
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -92,10 +105,13 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
       />
       
       {/* Bottom Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto max-h-[90vh] flex flex-col items-center">
-        <div className="bg-[#110c10] box-border flex flex-col gap-[32px] items-center overflow-hidden pb-[40px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet flex-1 min-h-0">
+      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
+        <div 
+          className="bg-[#110c10] box-border flex flex-col items-center relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet"
+          style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
+        >
           {/* Handle */}
-          <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
+          <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full pt-[20px]">
             <div className="h-[20px] relative shrink-0 w-[100px]">
               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
                 <g>
@@ -112,20 +128,57 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
             </p>
           </div>
 
-          {/* Calendar */}
-          <div className="px-[20px] w-full flex justify-center">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="rounded-md border border-[rgba(225,230,238,0.1)] bg-[rgba(225,230,238,0.05)]"
-            />
-          </div>
+          {/* Scrollable Content */}
+          <div 
+            className="flex flex-col w-full"
+            style={{ 
+              overflowY: 'auto', 
+              WebkitOverflowScrolling: 'touch', 
+              maxHeight: 'calc(90vh - 120px)', 
+              minHeight: 0, 
+              overflowX: 'hidden' 
+            }}
+          >
+            <div className="flex flex-col gap-[32px] items-center pb-[40px] pt-[20px]">
+              {/* Calendar */}
+              <div className="px-[20px] w-full">
+                {/* No Date Toggle */}
+                <div className="mb-[12px]">
+              <div 
+                className="bg-[rgba(225,230,238,0.1)] box-border flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
+                onClick={handleNoDateToggle}
+              >
+                {/* Toggle Switch */}
+                <div className="h-[24px] relative shrink-0 w-[44px]">
+                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 24">
+                    <g>
+                      <rect fill={noDate ? "#00C853" : "#595559"} height="24" rx="12" width="44" />
+                      <circle cx={noDate ? "32" : "12"} cy="12" fill="white" r="10" />
+                    </g>
+                  </svg>
+                </div>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">No date</p>
+                </div>
+              </div>
+              <div className={`flex justify-center ${noDate ? 'opacity-50 pointer-events-none' : ''}`}>
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setSelectedDate(date);
+                      setNoDate(false);
+                    }
+                  }}
+                  className="rounded-md border border-[rgba(225,230,238,0.1)] bg-[rgba(225,230,238,0.05)]"
+                />
+              </div>
+            </div>
 
-          {/* Time Picker */}
-          <div className="px-[20px] w-full">
-            {/* No Time Toggle */}
-            <div className="mb-[12px]">
+            {/* Time Picker */}
+            <div className="px-[20px] w-full">
+              {/* No Time Toggle */}
+              <div className="mb-[12px]">
               <div 
                 className="bg-[rgba(225,230,238,0.1)] box-border flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
                 onClick={handleNoTimeToggle}
@@ -139,61 +192,63 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
                     </g>
                   </svg>
                 </div>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">No time</p>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">No time</p>
+                </div>
               </div>
+              <TimeInput
+                id="deadline-time"
+                value={selectedTime}
+                onChange={(time) => setSelectedTime(time)}
+                label="Time"
+                disabled={noTime}
+              />
             </div>
-            <TimeInput
-              id="deadline-time"
-              value={selectedTime}
-              onChange={(time) => setSelectedTime(time)}
-              label="Time"
-              disabled={noTime}
-            />
-          </div>
 
-          {/* Recurring Dropdown */}
-          <div className="px-[20px] w-full shrink-0">
-            <label className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#e1e6ee] text-[18px] tracking-[-0.198px] mb-2 block">
-              Recurring
-            </label>
-            <select
-              value={recurring}
-              onChange={(e) => setRecurring(e.target.value)}
-              className="w-full bg-[rgba(225,230,238,0.1)] border border-[rgba(225,230,238,0.1)] rounded-[12px] px-[16px] py-[12px] text-white font-['Inter:Regular',sans-serif] font-normal text-[18px] outline-none focus:border-[rgba(225,230,238,0.3)] cursor-pointer"
-            >
-              <option value="none" className="bg-[#110c10]">None</option>
-              <option value="daily" className="bg-[#110c10]">Every day</option>
-              <option value="weekly" className="bg-[#110c10]">Every {currentDayOfWeek}</option>
-              <option value="weekday" className="bg-[#110c10]">Every weekday</option>
-              <option value="monthly" className="bg-[#110c10]">Every month</option>
-            </select>
-          </div>
-
-          {/* Buttons */}
-          <div className="px-[20px] w-full flex gap-[12px] shrink-0">
-            {onClearDeadline && currentDeadline && (
-              <button
-                onClick={() => {
-                  onClearDeadline();
-                  onClose();
-                }}
-                className="flex-1 bg-[rgba(239,65,35,0.1)] hover:bg-[rgba(239,65,35,0.15)] rounded-[12px] px-[24px] py-[12px] font-['Inter:Regular',sans-serif] font-normal text-[#EF4123] text-[18px] tracking-[-0.198px]"
+            {/* Recurring Dropdown */}
+            <div className="px-[20px] w-full shrink-0">
+              <label className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#e1e6ee] text-[18px] tracking-[-0.198px] mb-2 block">
+                Recurring
+              </label>
+              <select
+                value={recurring}
+                onChange={(e) => setRecurring(e.target.value)}
+                className="w-full bg-[rgba(225,230,238,0.1)] border border-[rgba(225,230,238,0.1)] rounded-[12px] px-[16px] py-[12px] text-white font-['Inter:Regular',sans-serif] font-normal text-[18px] outline-none focus:border-[rgba(225,230,238,0.3)] cursor-pointer"
               >
-                Clear
+                <option value="none" className="bg-[#110c10]">None</option>
+                <option value="daily" className="bg-[#110c10]">Every day</option>
+                <option value="weekly" className="bg-[#110c10]">Every {currentDayOfWeek}</option>
+                <option value="weekday" className="bg-[#110c10]">Every weekday</option>
+                <option value="monthly" className="bg-[#110c10]">Every month</option>
+              </select>
+            </div>
+
+            {/* Buttons */}
+            <div className="px-[20px] w-full flex gap-[12px] shrink-0">
+              {onClearDeadline && currentDeadline && (
+                <button
+                  onClick={() => {
+                    onClearDeadline();
+                    onClose();
+                  }}
+                  className="flex-1 bg-[rgba(239,65,35,0.1)] hover:bg-[rgba(239,65,35,0.15)] rounded-[12px] px-[24px] py-[12px] font-['Inter:Regular',sans-serif] font-normal text-[#EF4123] text-[18px] tracking-[-0.198px]"
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="flex-1 bg-[rgba(225,230,238,0.1)] hover:bg-[rgba(225,230,238,0.15)] rounded-[12px] px-[24px] py-[12px] font-['Inter:Regular',sans-serif] font-normal text-[#e1e6ee] text-[18px] tracking-[-0.198px]"
+              >
+                Cancel
               </button>
-            )}
-            <button
-              onClick={onClose}
-              className="flex-1 bg-[rgba(225,230,238,0.1)] hover:bg-[rgba(225,230,238,0.15)] rounded-[12px] px-[24px] py-[12px] font-['Inter:Regular',sans-serif] font-normal text-[#e1e6ee] text-[18px] tracking-[-0.198px]"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirm}
-              className="flex-1 bg-white hover:bg-[#e1e6ee] rounded-[12px] px-[24px] py-[12px] font-['Inter:Medium',sans-serif] font-medium text-[#110c10] text-[18px] tracking-[-0.198px]"
-            >
-              Confirm
-            </button>
+              <button
+                onClick={handleConfirm}
+                className="flex-1 bg-white hover:bg-[#e1e6ee] rounded-[12px] px-[24px] py-[12px] font-['Inter:Medium',sans-serif] font-medium text-[#110c10] text-[18px] tracking-[-0.198px]"
+              >
+                Confirm
+              </button>
+            </div>
+            </div>
           </div>
         </div>
       </div>
