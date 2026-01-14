@@ -20,11 +20,36 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
     return `${hours}:${minutes}`;
   };
 
+  // Parse selected days from recurring string (e.g., "monday,wednesday,friday")
+  const parseSelectedDays = (recurringValue: string): string[] => {
+    if (recurringValue && recurringValue.includes(',')) {
+      return recurringValue.split(',').map(day => day.trim().toLowerCase());
+    }
+    return [];
+  };
+  
+  // Get initial recurring value - check if it's custom days
+  const getInitialRecurring = (): string => {
+    if (currentDeadline?.recurring && currentDeadline.recurring.includes(',')) {
+      return "weekly"; // Set to weekly to show day selection UI
+    }
+    return currentDeadline?.recurring || "none";
+  };
+  
+  // Get initial selected days from current deadline
+  const getInitialSelectedDays = (): string[] => {
+    if (currentDeadline?.recurring && currentDeadline.recurring.includes(',')) {
+      return parseSelectedDays(currentDeadline.recurring);
+    }
+    return [];
+  };
+
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(currentDeadline?.date || new Date());
   const [selectedTime, setSelectedTime] = useState(currentDeadline?.time || "");
-  const [recurring, setRecurring] = useState(currentDeadline?.recurring || "none");
+  const [recurring, setRecurring] = useState(getInitialRecurring());
   const [noTime, setNoTime] = useState(!currentDeadline?.time || currentDeadline.time.trim() === "");
   const [noDate, setNoDate] = useState(!currentDeadline?.date);
+  const [selectedDays, setSelectedDays] = useState<string[]>(getInitialSelectedDays());
 
   // Set default time and date when modal opens
   useEffect(() => {
@@ -43,6 +68,20 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
       } else {
         setSelectedDate(undefined);
         setNoDate(true);
+      }
+      // Parse and set selected days if recurring contains custom days
+      if (currentDeadline?.recurring && currentDeadline.recurring.includes(',')) {
+        setSelectedDays(parseSelectedDays(currentDeadline.recurring));
+        setRecurring("weekly"); // Set to weekly to show day selection
+      } else {
+        setSelectedDays([]);
+        // If weekly is selected but no custom days, default to the selected date's day
+        if (recurring === "weekly" && selectedDate) {
+          const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+          setSelectedDays([dayNames[selectedDate.getDay()]]);
+        } else {
+          setSelectedDays([]);
+        }
       }
     }
   }, [isOpen, currentDeadline]);
@@ -65,10 +104,39 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
     } else {
       // If "no time" is selected, pass empty string for time
       const timeToSet = noTime ? "" : selectedTime;
-      onSetDeadline(selectedDate, timeToSet, recurring !== "none" ? recurring : undefined);
+      
+      // Handle custom weekly days
+      let recurringValue: string | undefined;
+      if (recurring === "weekly") {
+        if (selectedDays.length > 0) {
+          // Store as comma-separated string
+          recurringValue = selectedDays.join(',');
+        } else {
+          // If no days selected, default to the selected date's day
+          const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+          recurringValue = dayNames[selectedDate.getDay()];
+        }
+      } else if (recurring !== "none") {
+        recurringValue = recurring;
+      }
+      
+      onSetDeadline(selectedDate, timeToSet, recurringValue);
       onClose();
     }
   };
+  
+  const handleDayToggle = (day: string) => {
+    setSelectedDays(prev => {
+      if (prev.includes(day)) {
+        return prev.filter(d => d !== day);
+      } else {
+        return [...prev, day];
+      }
+    });
+  };
+  
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const handleNoTimeToggle = () => {
     const newNoTime = !noTime;
@@ -211,16 +279,51 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
               </label>
               <select
                 value={recurring}
-                onChange={(e) => setRecurring(e.target.value)}
+                onChange={(e) => {
+                  setRecurring(e.target.value);
+                  // If changing away from weekly, clear selected days
+                  if (e.target.value !== "weekly") {
+                    setSelectedDays([]);
+                  } else if (selectedDate) {
+                    // If changing to weekly, default to selected date's day
+                    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                    setSelectedDays([dayNames[selectedDate.getDay()]]);
+                  }
+                }}
                 className="w-full bg-[rgba(225,230,238,0.1)] border border-[rgba(225,230,238,0.1)] rounded-[12px] px-[16px] py-[12px] text-white font-['Inter:Regular',sans-serif] font-normal text-[18px] outline-none focus:border-[rgba(225,230,238,0.3)] cursor-pointer"
               >
                 <option value="none" className="bg-[#110c10]">None</option>
                 <option value="daily" className="bg-[#110c10]">Every day</option>
-                <option value="weekly" className="bg-[#110c10]">Every {currentDayOfWeek}</option>
+                <option value="weekly" className="bg-[#110c10]">Weekly (select days)</option>
                 <option value="weekday" className="bg-[#110c10]">Every weekday</option>
                 <option value="monthly" className="bg-[#110c10]">Every month</option>
               </select>
             </div>
+
+            {/* Day Selection for Weekly */}
+            {recurring === "weekly" && !noDate && (
+              <div className="px-[20px] w-full shrink-0">
+                <label className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#e1e6ee] text-[18px] tracking-[-0.198px] mb-2 block">
+                  Select Days
+                </label>
+                <div className="flex flex-wrap gap-[8px]">
+                  {dayNames.map((day, index) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => handleDayToggle(day)}
+                      className={`px-[16px] py-[8px] rounded-[12px] font-['Inter:Regular',sans-serif] font-normal text-[16px] tracking-[-0.176px] transition-colors ${
+                        selectedDays.includes(day)
+                          ? 'bg-white text-[#110c10]'
+                          : 'bg-[rgba(225,230,238,0.1)] text-[#e1e6ee] hover:bg-[rgba(225,230,238,0.15)]'
+                      }`}
+                    >
+                      {dayLabels[index]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Buttons */}
             <div className="px-[20px] w-full flex gap-[12px] shrink-0">

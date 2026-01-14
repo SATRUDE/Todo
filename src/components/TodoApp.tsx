@@ -141,6 +141,7 @@ export function TodoApp() {
   const [selectedListFilterIds, setSelectedListFilterIds] = useState<Set<number>>(new Set());
   const [isFilterListsModalOpen, setIsFilterListsModalOpen] = useState(false);
   const [isScheduledExpanded, setIsScheduledExpanded] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   // Check if we're on the reset password route
   useEffect(() => {
@@ -378,6 +379,130 @@ export function TodoApp() {
 
     loadData();
   }, [isAuthenticated]);
+
+  // Sync function to manually refresh data from database
+  const handleSync = async () => {
+    if (!isAuthenticated || isSyncing) return;
+    
+    try {
+      setIsSyncing(true);
+      setConnectionError(null);
+      
+      // Check if Supabase is configured
+      const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+      const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+      
+      if (!supabaseUrl || !supabaseKey) {
+        setConnectionError('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Vercel project settings.');
+        setIsSyncing(false);
+        return;
+      }
+      
+      // Validate URL format
+      try {
+        const url = new URL(supabaseUrl);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+          throw new Error('Invalid protocol');
+        }
+      } catch {
+        setConnectionError(`Invalid Supabase URL format. URL must start with http:// or https://. Current value: "${supabaseUrl || '(empty)'}"`);
+        setIsSyncing(false);
+        return;
+      }
+      
+      const [tasksData, listsData, commonTasksData, dailyTasksData, goalsData] = await Promise.allSettled([
+        fetchTasks(),
+        fetchLists(),
+        fetchCommonTasks(),
+        fetchDailyTasks(),
+        fetchGoals()
+      ]);
+      
+      // Fetch all milestones with goal info for milestone selection
+      if (goalsData.status === 'fulfilled') {
+        try {
+          const allMilestones: Array<{ id: number; name: string; goalId: number; goalName: string }> = [];
+          for (const goal of goalsData.value) {
+            const goalMilestones = await fetchMilestones(goal.id);
+            for (const milestone of goalMilestones) {
+              allMilestones.push({
+                id: milestone.id,
+                name: milestone.name,
+                goalId: goal.id,
+                goalName: goal.text
+              });
+            }
+          }
+          setAllMilestonesWithGoals(allMilestones);
+        } catch (error) {
+          console.error('Error fetching milestones:', error);
+        }
+      }
+      
+      // Handle tasks
+      const tasksResult = tasksData.status === 'fulfilled' ? tasksData.value : [];
+      const listsResult = listsData.status === 'fulfilled' ? listsData.value : [];
+      const commonTasksResult = commonTasksData.status === 'fulfilled' ? commonTasksData.value : [];
+      const dailyTasksResult = dailyTasksData.status === 'fulfilled' ? dailyTasksData.value : [];
+      const goalsResult = goalsData.status === 'fulfilled' ? goalsData.value : [];
+      
+      if (tasksData.status === 'rejected') {
+        console.error('Error fetching tasks:', tasksData.reason);
+      }
+      if (listsData.status === 'rejected') {
+        console.error('Error fetching lists:', listsData.reason);
+      }
+      if (commonTasksData.status === 'rejected') {
+        console.error('Error fetching common tasks:', commonTasksData.reason);
+      }
+      if (dailyTasksData.status === 'rejected') {
+        console.error('Error fetching daily tasks:', dailyTasksData.reason);
+      }
+      if (goalsData.status === 'rejected') {
+        console.error('Error fetching goals:', goalsData.reason);
+      }
+      
+      // Convert database format to app format
+      const appTodos = tasksResult.map(dbTodoToDisplayTodo);
+      const appLists = listsResult.map(list => ({
+        id: list.id,
+        name: list.name,
+        color: list.color,
+        count: 0, // Will be calculated
+        isShared: list.is_shared,
+      }));
+      
+      setTodos(appTodos);
+      setLists(appLists);
+      // Convert common tasks from database format to display format
+      const displayCommonTasks = commonTasksResult.map(dbCommonTaskToDisplayCommonTask);
+      setCommonTasks(displayCommonTasks);
+      // Convert daily tasks from database format to display format
+      const displayDailyTasks = dailyTasksResult.map(dbDailyTaskToDisplayDailyTask);
+      setDailyTasks(displayDailyTasks);
+      // Convert goals from database format to display format
+      const displayGoals = goalsResult.map(dbGoalToDisplayGoal);
+      setGoals(displayGoals);
+      
+      // Generate tasks from common tasks with deadlines (after todos and commonTasks are loaded)
+      await generateTasksFromCommonTasks(displayCommonTasks, appTodos);
+      
+      // Generate tasks from daily tasks for today
+      await generateTasksFromDailyTasks(displayDailyTasks, appTodos);
+    } catch (error: any) {
+      console.error('Error syncing data:', error);
+      
+      if (error.message?.includes('Invalid API key') || error.message?.includes('JWT')) {
+        setConnectionError('Invalid Supabase credentials. Please check your .env file.');
+      } else if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
+        setConnectionError('Connected to Supabase, but tables not found. Please run the SQL schema from supabase-schema.sql in your Supabase SQL Editor.');
+      } else {
+        setConnectionError(`Connection error: ${error.message || 'Failed to connect to Supabase'}`);
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -710,6 +835,40 @@ export function TodoApp() {
   const getNextRecurringDate = (currentDate: Date, recurring: string): Date => {
     const nextDate = new Date(currentDate);
     
+    // Check if recurring contains custom days (comma-separated)
+    if (recurring && recurring.includes(',')) {
+      const selectedDays = recurring.split(',').map(day => day.trim().toLowerCase());
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      
+      // Find the day index for each selected day
+      const selectedDayIndices = selectedDays.map(day => dayNames.indexOf(day)).filter(idx => idx !== -1);
+      
+      if (selectedDayIndices.length === 0) {
+        // Fallback: if no valid days, just add 7 days
+        nextDate.setDate(nextDate.getDate() + 7);
+        return nextDate;
+      }
+      
+      const currentDayIndex = currentDate.getDay();
+      
+      // Find the next selected day in the current week
+      const nextDayInWeek = selectedDayIndices.find(dayIdx => dayIdx > currentDayIndex);
+      
+      if (nextDayInWeek !== undefined) {
+        // Next occurrence is in the current week
+        const daysToAdd = nextDayInWeek - currentDayIndex;
+        nextDate.setDate(nextDate.getDate() + daysToAdd);
+      } else {
+        // Next occurrence is in the next week (first selected day)
+        const firstDayIndex = selectedDayIndices[0];
+        const daysToAdd = 7 - currentDayIndex + firstDayIndex;
+        nextDate.setDate(nextDate.getDate() + daysToAdd);
+      }
+      
+      return nextDate;
+    }
+    
+    // Handle standard recurring patterns
     switch (recurring) {
       case "daily":
         nextDate.setDate(nextDate.getDate() + 1);
@@ -1087,6 +1246,11 @@ export function TodoApp() {
     try {
       await deleteCommonTask(id);
       setCommonTasks(commonTasks.filter(task => task.id !== id));
+      
+      // Reload todos to reflect the deletion of related tasks
+      const allTasks = await fetchTasks();
+      const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+      setTodos(displayTasks);
     } catch (error) {
       console.error('Error deleting common task:', error);
       alert(`Failed to delete common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -1338,24 +1502,52 @@ export function TodoApp() {
         if (commonTask.deadline.recurring) {
           // For recurring tasks, generate tasks for the next few occurrences
           const recurring = commonTask.deadline.recurring;
-          let currentDate = new Date(commonTask.deadline.date);
-          currentDate.setHours(0, 0, 0, 0);
           
-          // If the initial date is in the past, calculate the next occurrence
-          while (currentDate < today) {
-            currentDate = getNextRecurringDate(currentDate, recurring);
-          }
-          
-          // Generate tasks for the next 4 occurrences (or until we're 30 days out)
-          const maxDate = new Date(today);
-          maxDate.setDate(maxDate.getDate() + 30);
-          
-          let checkDate = new Date(currentDate);
-          let count = 0;
-          while (checkDate <= maxDate && count < 4) {
-            datesToGenerate.push(new Date(checkDate));
-            checkDate = getNextRecurringDate(checkDate, recurring);
-            count++;
+          // Check if this is custom days (comma-separated)
+          if (recurring.includes(',')) {
+            // Handle custom weekly days
+            const selectedDays = recurring.split(',').map(day => day.trim().toLowerCase());
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const selectedDayIndices = selectedDays.map(day => dayNames.indexOf(day)).filter(idx => idx !== -1);
+            
+            if (selectedDayIndices.length > 0) {
+              // Generate tasks for each selected day within the next 30 days
+              const maxDate = new Date(today);
+              maxDate.setDate(maxDate.getDate() + 30);
+              
+              let checkDate = new Date(today);
+              while (checkDate <= maxDate) {
+                const dayIndex = checkDate.getDay();
+                if (selectedDayIndices.includes(dayIndex)) {
+                  datesToGenerate.push(new Date(checkDate));
+                }
+                checkDate.setDate(checkDate.getDate() + 1);
+              }
+              
+              // Limit to first 12 occurrences to avoid too many tasks
+              datesToGenerate = datesToGenerate.slice(0, 12);
+            }
+          } else {
+            // Handle standard recurring patterns
+            let currentDate = new Date(commonTask.deadline.date);
+            currentDate.setHours(0, 0, 0, 0);
+            
+            // If the initial date is in the past, calculate the next occurrence
+            while (currentDate < today) {
+              currentDate = getNextRecurringDate(currentDate, recurring);
+            }
+            
+            // Generate tasks for the next 4 occurrences (or until we're 30 days out)
+            const maxDate = new Date(today);
+            maxDate.setDate(maxDate.getDate() + 30);
+            
+            let checkDate = new Date(currentDate);
+            let count = 0;
+            while (checkDate <= maxDate && count < 4) {
+              datesToGenerate.push(new Date(checkDate));
+              checkDate = getNextRecurringDate(checkDate, recurring);
+              count++;
+            }
           }
         } else {
           // For one-time deadlines, only generate if deadline is today or in the future
@@ -2189,8 +2381,31 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Tasks</p>
                   <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">{getFormattedDate()}</p>
                 </div>
-                {/* Filter Icon - Right aligned to Tasks title */}
-                <div className="basis-0 content-stretch flex grow items-center justify-end min-h-px min-w-px overflow-clip p-[3px] relative shrink-0">
+                {/* Filter Icon and Sync Button - Right aligned to Tasks title */}
+                <div className="basis-0 content-stretch flex grow items-center justify-end gap-2 min-h-px min-w-px overflow-clip p-[3px] relative shrink-0">
+                  {/* Sync Button */}
+                  <div 
+                    className="relative shrink-0 size-[32px] cursor-pointer"
+                    onClick={handleSync}
+                    title="Sync data"
+                  >
+                    <svg 
+                      className={`block size-full ${isSyncing ? 'animate-spin' : ''}`} 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      style={{ width: '32px', height: '32px' }}
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                        stroke="#E1E6EE"
+                        strokeWidth="1.5"
+                      />
+                    </svg>
+                  </div>
+                  {/* Filter Icon */}
                   <div 
                     className="relative shrink-0 size-[32px] cursor-pointer"
                     onClick={() => setIsFilterListsModalOpen(true)}
@@ -3958,6 +4173,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         onAddTask={addNewTask}
         lists={lists}
         milestones={allMilestonesWithGoals}
+        defaultListId={currentPage === "listDetail" && selectedList && selectedList.id !== ALL_TASKS_LIST_ID ? selectedList.id : undefined}
       />
 
       {/* Task Detail Modal */}

@@ -8,6 +8,11 @@ interface DailyTask {
   description?: string | null;
   time?: string | null;
   listId?: number | null;
+  deadline?: {
+    date: Date;
+    time: string;
+    recurring?: string;
+  };
 }
 
 interface DailyTasksProps {
@@ -64,6 +69,60 @@ export function DailyTasks({
   const handleDeleteTask = async (id: number) => {
     await onDeleteDailyTask(id);
     handleCloseModal();
+  };
+
+  const getDayOfWeek = (date: Date) => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[date.getDay()];
+  };
+
+  const formatTime = (time: string) => {
+    // Time is already in HH:MM format, just return it
+    return time;
+  };
+
+  const formatRecurring = (recurring: string, date: Date) => {
+    // Check if recurring contains custom days (comma-separated)
+    if (recurring && recurring.includes(',')) {
+      const selectedDays = recurring.split(',').map(day => day.trim().toLowerCase());
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      
+      // Map selected days to their labels
+      const selectedLabels = selectedDays
+        .map(day => {
+          const index = dayNames.indexOf(day);
+          return index !== -1 ? dayLabels[index] : null;
+        })
+        .filter(label => label !== null);
+      
+      if (selectedLabels.length === 0) {
+        return "";
+      }
+      
+      // Format nicely: "Mon, Wed, Fri" or "Every Mon, Wed, Fri"
+      if (selectedLabels.length === 1) {
+        return `Every ${selectedLabels[0]}`;
+      } else if (selectedLabels.length === 7) {
+        return "Every day";
+      } else {
+        return selectedLabels.join(', ');
+      }
+    }
+    
+    // Handle standard recurring patterns
+    switch (recurring) {
+      case "daily":
+        return "Every day";
+      case "weekly":
+        return `Every ${getDayOfWeek(date)}`;
+      case "weekday":
+        return "Every weekday";
+      case "monthly":
+        return "Every month";
+      default:
+        return "";
+    }
   };
 
   return (

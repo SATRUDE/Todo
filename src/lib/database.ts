@@ -737,6 +737,66 @@ export async function updateCommonTask(id: number, task: { text: string; descrip
 export async function deleteCommonTask(id: number): Promise<void> {
   const userId = await ensureAuthenticated()
   
+  // First, fetch the common task to get its text and recurring pattern
+  const { data: commonTask, error: fetchError } = await supabase
+    .from('common_tasks')
+    .select('text, deadline_recurring')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single()
+
+  if (fetchError) {
+    console.error('Error fetching common task:', fetchError)
+    throw fetchError
+  }
+
+  if (!commonTask) {
+    throw new Error('Common task not found')
+  }
+
+  // Find and delete all todos that match this common task
+  // Tasks are linked by matching text and recurring pattern
+  if (commonTask.text) {
+    // Build query to find matching todos
+    let todosQuery = supabase
+      .from('todos')
+      .select('id')
+      .eq('text', commonTask.text)
+      .or(`user_id.is.null,user_id.eq.${userId}`)
+
+    // If the common task has a recurring pattern, match todos with the same pattern
+    if (commonTask.deadline_recurring) {
+      todosQuery = todosQuery.eq('deadline_recurring', commonTask.deadline_recurring)
+    } else {
+      // If no recurring pattern, only match todos that also have no recurring pattern
+      // (to avoid deleting manually created tasks with the same text)
+      todosQuery = todosQuery.is('deadline_recurring', null)
+    }
+
+    const { data: matchingTodos, error: todosError } = await todosQuery
+
+    if (todosError) {
+      console.error('Error finding matching todos:', todosError)
+      // Continue with deletion even if we can't find todos
+    } else if (matchingTodos && matchingTodos.length > 0) {
+      // Delete all matching todos
+      const todoIds = matchingTodos.map(todo => todo.id)
+      const { error: deleteTodosError } = await supabase
+        .from('todos')
+        .delete()
+        .in('id', todoIds)
+        .or(`user_id.is.null,user_id.eq.${userId}`)
+
+      if (deleteTodosError) {
+        console.error('Error deleting related todos:', deleteTodosError)
+        // Continue with common task deletion even if todos deletion fails
+      } else {
+        console.log(`Deleted ${todoIds.length} todos related to common task ${id}`)
+      }
+    }
+  }
+
+  // Now delete the common task itself
   const { error } = await supabase
     .from('common_tasks')
     .delete()
