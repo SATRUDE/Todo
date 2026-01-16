@@ -13,6 +13,7 @@ interface Todo {
   description?: string | null;
   listId?: number;
   milestoneId?: number;
+  parentTaskId?: number | null;
   deadline?: {
     date: Date;
     time: string;
@@ -98,6 +99,10 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
       return null;
     }
     return lists.find(l => l.id === taskListId);
+  };
+
+  const getSubtaskCount = (taskId: number): number => {
+    return tasks.filter(todo => todo.parentTaskId === taskId).length;
   };
 
   const getMilestoneById = (taskMilestoneId?: number) => {
@@ -556,6 +561,36 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
                           </div>
                           <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {milestone.name}
+                          </p>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* Subtasks */}
+                    {(() => {
+                      const subtaskCount = getSubtaskCount(todo.id);
+                      return subtaskCount > 0 ? (
+                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                          <div className="relative shrink-0 size-[20px]">
+                            <svg
+                              className="block size-full"
+                              fill="none"
+                              preserveAspectRatio="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <g>
+                                <path
+                                  d="M6 6.878V6a2.25 2.25 0 0 1 2.25-2.25h7.5A2.25 2.25 0 0 1 18 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 0 0 4.5 9v.878m13.5-3A2.25 2.25 0 0 1 19.5 9v.878m0 0a2.246 2.246 0 0 0-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0 1 21 12v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6c0-.98.626-1.813 1.5-2.122"
+                                  stroke="#5B5D62"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="1.5"
+                                />
+                              </g>
+                            </svg>
+                          </div>
+                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                            {subtaskCount}
                           </p>
                         </div>
                       ) : null;

@@ -69,6 +69,7 @@ export interface Todo {
   list_id?: number // -1 for completed, 0 for today, positive numbers for custom lists
   milestone_id?: number // Foreign key to milestones table
   daily_task_id?: number | null // Foreign key to daily_tasks table
+  parent_task_id?: number | null // Foreign key to parent task (for subtasks)
   deadline_date?: string // YYYY-MM-DD string
   deadline_time?: string
   deadline_recurring?: string
@@ -146,6 +147,7 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     list_id: dbTodo.list_id,
     milestone_id: dbTodo.milestone_id,
     daily_task_id: dbTodo.daily_task_id,
+    parent_task_id: dbTodo.parent_task_id,
     deadline_date: dbTodo.deadline_date,
     deadline_time: dbTodo.deadline_time,
     deadline_recurring: dbTodo.deadline_recurring,
@@ -199,6 +201,17 @@ export function appTodoToDbTodo(todo: any): any {
     }
   } else if (todo.daily_task_id !== undefined && todo.daily_task_id !== null && typeof todo.daily_task_id === 'number') {
     dbTodo.daily_task_id = todo.daily_task_id
+  }
+  
+  // Handle parent_task_id - only set if it's a valid number
+  if (todo.parentTaskId !== undefined && todo.parentTaskId !== null) {
+    if (typeof todo.parentTaskId === 'number') {
+      dbTodo.parent_task_id = todo.parentTaskId
+    } else {
+      console.warn('Invalid parentTaskId type - expected number, got:', typeof todo.parentTaskId, todo.parentTaskId);
+    }
+  } else if (todo.parent_task_id !== undefined && todo.parent_task_id !== null && typeof todo.parent_task_id === 'number') {
+    dbTodo.parent_task_id = todo.parent_task_id
   }
   
   if (todo.deadline) {
@@ -315,6 +328,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     listId: dbTodo.list_id,
     milestoneId: dbTodo.milestone_id,
     dailyTaskId: dbTodo.daily_task_id,
+    parentTaskId: dbTodo.parent_task_id || undefined,
     deadline,
     effort: dbTodo.effort,
     type: dbTodo.type || 'task', // Default to 'task' if not set
@@ -364,6 +378,25 @@ export async function fetchTasks(): Promise<Todo[]> {
   return data ? data.map(dbTodoToAppTodo) : []
 }
 
+// Fetch subtasks for a parent task
+export async function fetchSubtasks(parentTaskId: number): Promise<Todo[]> {
+  const userId = await ensureAuthenticated()
+  
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('parent_task_id', parentTaskId)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching subtasks:', error)
+    throw error
+  }
+
+  return data ? data.map(dbTodoToAppTodo) : []
+}
+
 export async function fetchTasksByMilestone(milestoneId: number): Promise<Todo[]> {
   const userId = await ensureAuthenticated()
   
@@ -391,7 +424,7 @@ export async function createTask(todo: any): Promise<Todo> {
   // Ensure we only include valid database fields
   // Remove any unexpected fields that might cause issues
   const validFields = [
-    'text', 'completed', 'time', 'group', 'list_id', 'milestone_id', 'daily_task_id',
+    'text', 'completed', 'time', 'group', 'list_id', 'milestone_id', 'daily_task_id', 'parent_task_id',
     'deadline_date', 'deadline_time', 'deadline_recurring',
     'description', 'effort', 'type', 'user_id'
   ]

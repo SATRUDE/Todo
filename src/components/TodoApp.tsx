@@ -56,6 +56,7 @@ import {
   dbGoalToDisplayGoal,
   fetchMilestones,
   fetchAllMilestones,
+  fetchSubtasks,
   createMilestone,
   updateMilestone,
   deleteMilestone,
@@ -79,6 +80,7 @@ interface Todo {
   listId?: number; // -1 for completed, 0 for today, positive numbers for custom lists
   milestoneId?: number; // Foreign key to milestones table
   dailyTaskId?: number | null; // Foreign key to daily_tasks table
+  parentTaskId?: number | null; // Foreign key to parent task (for subtasks)
   deadline?: {
     date: Date;
     time: string;
@@ -1506,6 +1508,59 @@ export function TodoApp() {
     }
   };
 
+  // Subtask handlers
+  const handleFetchSubtasks = async (parentTaskId: number): Promise<Todo[]> => {
+    const subtasks = await fetchSubtasks(parentTaskId);
+    return subtasks.map(dbTodoToDisplayTodo);
+  };
+
+  const handleCreateSubtask = async (parentTaskId: number, text: string): Promise<Todo> => {
+    const newSubtask: Todo = {
+      id: Date.now(),
+      text,
+      completed: false,
+      listId: undefined, // Subtasks don't belong to lists
+      parentTaskId: parentTaskId,
+    };
+    const created = await createTask(newSubtask);
+    return dbTodoToDisplayTodo(created);
+  };
+
+  const handleUpdateSubtask = async (subtaskId: number, text: string, completed: boolean): Promise<void> => {
+    const subtask = todos.find(t => t.id === subtaskId);
+    if (!subtask) return;
+    await updateTaskDb(subtaskId, {
+      ...subtask,
+      text,
+      completed,
+    });
+    // Refresh tasks
+    const allTasks = await fetchTasks();
+    const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+    setTodos(displayTasks);
+  };
+
+  const handleToggleSubtask = async (subtaskId: number): Promise<void> => {
+    const subtask = todos.find(t => t.id === subtaskId);
+    if (!subtask) return;
+    await updateTaskDb(subtaskId, {
+      ...subtask,
+      completed: !subtask.completed,
+    });
+    // Refresh tasks
+    const allTasks = await fetchTasks();
+    const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+    setTodos(displayTasks);
+  };
+
+  const handleDeleteSubtask = async (subtaskId: number): Promise<void> => {
+    await deleteTaskDb(subtaskId);
+    // Refresh tasks
+    const allTasks = await fetchTasks();
+    const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+    setTodos(displayTasks);
+  };
+
   const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder') => {
     try {
       const todo = todos.find(t => t.id === taskId);
@@ -1627,7 +1682,8 @@ export function TodoApp() {
 
   const getTasksForMilestone = (milestoneId: number) => {
     // Filter out completed tasks - they should only show in the completed list
-    return todos.filter(todo => todo.milestoneId === milestoneId && !todo.completed);
+    // Exclude subtasks from milestone views
+    return todos.filter(todo => todo.milestoneId === milestoneId && !todo.completed && !todo.parentTaskId);
   };
 
   const getTasksForList = (listId: number) => {
@@ -1635,10 +1691,12 @@ export function TodoApp() {
       // Return all non-completed tasks (regardless of listId, deadline, or any other property)
       // This includes tasks with no deadline, tasks in custom lists, and tasks in Today
       // Only exclude tasks that are explicitly in the completed list
+      // Exclude subtasks (tasks with parentTaskId)
       const allTasks = todos.filter(todo => {
         const isNotCompleted = !todo.completed;
         const isNotInCompletedList = todo.listId !== COMPLETED_LIST_ID;
-        return isNotCompleted && isNotInCompletedList;
+        const isNotSubtask = !todo.parentTaskId; // Exclude subtasks
+        return isNotCompleted && isNotInCompletedList && isNotSubtask;
       });
       
       // Debug logging to help diagnose issues
@@ -1694,7 +1752,7 @@ export function TodoApp() {
       
       return sortedTasks;
     } else if (listId === COMPLETED_LIST_ID) {
-      let completedTasks = todos.filter(todo => todo.listId === COMPLETED_LIST_ID);
+      let completedTasks = todos.filter(todo => todo.listId === COMPLETED_LIST_ID && !todo.parentTaskId);
       
       // If timeRangeFilter is set, filter by time range
       if (timeRangeFilter) {
@@ -1754,7 +1812,8 @@ export function TodoApp() {
       
       return completedTasks;
     }
-    return todos.filter(todo => todo.listId === listId);
+    // Exclude subtasks from list views
+    return todos.filter(todo => todo.listId === listId && !todo.parentTaskId);
   };
 
   // Helper function to check if a date is today
@@ -1806,6 +1865,9 @@ export function TodoApp() {
   // Filter tasks based on selected time range and list filter
   const getFilteredTasks = () => {
     const filtered = todos.filter(todo => {
+      // Exclude subtasks from main views
+      if (todo.parentTaskId) return false;
+      
       if (!todo.deadline) return false;
       
       const taskDate = todo.deadline.date;
@@ -1911,6 +1973,8 @@ export function TodoApp() {
   // Calculate total effort for Today and Tomorrow (for tab labels)
   const getTotalEffort = (timeRange: "today" | "tomorrow") => {
     const tasks = todos.filter(todo => {
+      // Exclude subtasks
+      if (todo.parentTaskId) return false;
       if (!todo.deadline || todo.completed) return false;
       const taskDate = todo.deadline.date;
       if (timeRange === "today") {
@@ -1971,6 +2035,8 @@ export function TodoApp() {
   // Calculate missed deadlines (tasks with deadlines that have passed and are not completed)
   // Use currentTime state to trigger re-renders when time passes
   const missedDeadlines = todos.filter(todo => {
+    // Exclude subtasks
+    if (todo.parentTaskId) return false;
     if (!todo.deadline || todo.completed) return false;
     
     const now = currentTime; // Use state instead of new Date() to trigger re-renders
@@ -2079,6 +2145,10 @@ export function TodoApp() {
       return null;
     }
     return lists.find(l => l.id === listId);
+  };
+
+  const getSubtaskCount = (taskId: number): number => {
+    return todos.filter(todo => todo.parentTaskId === taskId).length;
   };
 
   const getDayOfWeek = (date: Date) => {
@@ -3428,6 +3498,36 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                         </div>
                       ) : null;
                     })()}
+
+                    {/* Subtasks */}
+                    {(() => {
+                      const subtaskCount = getSubtaskCount(todo.id);
+                      return subtaskCount > 0 ? (
+                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                          <div className="relative shrink-0 size-[20px]">
+                            <svg
+                              className="block size-full"
+                              fill="none"
+                              preserveAspectRatio="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <g>
+                                <path
+                                  d="M6 6.878V6a2.25 2.25 0 0 1 2.25-2.25h7.5A2.25 2.25 0 0 1 18 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 0 0 4.5 9v.878m13.5-3A2.25 2.25 0 0 1 19.5 9v.878m0 0a2.246 2.246 0 0 0-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0 1 21 12v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6c0-.98.626-1.813 1.5-2.122"
+                                  stroke="#5B5D62"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="1.5"
+                                />
+                              </g>
+                            </svg>
+                          </div>
+                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                            {subtaskCount}
+                          </p>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
                           );
@@ -3568,6 +3668,36 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                                 </div>
                                 <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                                   {list.name}
+                                </p>
+                              </div>
+                            ) : null;
+                          })()}
+
+                          {/* Subtasks */}
+                          {(() => {
+                            const subtaskCount = getSubtaskCount(todo.id);
+                            return subtaskCount > 0 ? (
+                              <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                                <div className="relative shrink-0 size-[20px]">
+                                  <svg
+                                    className="block size-full"
+                                    fill="none"
+                                    preserveAspectRatio="none"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <g>
+                                      <path
+                                        d="M6 6.878V6a2.25 2.25 0 0 1 2.25-2.25h7.5A2.25 2.25 0 0 1 18 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 0 0 4.5 9v.878m13.5-3A2.25 2.25 0 0 1 19.5 9v.878m0 0a2.246 2.246 0 0 0-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0 1 21 12v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6c0-.98.626-1.813 1.5-2.122"
+                                        stroke="#5B5D62"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="1.5"
+                                      />
+                                    </g>
+                                  </svg>
+                                </div>
+                                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                                  {subtaskCount}
                                 </p>
                               </div>
                             ) : null;
@@ -4055,6 +4185,11 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onDeleteTask={deleteTask}
           lists={lists}
           milestones={allMilestonesWithGoals}
+          onFetchSubtasks={handleFetchSubtasks}
+          onCreateSubtask={handleCreateSubtask}
+          onUpdateSubtask={handleUpdateSubtask}
+          onDeleteSubtask={handleDeleteSubtask}
+          onToggleSubtask={handleToggleSubtask}
         />
       )}
 

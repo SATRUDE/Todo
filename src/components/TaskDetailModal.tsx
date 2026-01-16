@@ -30,6 +30,7 @@ interface Todo {
   group?: string;
   listId?: number;
   milestoneId?: number;
+  parentTaskId?: number | null;
   description?: string | null;
   deadline?: {
     date: Date;
@@ -49,6 +50,11 @@ interface TaskDetailModalProps {
   onCreateTask?: (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder') => void;
   lists?: ListItem[];
   milestones?: MilestoneWithGoal[];
+  onFetchSubtasks?: (parentTaskId: number) => Promise<Todo[]>;
+  onCreateSubtask?: (parentTaskId: number, text: string) => Promise<Todo>;
+  onUpdateSubtask?: (subtaskId: number, text: string, completed: boolean) => Promise<void>;
+  onDeleteSubtask?: (subtaskId: number) => Promise<void>;
+  onToggleSubtask?: (subtaskId: number) => Promise<void>;
 }
 
 // Helper function to get all text nodes in an element
@@ -68,7 +74,7 @@ function getTextNodes(element: Node): Text[] {
   return textNodes;
 }
 
-export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [] }: TaskDetailModalProps) {
+export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
   const [taskDescription, setTaskDescription] = useState(task.description || "");
   const [isSelectListOpen, setIsSelectListOpen] = useState(false);
@@ -79,11 +85,22 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(task.deadline || null);
   const [effort, setEffort] = useState<number>(task.effort || 0);
   const [taskType, setTaskType] = useState<'task' | 'reminder'>(task.type || 'task');
+  const [subtasks, setSubtasks] = useState<Todo[]>([]);
+  const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
+  const [isAddSubtaskModalOpen, setIsAddSubtaskModalOpen] = useState(false);
+  const [editingSubtaskId, setEditingSubtaskId] = useState<number | null>(null);
+  const [subtaskInputText, setSubtaskInputText] = useState('');
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
   const descriptionInputRef = useRef<HTMLDivElement>(null);
+  const subtaskInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setIsAddSubtaskModalOpen(false);
+      setSubtaskInputText('');
+      setEditingSubtaskId(null);
+      return;
+    }
     setTaskInput(task.text);
     setTaskDescription(task.description || "");
     setSelectedListId(task.listId !== undefined && task.listId !== 0 && task.listId !== -1 ? task.listId : null);
@@ -91,6 +108,23 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     setDeadline(task.deadline || null);
     setEffort(task.effort || 0);
     setTaskType(task.type || 'task');
+    
+    // Load subtasks when modal opens
+    if (onFetchSubtasks && task.id) {
+      setIsLoadingSubtasks(true);
+      onFetchSubtasks(task.id)
+        .then(loadedSubtasks => {
+          setSubtasks(loadedSubtasks);
+          setIsLoadingSubtasks(false);
+        })
+        .catch(error => {
+          console.error('Error loading subtasks:', error);
+          setIsLoadingSubtasks(false);
+        });
+    } else {
+      setSubtasks([]);
+      setIsLoadingSubtasks(false);
+    }
     
     // Auto-resize textareas when task changes
     setTimeout(() => {
@@ -107,7 +141,16 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
         descriptionInputRef.current.style.height = descriptionInputRef.current.scrollHeight + 'px';
       }
     }, 0);
-  }, [task, isOpen]);
+  }, [task, isOpen, onFetchSubtasks]);
+
+  // Auto-focus subtask input when modal opens
+  useEffect(() => {
+    if (isAddSubtaskModalOpen && subtaskInputRef.current) {
+      setTimeout(() => {
+        subtaskInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isAddSubtaskModalOpen]);
 
   const handleSave = () => {
     if (taskInput.trim() === "") return;
@@ -139,6 +182,95 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
 
   const handleSetDeadline = (date: Date, time: string, recurring?: string) => {
     setDeadline({ date, time, recurring });
+  };
+
+  const handleAddSubtask = () => {
+    setEditingSubtaskId(null);
+    setSubtaskInputText('');
+    setIsAddSubtaskModalOpen(true);
+  };
+
+  const handleEditSubtask = (subtaskId: number) => {
+    const subtask = subtasks.find(s => s.id === subtaskId);
+    if (subtask) {
+      setEditingSubtaskId(subtaskId);
+      setSubtaskInputText(subtask.text);
+      setIsAddSubtaskModalOpen(true);
+    }
+  };
+
+  const handleConfirmAddSubtask = async () => {
+    if (!subtaskInputText.trim()) return;
+    
+    try {
+      if (editingSubtaskId !== null) {
+        // Update existing subtask
+        if (!onUpdateSubtask) return;
+        const subtask = subtasks.find(s => s.id === editingSubtaskId);
+        if (subtask) {
+          await onUpdateSubtask(editingSubtaskId, subtaskInputText.trim(), subtask.completed);
+          // Refresh subtasks
+          if (onFetchSubtasks) {
+            const updated = await onFetchSubtasks(task.id);
+            setSubtasks(updated);
+          }
+        }
+      } else {
+        // Create new subtask
+        if (!onCreateSubtask) return;
+        const newSubtask = await onCreateSubtask(task.id, subtaskInputText.trim());
+        setSubtasks([...subtasks, newSubtask]);
+      }
+      setIsAddSubtaskModalOpen(false);
+      setSubtaskInputText('');
+      setEditingSubtaskId(null);
+    } catch (error) {
+      console.error('Error saving subtask:', error);
+    }
+  };
+
+  const handleToggleSubtask = async (subtaskId: number) => {
+    if (!onToggleSubtask) return;
+    try {
+      await onToggleSubtask(subtaskId);
+      // Refresh subtasks
+      if (onFetchSubtasks) {
+        const updated = await onFetchSubtasks(task.id);
+        setSubtasks(updated);
+      }
+    } catch (error) {
+      console.error('Error toggling subtask:', error);
+    }
+  };
+
+  const handleUpdateSubtask = async (subtaskId: number, text: string) => {
+    if (!onUpdateSubtask) return;
+    try {
+      const subtask = subtasks.find(s => s.id === subtaskId);
+      if (!subtask) return;
+      await onUpdateSubtask(subtaskId, text, subtask.completed);
+      // Refresh subtasks
+      if (onFetchSubtasks) {
+        const updated = await onFetchSubtasks(task.id);
+        setSubtasks(updated);
+      }
+    } catch (error) {
+      console.error('Error updating subtask:', error);
+    }
+  };
+
+  const handleDeleteSubtask = async (subtaskId: number) => {
+    if (!onDeleteSubtask) return;
+    try {
+      await onDeleteSubtask(subtaskId);
+      // Refresh subtasks
+      if (onFetchSubtasks) {
+        const updated = await onFetchSubtasks(task.id);
+        setSubtasks(updated);
+      }
+    } catch (error) {
+      console.error('Error deleting subtask:', error);
+    }
   };
 
   const handleDelete = () => {
@@ -208,6 +340,58 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
       console.error("Failed to copy task", error);
     }
   };
+
+  // SubtaskItem component
+  function SubtaskItem({ subtask, onToggle, onDelete, onEdit }: {
+    subtask: Todo;
+    onToggle: (id: number) => void;
+    onDelete: (id: number) => void;
+    onEdit: (id: number) => void;
+  }) {
+    return (
+      <div className="content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer">
+        {/* Task Name Row */}
+        <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+          {/* Checkbox */}
+          <div 
+            className="relative shrink-0 size-[24px] cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle(subtask.id);
+            }}
+          >
+            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+              <circle 
+                cx="12" 
+                cy="12" 
+                r="11.625" 
+                stroke="#E1E6EE" 
+                strokeWidth="0.75"
+                fill={subtask.completed ? "#E1E6EE" : "none"}
+              />
+              {subtask.completed && (
+                <path
+                  d="M7 12L10 15L17 8"
+                  stroke="#110c10"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+            </svg>
+          </div>
+          <p 
+            className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] truncate tracking-[-0.198px] cursor-pointer ${
+              subtask.completed ? "text-[#5b5d62] line-through" : "text-white"
+            }`}
+            onClick={() => onEdit(subtask.id)}
+          >
+            {subtask.text}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isOpen) return null;
 
@@ -489,6 +673,45 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
               `}</style>
             </div>
 
+            {/* Subtasks Section - Only show when subtasks exist */}
+            {subtasks.length > 0 && (
+              <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full px-0 py-0">
+                <div className="flex items-center justify-between w-full">
+                  <label className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] text-[#e1e6ee] text-[18px] tracking-[-0.198px]">
+                    Subtasks
+                  </label>
+                  {onCreateSubtask && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddSubtask();
+                      }}
+                      className="text-[#0B64F9] text-[16px] font-medium cursor-pointer hover:opacity-80"
+                      style={{ color: '#0B64F9' }}
+                    >
+                      + Add Subtask
+                    </button>
+                  )}
+                </div>
+
+                {isLoadingSubtasks ? (
+                  <div className="text-[#e1e6ee] text-[14px]">Loading subtasks...</div>
+                ) : (
+                  <div className="flex flex-col gap-[8px] w-full">
+                    {subtasks.map(subtask => (
+                      <SubtaskItem
+                        key={subtask.id}
+                        subtask={subtask}
+                        onToggle={handleToggleSubtask}
+                        onDelete={handleDeleteSubtask}
+                        onEdit={handleEditSubtask}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Buttons Container */}
             <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
               {/* Button Row */}
@@ -543,6 +766,21 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                   </div>
                   <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getSelectedListName()}</p>
                 </div>
+
+                {/* Add Subtask Button */}
+                {onCreateSubtask && (
+                  <div 
+                    className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                    onClick={() => handleAddSubtask()}
+                  >
+                    <div className="relative shrink-0 size-[20px]">
+                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 6.878V6a2.25 2.25 0 0 1 2.25-2.25h7.5A2.25 2.25 0 0 1 18 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 0 0 4.5 9v.878m13.5-3A2.25 2.25 0 0 1 19.5 9v.878m0 0a2.246 2.246 0 0 0-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0 1 21 12v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6c0-.98.626-1.813 1.5-2.122" />
+                      </svg>
+                    </div>
+                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Add Subtask</p>
+                  </div>
+                )}
 
                 {/* Milestone Button */}
                 {milestones.length > 0 && (
@@ -676,6 +914,146 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
         onClearDeadline={() => setDeadline(null)}
         currentDeadline={deadline}
       />
+
+      {/* Add Subtask Modal */}
+      {isAddSubtaskModalOpen && (
+        <div className="fixed inset-0 z-[10003] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10003 }}>
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
+            onClick={() => {
+              setIsAddSubtaskModalOpen(false);
+              setSubtaskInputText('');
+              setEditingSubtaskId(null);
+            }}
+            style={{ 
+              backgroundColor: 'rgba(0, 0, 0, 0.75)',
+              backdropFilter: 'blur(4px)'
+            }}
+          />
+          
+          {/* Bottom Sheet */}
+          <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
+            <div className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
+              {/* Handle */}
+              <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
+                <div className="h-[20px] relative shrink-0 w-[100px]">
+                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
+                    <g>
+                      <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
+                    </g>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full">
+                {/* Title and Description Section */}
+                <div className="content-stretch flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
+                  <textarea
+                    ref={subtaskInputRef}
+                    value={subtaskInputText}
+                    onChange={(e) => {
+                      setSubtaskInputText(e.target.value);
+                      // Auto-resize
+                      if (subtaskInputRef.current) {
+                        subtaskInputRef.current.style.height = 'auto';
+                        subtaskInputRef.current.style.height = subtaskInputRef.current.scrollHeight + 'px';
+                      }
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter" && e.ctrlKey && subtaskInputText.trim() !== "") {
+                        e.preventDefault();
+                        handleConfirmAddSubtask();
+                      }
+                    }}
+                    placeholder={editingSubtaskId !== null ? "Edit subtask" : "Add subtask"}
+                    className={`font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[42px] ${
+                      subtaskInputText.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                    }`}
+                    autoFocus
+                    rows={1}
+                    style={{ overflow: 'hidden' }}
+                  />
+                </div>
+                
+                {/* Buttons Container */}
+                <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+                  {/* Submit Button Row */}
+                  <div className="flex gap-[10px] items-end justify-end w-full" style={{ justifyContent: 'flex-end', width: '100%' }}>
+                    {/* Delete Button (only when editing) */}
+                    {editingSubtaskId !== null && onDeleteSubtask && (
+                      <div 
+                        className="relative shrink-0 size-[24px] cursor-pointer hover:opacity-70"
+                        onClick={async () => {
+                          if (onDeleteSubtask && editingSubtaskId !== null) {
+                            try {
+                              await onDeleteSubtask(editingSubtaskId);
+                              // Refresh subtasks
+                              if (onFetchSubtasks) {
+                                const updated = await onFetchSubtasks(task.id);
+                                setSubtasks(updated);
+                              }
+                              setIsAddSubtaskModalOpen(false);
+                              setSubtaskInputText('');
+                              setEditingSubtaskId(null);
+                            } catch (error) {
+                              console.error('Error deleting subtask:', error);
+                            }
+                          }
+                        }}
+                      >
+                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                          <g>
+                            <path d={deleteIconPaths.pf5e3c80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                          </g>
+                        </svg>
+                      </div>
+                    )}
+                    {/* Plus Button */}
+                    <div 
+                      className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
+                      style={{
+                        width: '35px',
+                        height: '35px',
+                        padding: '3px',
+                        flexShrink: 0,
+                        backgroundColor: subtaskInputText.trim() ? '#0b64f9' : '#5b5d62'
+                      }}
+                      onClick={handleConfirmAddSubtask}
+                    >
+                      <div className="relative" style={{ width: '24px', height: '24px' }}>
+                        <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '24px', height: '24px' }}>
+                          <g>
+                            <line
+                              x1="12"
+                              y1="6"
+                              x2="12"
+                              y2="18"
+                              stroke="#E1E6EE"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                            />
+                            <line
+                              x1="6"
+                              y1="12"
+                              x2="18"
+                              y2="12"
+                              stroke="#E1E6EE"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                            />
+                          </g>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );
