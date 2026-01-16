@@ -11,6 +11,10 @@
     {
       "path": "/api/calendar/sync-cron",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/generate-tasks",
+      "schedule": "0 23 * * *"
     }
   ],
   "rewrites": [

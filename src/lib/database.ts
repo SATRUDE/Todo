@@ -1117,6 +1117,52 @@ export async function fetchMilestones(goalId: number): Promise<Milestone[]> {
   return data || []
 }
 
+// Fetch all milestones for multiple goals in parallel
+export async function fetchAllMilestones(goalIds: number[]): Promise<Array<{ id: number; name: string; goalId: number; goalName: string }>> {
+  if (goalIds.length === 0) return [];
+  
+  const userId = await ensureAuthenticated();
+  
+  // Fetch all goals first to get their text for the result
+  const { data: goalsData, error: goalsError } = await supabase
+    .from('goals')
+    .select('id, text')
+    .in('id', goalIds)
+    .eq('user_id', userId);
+  
+  if (goalsError) {
+    console.error('Error fetching goals for milestones:', goalsError);
+    throw goalsError;
+  }
+  
+  if (!goalsData || goalsData.length === 0) {
+    return [];
+  }
+  
+  // Create a map of goal ID to goal text
+  const goalMap = new Map(goalsData.map(g => [g.id, g.text]));
+  
+  // Fetch all milestones for these goals in a single query
+  const { data, error } = await supabase
+    .from('milestones')
+    .select('*')
+    .in('goal_id', goalIds)
+    .order('days', { ascending: true });
+  
+  if (error) {
+    console.error('Error fetching all milestones:', error);
+    throw error;
+  }
+  
+  // Transform to match existing format with goal name
+  return (data || []).map(m => ({
+    id: m.id,
+    name: m.name,
+    goalId: m.goal_id,
+    goalName: goalMap.get(m.goal_id) || 'Unknown Goal'
+  }));
+}
+
 export async function createMilestone(milestone: { goal_id: number; name: string; description?: string | null; deadline?: { date: Date; time: string; recurring?: string } | null }): Promise<Milestone> {
   // #region agent log
   fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createMilestone:entry',message:'Creating milestone',data:{goalId:milestone.goal_id,name:milestone.name,hasDeadline:!!milestone.deadline,deadlineDate:milestone.deadline?.date?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});

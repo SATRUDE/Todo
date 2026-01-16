@@ -55,6 +55,7 @@ import {
   Goal,
   dbGoalToDisplayGoal,
   fetchMilestones,
+  fetchAllMilestones,
   createMilestone,
   updateMilestone,
   deleteMilestone,
@@ -126,6 +127,9 @@ export function TodoApp() {
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [timeRangeFilter, setTimeRangeFilter] = useState<"today" | "week" | "month" | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(false);
+  const [isSecondaryDataLoading, setIsSecondaryDataLoading] = useState(false);
+  const [milestonesLoaded, setMilestonesLoaded] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
   const completionTimeouts = useRef<Map<number, NodeJS.Timeout>>(new Map());
@@ -250,208 +254,74 @@ export function TodoApp() {
     return () => clearInterval(interval);
   }, []);
 
-  // Load data from Supabase on mount (only if authenticated)
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
+  // Validate Supabase configuration
+  const validateSupabaseConfig = (): { valid: boolean; error?: string } => {
+    const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+    const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+    
+    if (!supabaseUrl || !supabaseKey) {
+      return { valid: false, error: 'Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Vercel project settings.' };
     }
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        setConnectionError(null);
-        
-        // Check if Supabase is configured
-        const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-        const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
-        
-        if (!supabaseUrl || !supabaseKey) {
-          setConnectionError('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Vercel project settings.');
-          setLoading(false);
-          return;
-        }
-        
-        // Validate URL format
-        try {
-          const url = new URL(supabaseUrl);
-          if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-            throw new Error('Invalid protocol');
-          }
-        } catch {
-          setConnectionError(`Invalid Supabase URL format. URL must start with http:// or https://. Current value: "${supabaseUrl || '(empty)'}"`);
-          setLoading(false);
-          return;
-        }
-        
-        const [tasksData, listsData, commonTasksData, dailyTasksData, goalsData] = await Promise.allSettled([
-          fetchTasks(),
-          fetchLists(),
-          fetchCommonTasks(),
-          fetchDailyTasks(),
-          fetchGoals()
-        ]);
-        
-        // Fetch all milestones with goal info for milestone selection
-        if (goalsData.status === 'fulfilled') {
-          try {
-            const allMilestones: Array<{ id: number; name: string; goalId: number; goalName: string }> = [];
-            for (const goal of goalsData.value) {
-              const goalMilestones = await fetchMilestones(goal.id);
-              for (const milestone of goalMilestones) {
-                allMilestones.push({
-                  id: milestone.id,
-                  name: milestone.name,
-                  goalId: goal.id,
-                  goalName: goal.text
-                });
-              }
-            }
-            setAllMilestonesWithGoals(allMilestones);
-          } catch (error) {
-            console.error('Error fetching milestones:', error);
-          }
-        }
-        
-        // Handle tasks
-        const tasksResult = tasksData.status === 'fulfilled' ? tasksData.value : [];
-        const listsResult = listsData.status === 'fulfilled' ? listsData.value : [];
-        const commonTasksResult = commonTasksData.status === 'fulfilled' ? commonTasksData.value : [];
-        const dailyTasksResult = dailyTasksData.status === 'fulfilled' ? dailyTasksData.value : [];
-        const goalsResult = goalsData.status === 'fulfilled' ? goalsData.value : [];
-        
-        if (tasksData.status === 'rejected') {
-          console.error('Error fetching tasks:', tasksData.reason);
-        }
-        if (listsData.status === 'rejected') {
-          console.error('Error fetching lists:', listsData.reason);
-        }
-        if (commonTasksData.status === 'rejected') {
-          console.error('Error fetching common tasks:', commonTasksData.reason);
-        }
-        if (dailyTasksData.status === 'rejected') {
-          console.error('Error fetching daily tasks:', dailyTasksData.reason);
-        }
-        if (goalsData.status === 'rejected') {
-          console.error('Error fetching goals:', goalsData.reason);
-        }
-        
-        // Convert database format to app format
-        const appTodos = tasksResult.map(dbTodoToDisplayTodo);
-        const appLists = listsResult.map(list => ({
-          id: list.id,
-          name: list.name,
-          color: list.color,
-          count: 0, // Will be calculated
-          isShared: list.is_shared,
-        }));
-        
-        setTodos(appTodos);
-        setLists(appLists);
-        // Convert common tasks from database format to display format
-        const displayCommonTasks = commonTasksResult.map(dbCommonTaskToDisplayCommonTask);
-        setCommonTasks(displayCommonTasks);
-        // Convert daily tasks from database format to display format
-        const displayDailyTasks = dailyTasksResult.map(dbDailyTaskToDisplayDailyTask);
-        setDailyTasks(displayDailyTasks);
-        // Convert goals from database format to display format
-        const displayGoals = goalsResult.map(dbGoalToDisplayGoal);
-        setGoals(displayGoals);
-        
-        // Generate tasks from common tasks with deadlines (after todos and commonTasks are loaded)
-        await generateTasksFromCommonTasks(displayCommonTasks, appTodos);
-        
-        // Generate tasks from daily tasks for today
-        await generateTasksFromDailyTasks(displayDailyTasks, appTodos);
-      } catch (error: any) {
-        console.error('Error loading data:', error);
-        
-        if (error.message?.includes('Invalid API key') || error.message?.includes('JWT')) {
-          setConnectionError('Invalid Supabase credentials. Please check your .env file.');
-        } else if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
-          setConnectionError('Connected to Supabase, but tables not found. Please run the SQL schema from supabase-schema.sql in your Supabase SQL Editor.');
-        } else {
-          setConnectionError(`Connection error: ${error.message || 'Failed to connect to Supabase'}`);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [isAuthenticated]);
-
-  // Sync function to manually refresh data from database
-  const handleSync = async () => {
-    if (!isAuthenticated || isSyncing) return;
     
     try {
-      setIsSyncing(true);
-      setConnectionError(null);
-      
-      // Check if Supabase is configured
-      const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-      const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
-      
-      if (!supabaseUrl || !supabaseKey) {
-        setConnectionError('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Vercel project settings.');
-        setIsSyncing(false);
-        return;
+      const url = new URL(supabaseUrl);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        return { valid: false, error: 'Invalid protocol' };
       }
-      
-      // Validate URL format
-      try {
-        const url = new URL(supabaseUrl);
-        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-          throw new Error('Invalid protocol');
-        }
-      } catch {
-        setConnectionError(`Invalid Supabase URL format. URL must start with http:// or https://. Current value: "${supabaseUrl || '(empty)'}"`);
-        setIsSyncing(false);
-        return;
-      }
-      
-      const [tasksData, listsData, commonTasksData, dailyTasksData, goalsData] = await Promise.allSettled([
-        fetchTasks(),
-        fetchLists(),
+    } catch {
+      return { valid: false, error: `Invalid Supabase URL format. URL must start with http:// or https://. Current value: "${supabaseUrl || '(empty)'}"` };
+    }
+    
+    return { valid: true };
+  };
+
+  // Stage 1: Critical data (tasks + lists) - loads immediately
+  const loadCriticalData = async () => {
+    const [tasksData, listsData] = await Promise.allSettled([
+      fetchTasks(),
+      fetchLists()
+    ]);
+    
+    const tasksResult = tasksData.status === 'fulfilled' ? tasksData.value : [];
+    const listsResult = listsData.status === 'fulfilled' ? listsData.value : [];
+    
+    if (tasksData.status === 'rejected') {
+      console.error('Error fetching tasks:', tasksData.reason);
+    }
+    if (listsData.status === 'rejected') {
+      console.error('Error fetching lists:', listsData.reason);
+    }
+    
+    // Convert database format to app format
+    const appTodos = tasksResult.map(dbTodoToDisplayTodo);
+    const appLists = listsResult.map(list => ({
+      id: list.id,
+      name: list.name,
+      color: list.color,
+      count: 0, // Will be calculated
+      isShared: list.is_shared,
+    }));
+    
+    setTodos(appTodos);
+    setLists(appLists);
+    setIsInitialLoad(true);
+  };
+
+  // Stage 2: Secondary data (common tasks, daily tasks, goals) - loads in background
+  const loadSecondaryData = async () => {
+    setIsSecondaryDataLoading(true);
+    
+    try {
+      const [commonTasksData, dailyTasksData, goalsData] = await Promise.allSettled([
         fetchCommonTasks(),
         fetchDailyTasks(),
         fetchGoals()
       ]);
       
-      // Fetch all milestones with goal info for milestone selection
-      if (goalsData.status === 'fulfilled') {
-        try {
-          const allMilestones: Array<{ id: number; name: string; goalId: number; goalName: string }> = [];
-          for (const goal of goalsData.value) {
-            const goalMilestones = await fetchMilestones(goal.id);
-            for (const milestone of goalMilestones) {
-              allMilestones.push({
-                id: milestone.id,
-                name: milestone.name,
-                goalId: goal.id,
-                goalName: goal.text
-              });
-            }
-          }
-          setAllMilestonesWithGoals(allMilestones);
-        } catch (error) {
-          console.error('Error fetching milestones:', error);
-        }
-      }
-      
-      // Handle tasks
-      const tasksResult = tasksData.status === 'fulfilled' ? tasksData.value : [];
-      const listsResult = listsData.status === 'fulfilled' ? listsData.value : [];
       const commonTasksResult = commonTasksData.status === 'fulfilled' ? commonTasksData.value : [];
       const dailyTasksResult = dailyTasksData.status === 'fulfilled' ? dailyTasksData.value : [];
       const goalsResult = goalsData.status === 'fulfilled' ? goalsData.value : [];
       
-      if (tasksData.status === 'rejected') {
-        console.error('Error fetching tasks:', tasksData.reason);
-      }
-      if (listsData.status === 'rejected') {
-        console.error('Error fetching lists:', listsData.reason);
-      }
       if (commonTasksData.status === 'rejected') {
         console.error('Error fetching common tasks:', commonTasksData.reason);
       }
@@ -462,18 +332,6 @@ export function TodoApp() {
         console.error('Error fetching goals:', goalsData.reason);
       }
       
-      // Convert database format to app format
-      const appTodos = tasksResult.map(dbTodoToDisplayTodo);
-      const appLists = listsResult.map(list => ({
-        id: list.id,
-        name: list.name,
-        color: list.color,
-        count: 0, // Will be calculated
-        isShared: list.is_shared,
-      }));
-      
-      setTodos(appTodos);
-      setLists(appLists);
       // Convert common tasks from database format to display format
       const displayCommonTasks = commonTasksResult.map(dbCommonTaskToDisplayCommonTask);
       setCommonTasks(displayCommonTasks);
@@ -483,12 +341,111 @@ export function TodoApp() {
       // Convert goals from database format to display format
       const displayGoals = goalsResult.map(dbGoalToDisplayGoal);
       setGoals(displayGoals);
+    } catch (error) {
+      console.error('Error loading secondary data:', error);
+    } finally {
+      setIsSecondaryDataLoading(false);
+    }
+  };
+
+  // Stage 3: Milestones (on-demand) - loads only when Goals page is visited
+  const loadMilestones = async () => {
+    if (milestonesLoaded || goals.length === 0) return;
+    
+    try {
+      const goalIds = goals.map(g => g.id);
+      const allMilestones = await fetchAllMilestones(goalIds);
+      setAllMilestonesWithGoals(allMilestones);
+      setMilestonesLoaded(true);
+    } catch (error) {
+      console.error('Error loading milestones:', error);
+    }
+  };
+
+  // Load data from Supabase on mount (only if authenticated)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      setIsInitialLoad(false);
+      return;
+    }
+    
+    const initialize = async () => {
+      try {
+        setLoading(true);
+        setConnectionError(null);
+        
+        // Validate Supabase configuration
+        const configCheck = validateSupabaseConfig();
+        if (!configCheck.valid) {
+          setConnectionError(configCheck.error || 'Invalid Supabase configuration');
+          setLoading(false);
+          return;
+        }
+        
+        // Stage 1: Load critical data
+        await loadCriticalData();
+        setLoading(false); // UI can render now
+        
+        // Stage 2: Load secondary data in background (don't block)
+        loadSecondaryData().catch(err => {
+          console.error('Error loading secondary data:', err);
+        });
+      } catch (error: any) {
+        console.error('Error loading data:', error);
+        
+        if (error.message?.includes('Invalid API key') || error.message?.includes('JWT')) {
+          setConnectionError('Invalid Supabase credentials. Please check your .env file.');
+        } else if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
+          setConnectionError('Connected to Supabase, but tables not found. Please run the SQL schema from supabase-schema.sql in your Supabase SQL Editor.');
+        } else {
+          setConnectionError(`Connection error: ${error.message || 'Failed to connect to Supabase'}`);
+        }
+        setLoading(false);
+      }
+    };
+
+    initialize();
+  }, [isAuthenticated]);
+
+  // Load milestones when navigating to goals-related pages
+  useEffect(() => {
+    if (currentPage === 'goals' || currentPage === 'goalDetail' || currentPage === 'milestoneDetail') {
+      if (goals.length > 0 && !milestonesLoaded && !isSecondaryDataLoading) {
+        loadMilestones().catch(err => {
+          console.error('Error loading milestones:', err);
+        });
+      }
+    }
+  }, [currentPage, goals.length, milestonesLoaded, isSecondaryDataLoading]);
+
+  // Sync function to manually refresh data from database
+  const handleSync = async () => {
+    if (!isAuthenticated || isSyncing) return;
+    
+    try {
+      setIsSyncing(true);
+      setConnectionError(null);
       
-      // Generate tasks from common tasks with deadlines (after todos and commonTasks are loaded)
-      await generateTasksFromCommonTasks(displayCommonTasks, appTodos);
+      // Validate Supabase configuration
+      const configCheck = validateSupabaseConfig();
+      if (!configCheck.valid) {
+        setConnectionError(configCheck.error || 'Invalid Supabase configuration');
+        setIsSyncing(false);
+        return;
+      }
       
-      // Generate tasks from daily tasks for today
-      await generateTasksFromDailyTasks(displayDailyTasks, appTodos);
+      // Stage 1: Load critical data first
+      await loadCriticalData();
+      
+      // Stage 2: Load secondary data
+      await loadSecondaryData();
+      
+      // Stage 3: Reload milestones if they were already loaded
+      if (milestonesLoaded && goals.length > 0) {
+        setMilestonesLoaded(false); // Reset to force reload
+        await loadMilestones();
+      }
     } catch (error: any) {
       console.error('Error syncing data:', error);
       
@@ -917,170 +874,66 @@ export function TodoApp() {
       new Date(todo.deadline.date).toDateString() === new Date().toDateString();
     const isCompleting = !todo.completed;
     
-    if (!todo.completed && todo.deadline?.recurring) {
-      // Task is being completed and has recurring setting
-      // Create a new recurring instance with the next deadline
-      const nextDate = getNextRecurringDate(todo.deadline.date, todo.deadline.recurring);
-      const newRecurringTodo: Todo = {
-        id: Date.now() + 1, // Temporary ID, will be replaced by database
-        text: todo.text,
-        completed: false,
-        time: todo.deadline.time,
-        listId: todo.listId,
-        description: todo.description,
-        dailyTaskId: todo.dailyTaskId, // Preserve dailyTaskId for daily tasks
-        milestoneId: todo.milestoneId,
-        effort: todo.effort,
-        deadline: {
-          date: nextDate,
-          time: todo.deadline.time,
-          recurring: todo.deadline.recurring
-        }
-      };
+    // Build update object
+    const updateData: any = {
+      text: todo.text,
+      completed: !todo.completed,
+      listId: !todo.completed ? COMPLETED_LIST_ID : (todo.listId !== undefined ? todo.listId : TODAY_LIST_ID),
+      time: todo.time || null,
+      group: todo.group || null,
+    };
+    if (todo.description !== undefined) {
+      updateData.description = todo.description;
+    }
+    if (todo.deadline) {
+      updateData.deadline = todo.deadline;
+    }
+    
+    // Note: Task generation for recurring tasks is now handled by the daily cron job
+    // We simply mark the task as completed/uncompleted without creating the next occurrence
+    
+    try {
+      const updatedTodo = await updateTaskDb(id, updateData);
+      const updatedAppTodo = dbTodoToDisplayTodo(updatedTodo);
       
-      try {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:toggleTodo:recurringBeforeUpdate',message:'Before updating recurring task',data:{taskId:id,todo},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        // Update current task to completed - build clean update object
-        const updateData: any = {
-          text: todo.text,
-          completed: true,
-          listId: COMPLETED_LIST_ID,
-          time: todo.time || null,
-          group: todo.group || null,
-        };
-        if (todo.description !== undefined) {
-          updateData.description = todo.description;
+      const updatedTodos = todos.map((t) => {
+        if (t.id === id) {
+          return updatedAppTodo;
         }
-        if (todo.deadline) {
-          updateData.deadline = todo.deadline;
-        }
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:toggleTodo:recurringUpdateData',message:'Recurring task update data',data:{taskId:id,updateData},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        const updatedTodo = await updateTaskDb(id, updateData);
-        
-        // Create new recurring task
-        const newTask = await createTask(newRecurringTodo);
-        const newAppTodo = dbTodoToDisplayTodo(newTask);
-        
-        const updatedTodos = [
-          ...todos.map((t) => {
-            if (t.id === id) {
-              return dbTodoToDisplayTodo(updatedTodo);
-            }
-            return t;
-          }),
-          newAppTodo
-        ];
-        
-        setTodos(updatedTodos);
-        
-        // Check if this task came from a common task and maintain buffer
-        const matchingCommonTask = commonTasks.find(ct => 
-          ct.text === todo.text && 
-          ct.deadline?.recurring === todo.deadline.recurring
-        );
-        
-        if (matchingCommonTask) {
-          // Count how many future tasks exist for this common task
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const futureTasks = updatedTodos.filter(t => {
-            if (t.text !== matchingCommonTask.text || t.completed || !t.deadline) return false;
-            const taskDate = new Date(t.deadline.date);
-            taskDate.setHours(0, 0, 0, 0);
-            return taskDate.getTime() >= today.getTime();
-          });
-          
-          // If we have fewer than 4 future tasks, generate more
-          if (futureTasks.length < 4) {
-            await generateTasksFromCommonTasks([matchingCommonTask], updatedTodos);
-          }
-        }
-        
-        // Note: Calendar sync is manual only - users must explicitly sync from the calendar sync page
-        
-        // If it's a today task, show it as completed for 1 second
-        if (isTodayTask && isCompleting) {
-          setRecentlyCompleted(prev => new Set(prev).add(id));
-          const timeout = setTimeout(() => {
-            setRecentlyCompleted(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(id);
-              return newSet;
-            });
-            completionTimeouts.current.delete(id);
-          }, 1000);
-          completionTimeouts.current.set(id, timeout);
-        }
-      } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:toggleTodo:recurringError',message:'Error toggling recurring task',data:{taskId:id,error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        console.error('Error toggling recurring task:', error);
-      }
-    } else {
-      // Normal toggle behavior
-      try {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:toggleTodo:normalToggle',message:'Starting normal toggle',data:{taskId:id,newCompleted:!todo.completed},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        const newCompleted = !todo.completed;
-        const updatedTodo = await updateTaskDb(id, {
-          ...todo,
-          completed: newCompleted,
-          listId: newCompleted ? COMPLETED_LIST_ID : todo.listId
-        });
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:toggleTodo:afterUpdate',message:'Database update successful',data:{taskId:id,updatedCompleted:updatedTodo.completed},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        
-        setTodos(
-          todos.map((t) => {
-            if (t.id === id) {
-              return dbTodoToDisplayTodo(updatedTodo);
-            }
-            return t;
-          })
-        );
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:toggleTodo:stateUpdated',message:'State updated successfully',data:{taskId:id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        
-        // Note: Calendar sync is manual only - users must explicitly sync from the calendar sync page
-        
-        // If it's a today task being completed, show it as completed for 1 second
-        if (isTodayTask && isCompleting) {
-          setRecentlyCompleted(prev => new Set(prev).add(id));
-          const timeout = setTimeout(() => {
-            setRecentlyCompleted(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(id);
-              return newSet;
-            });
-            completionTimeouts.current.delete(id);
-          }, 1000);
-          completionTimeouts.current.set(id, timeout);
-        } else if (isTodayTask && !isCompleting) {
-          // If uncompleting, remove from recently completed immediately
+        return t;
+      });
+      
+      setTodos(updatedTodos);
+      
+      // Note: Calendar sync is manual only - users must explicitly sync from the calendar sync page
+      
+      // If it's a today task being completed, show it as completed for 1 second
+      if (isTodayTask && isCompleting) {
+        setRecentlyCompleted(prev => new Set(prev).add(id));
+        const timeout = setTimeout(() => {
           setRecentlyCompleted(prev => {
             const newSet = new Set(prev);
             newSet.delete(id);
             return newSet;
           });
-          const timeout = completionTimeouts.current.get(id);
-          if (timeout) {
-            clearTimeout(timeout);
-            completionTimeouts.current.delete(id);
-          }
+          completionTimeouts.current.delete(id);
+        }, 1000);
+        completionTimeouts.current.set(id, timeout);
+      } else if (isTodayTask && !isCompleting) {
+        // If uncompleting, remove from recently completed immediately
+        setRecentlyCompleted(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(id);
+          return newSet;
+        });
+        const timeout = completionTimeouts.current.get(id);
+        if (timeout) {
+          clearTimeout(timeout);
+          completionTimeouts.current.delete(id);
         }
-      } catch (error) {
-        console.error('Error toggling task:', error);
       }
+    } catch (error) {
+      console.error('Error toggling task:', error);
     }
   };
 
@@ -1264,10 +1117,7 @@ export function TodoApp() {
       const updatedCommonTasks = [...commonTasks, displayTask];
       setCommonTasks(updatedCommonTasks);
       
-      // Generate tasks if deadline is set (only for new common tasks)
-      if (deadline) {
-        await generateTasksFromCommonTasks([displayTask], todos);
-      }
+      // Task generation is now handled by the daily cron job at midnight
     } catch (error) {
       console.error('Error creating common task:', error);
       alert(`Failed to create common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -1397,8 +1247,7 @@ export function TodoApp() {
       const updatedDailyTasks = [...dailyTasks, displayTask];
       setDailyTasks(updatedDailyTasks);
       
-      // Automatically create a task for today
-      await generateTasksFromDailyTasks([displayTask], todos);
+      // Task generation is now handled by the daily cron job at midnight
     } catch (error) {
       console.error('Error creating daily task:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -1461,8 +1310,7 @@ export function TodoApp() {
       const remainingDisplayTasks = remainingTasks.map(dbTodoToDisplayTodo);
       setTodos(remainingDisplayTasks);
 
-      // Regenerate tasks from common tasks
-      await generateTasksFromCommonTasks(commonTasksWithDeadlines, remainingDisplayTasks);
+      // Task generation is now handled by the daily cron job at midnight
 
       console.log(`Reset common tasks: deleted ${tasksToDelete.length} tasks and regenerated`);
     } catch (error) {
@@ -3762,19 +3610,25 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           lists={lists}
         />
       ) : currentPage === "commonTasks" ? (
-        <CommonTasks 
-          onBack={() => setCurrentPage("dashboard")}
-          commonTasks={commonTasks}
-          onUpdateCommonTask={handleUpdateCommonTask}
-          onCreateCommonTask={handleCreateCommonTask}
-          onDeleteCommonTask={handleDeleteCommonTask}
-          onAddTaskToList={handleAddCommonTaskToList}
-          onSelectCommonTask={(task) => {
-            setSelectedCommonTask(task);
-            setCurrentPage("commonTaskDetail");
-          }}
-          lists={lists}
-        />
+        isSecondaryDataLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-[#e1e6ee]">Loading common tasks...</div>
+          </div>
+        ) : (
+          <CommonTasks 
+            onBack={() => setCurrentPage("dashboard")}
+            commonTasks={commonTasks}
+            onUpdateCommonTask={handleUpdateCommonTask}
+            onCreateCommonTask={handleCreateCommonTask}
+            onDeleteCommonTask={handleDeleteCommonTask}
+            onAddTaskToList={handleAddCommonTaskToList}
+            onSelectCommonTask={(task) => {
+              setSelectedCommonTask(task);
+              setCurrentPage("commonTaskDetail");
+            }}
+            lists={lists}
+          />
+        )
       ) : currentPage === "commonTaskDetail" && selectedCommonTask ? (
         <CommonTaskDetail
           commonTask={selectedCommonTask}
@@ -3807,28 +3661,40 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           lists={lists}
         />
       ) : currentPage === "dailyTasks" ? (
-        <DailyTasks 
-          onBack={() => setCurrentPage("dashboard")}
-          dailyTasks={dailyTasks}
-          onUpdateDailyTask={handleUpdateDailyTask}
-          onCreateDailyTask={handleCreateDailyTask}
-          onDeleteDailyTask={handleDeleteDailyTask}
-          lists={lists}
-        />
+        isSecondaryDataLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-[#e1e6ee]">Loading daily tasks...</div>
+          </div>
+        ) : (
+          <DailyTasks 
+            onBack={() => setCurrentPage("dashboard")}
+            dailyTasks={dailyTasks}
+            onUpdateDailyTask={handleUpdateDailyTask}
+            onCreateDailyTask={handleCreateDailyTask}
+            onDeleteDailyTask={handleDeleteDailyTask}
+            lists={lists}
+          />
+        )
       ) : currentPage === "workshop" ? (
         <Workshop onBack={() => setCurrentPage("dashboard")} />
       ) : currentPage === "goals" ? (
-        <Goals 
-          onBack={() => setCurrentPage("dashboard")}
-          goals={goals}
-          onUpdateGoal={handleUpdateGoal}
-          onCreateGoal={handleCreateGoal}
-          onDeleteGoal={handleDeleteGoal}
-          onSelectGoal={(goal) => {
-            setSelectedGoal(goal);
-            setCurrentPage("goalDetail");
-          }}
-        />
+        isSecondaryDataLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-[#e1e6ee]">Loading goals...</div>
+          </div>
+        ) : (
+          <Goals 
+            onBack={() => setCurrentPage("dashboard")}
+            goals={goals}
+            onUpdateGoal={handleUpdateGoal}
+            onCreateGoal={handleCreateGoal}
+            onDeleteGoal={handleDeleteGoal}
+            onSelectGoal={(goal) => {
+              setSelectedGoal(goal);
+              setCurrentPage("goalDetail");
+            }}
+          />
+        )
       ) : currentPage === "goalDetail" && selectedGoal ? (
         <GoalDetail
           goal={selectedGoal}
