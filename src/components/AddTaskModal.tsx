@@ -1,10 +1,12 @@
-import { useState, KeyboardEvent, useEffect, useRef } from "react";
+import { useState, KeyboardEvent, useEffect, useRef, ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import svgPaths from "../imports/svg-p3zv31caxs";
 import generateSvgPaths from "../imports/svg-gf1ry58lrd";
+import deleteIconPaths from "../imports/svg-u66msu10qs";
 import { SelectListModal } from "./SelectListModal";
 import { SelectMilestoneModal } from "./SelectMilestoneModal";
 import { DeadlineModal } from "./DeadlineModal";
+import { supabase } from "../lib/supabase";
 
 interface ListItem {
   id: number;
@@ -24,7 +26,7 @@ interface MilestoneWithGoal {
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddTask: (task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number, type?: 'task' | 'reminder') => void;
+  onAddTask: (task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number, type?: 'task' | 'reminder', imageUrl?: string | null) => void;
   lists?: ListItem[];
   defaultListId?: number;
   milestones?: MilestoneWithGoal[];
@@ -48,8 +50,11 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<number | null>(defaultMilestoneId || null);
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(getDefaultDeadline());
   const [isBulkAddMode, setIsBulkAddMode] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Update selectedListId and selectedMilestoneId when defaults change or modal opens
   useEffect(() => {
@@ -69,6 +74,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
       setTaskDescription("");
       setEffort(undefined);
       setTaskType('task');
+      setImageUrl(null);
     }
   }, [isOpen, defaultListId, defaultMilestoneId]);
 
@@ -77,7 +83,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
       if (isBulkAddMode) {
         await handleBulkAdd();
       } else {
-        await onAddTask(taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined, effort > 0 ? effort : undefined, taskType);
+        await onAddTask(taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined, effort > 0 ? effort : undefined, taskType, imageUrl);
         setTaskInput("");
         setSelectedListId(null);
         setSelectedMilestoneId(null);
@@ -85,6 +91,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
         setTaskDescription("");
         setEffort(0);
         setTaskType('task');
+        setImageUrl(null);
         onClose();
       }
     }
@@ -174,7 +181,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
     // Add all tasks sequentially to ensure they all get added
     for (const line of lines) {
       if (line.trim()) {
-        await onAddTask(line.trim(), "", selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined, undefined, taskType);
+        await onAddTask(line.trim(), "", selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined, undefined, taskType, null);
       }
     }
     
@@ -184,7 +191,109 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
     setDeadline(getDefaultDeadline());
     setIsBulkAddMode(false);
     setTaskDescription("");
+    setImageUrl(null);
     onClose();
+  };
+
+  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image size must be less than 10MB');
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Delete old image if exists
+      if (imageUrl) {
+        try {
+          const oldImagePath = imageUrl.split('/').slice(-2).join('/'); // Extract path from URL
+          await supabase.storage.from('task-images').remove([oldImagePath]);
+        } catch (error) {
+          console.error('Error deleting old image:', error);
+          // Continue even if deletion fails
+        }
+      }
+
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('task-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Upload error details:', uploadError);
+        throw new Error(uploadError.message || 'Upload failed');
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('task-images')
+        .getPublicUrl(fileName);
+
+      setImageUrl(publicUrl);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to upload image: ${errorMessage}. Please check that the Supabase Storage bucket 'task-images' is set up correctly.`);
+    } finally {
+      setIsUploadingImage(false);
+      // Reset input
+      if (imageInputRef.current) {
+        imageInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDeleteImage = async () => {
+    if (!imageUrl) return;
+
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Extract path from URL
+      const imagePath = imageUrl.split('/').slice(-2).join('/');
+
+      // Delete from Supabase Storage
+      const { error } = await supabase.storage
+        .from('task-images')
+        .remove([imagePath]);
+
+      if (error) {
+        throw error;
+      }
+
+      setImageUrl(null);
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      alert('Failed to delete image. Please try again.');
+    }
   };
 
   // Prevent body scroll when modal is open
@@ -287,6 +396,49 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
                     </>
                   )}
                 </div>
+
+                {/* Image Section - Under description */}
+                {imageUrl && !isBulkAddMode && (
+                  <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                    <div className="relative w-full max-w-md">
+                      <img 
+                        src={imageUrl} 
+                        alt="Task image" 
+                        className="w-full h-auto max-h-[300px] object-contain rounded-lg"
+                      />
+                    </div>
+                    <div 
+                      className="bg-[rgba(239,65,35,0.2)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(239,65,35,0.25)] transition-colors"
+                      onClick={handleDeleteImage}
+                      style={{ backgroundColor: 'rgba(239,65,35,0.2)', borderRadius: '100px' }}
+                    >
+                      <div className="relative shrink-0 size-[20px]">
+                        <svg
+                          className="block size-full"
+                          fill="none"
+                          preserveAspectRatio="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <g>
+                            <path
+                              d={deleteIconPaths.pf5e3c80}
+                              stroke="#ef4123"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="1.5"
+                            />
+                          </g>
+                        </svg>
+                      </div>
+                      <p 
+                        className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] tracking-[-0.198px] whitespace-pre"
+                        style={{ color: '#ef4123' }}
+                      >
+                        Delete Image
+                      </p>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Buttons Container */}
                 <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
@@ -406,6 +558,25 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
                       <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Bulk add</p>
                     </div>
 
+                    {/* Add Image Button */}
+                    {!isBulkAddMode && (
+                      <div
+                        className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                        onClick={() => {
+                          if (!isUploadingImage && imageInputRef.current) {
+                            imageInputRef.current.click();
+                          }
+                        }}
+                      >
+                        <div className="relative shrink-0 size-[20px]">
+                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                          </svg>
+                        </div>
+                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Add Image</p>
+                      </div>
+                    )}
+
                   </div>
 
                   {/* Submit Button Row */}
@@ -480,6 +651,17 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
         onSetDeadline={handleSetDeadline}
         onClearDeadline={() => setDeadline(null)}
         currentDeadline={deadline}
+      />
+
+      {/* Hidden file input for image upload */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        id="image-upload-input"
+        disabled={isUploadingImage}
+        style={{ display: 'none' }}
       />
     </div>,
     document.body
