@@ -146,15 +146,47 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 // Send subscription to your backend
 export async function sendSubscriptionToServer(subscription: PushSubscription): Promise<boolean> {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:sendSubscriptionToServer:entry',message:'Starting sendSubscriptionToServer',data:{hasSubscription:!!subscription,hasEndpoint:!!subscription?.endpoint},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'1'})}).catch(()=>{});
+  // #endregion
   try {
     // Get current user ID
     const { supabase } = await import('./supabase');
-    const { data: { user } } = await supabase.auth.getUser();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:sendSubscriptionToServer:beforeGetUser',message:'About to get user',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'1'})}).catch(()=>{});
+    // #endregion
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:sendSubscriptionToServer:afterGetUser',message:'Got user result',data:{hasUser:!!user,userId:user?.id?.substring(0,8),hasAuthError:!!authError,authErrorCode:authError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'1'})}).catch(()=>{});
+    // #endregion
     
     if (!user) {
       console.error('No user authenticated');
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:sendSubscriptionToServer:noUser',message:'No user authenticated - returning false',data:{authError:authError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'1'})}).catch(()=>{});
+      // #endregion
       return false;
     }
+    
+    const p256dhKey = subscription.getKey('p256dh');
+    const authKey = subscription.getKey('auth');
+    const p256dhBase64 = p256dhKey ? arrayBufferToBase64(p256dhKey) : null;
+    const authBase64 = authKey ? arrayBufferToBase64(authKey) : null;
+    
+    const requestBody = {
+      user_id: user.id,
+      subscription: {
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: p256dhBase64,
+          auth: authBase64,
+        },
+      },
+    };
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:sendSubscriptionToServer:beforeFetch',message:'About to fetch /api/push/subscribe',data:{userId:user.id.substring(0,8),hasEndpoint:!!subscription.endpoint,hasP256dh:!!p256dhBase64,hasAuth:!!authBase64,endpointLength:subscription.endpoint?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
+    // #endregion
     
     console.log('📤 Sending subscription to /api/push/subscribe...');
     const response = await fetch('/api/push/subscribe', {
@@ -162,29 +194,33 @@ export async function sendSubscriptionToServer(subscription: PushSubscription): 
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        user_id: user.id,
-        subscription: {
-          endpoint: subscription.endpoint,
-          keys: {
-            p256dh: arrayBufferToBase64(subscription.getKey('p256dh')!),
-            auth: arrayBufferToBase64(subscription.getKey('auth')!),
-          },
-        },
-      }),
+      body: JSON.stringify(requestBody),
     });
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:sendSubscriptionToServer:afterFetch',message:'Fetch completed',data:{status:response.status,statusText:response.statusText,ok:response.ok,contentType:response.headers.get('content-type')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
+    // #endregion
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Server responded with error:', response.status, errorText);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:sendSubscriptionToServer:responseError',message:'Server returned error response',data:{status:response.status,statusText:response.statusText,errorText:errorText.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
+      // #endregion
       throw new Error(`Failed to send subscription to server: ${response.status} ${errorText}`);
     }
 
     const result = await response.json();
     console.log('✅ Subscription sent to server successfully:', result);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:sendSubscriptionToServer:success',message:'Successfully saved subscription',data:{resultId:result?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
+    // #endregion
     return true;
   } catch (error) {
     console.error('❌ Error sending subscription to server:', error);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:sendSubscriptionToServer:catch',message:'Exception caught',data:{errorName:error?.name,errorMessage:error?.message,errorStack:error?.stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
+    // #endregion
     return false;
   }
 }
