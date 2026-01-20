@@ -66,6 +66,7 @@ export interface Todo {
   time?: string
   group?: string
   description?: string | null
+  image_url?: string | null // URL to image in Supabase Storage
   list_id?: number // -1 for completed, 0 for today, positive numbers for custom lists
   milestone_id?: number // Foreign key to milestones table
   daily_task_id?: number | null // Foreign key to daily_tasks table
@@ -144,6 +145,7 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     time: dbTodo.time,
     group: dbTodo.group,
     description: dbTodo.description,
+    image_url: dbTodo.image_url,
     list_id: dbTodo.list_id,
     milestone_id: dbTodo.milestone_id,
     daily_task_id: dbTodo.daily_task_id,
@@ -177,6 +179,15 @@ export function appTodoToDbTodo(todo: any): any {
     dbTodo.description = todo.description
   }
   // If description is null/undefined/empty, we don't include it in the insert
+  
+  // Handle image_url/imageUrl - only include if it has a value
+  const imageUrlValue = todo.imageUrl !== undefined ? todo.imageUrl : todo.image_url
+  if (typeof imageUrlValue === 'string' && imageUrlValue.trim() !== '') {
+    dbTodo.image_url = imageUrlValue.trim()
+  } else if (imageUrlValue === null || imageUrlValue === undefined) {
+    // Explicitly set to null if it's null/undefined to allow clearing the image
+    dbTodo.image_url = null
+  }
   
   // Handle milestone_id - only set if it's a valid number
   if (todo.milestoneId !== undefined && todo.milestoneId !== null) {
@@ -325,6 +336,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     time: dbTodo.time,
     group: dbTodo.group,
     description: dbTodo.description || undefined,
+    imageUrl: dbTodo.image_url || undefined,
     listId: dbTodo.list_id,
     milestoneId: dbTodo.milestone_id,
     dailyTaskId: dbTodo.daily_task_id,
@@ -426,7 +438,7 @@ export async function createTask(todo: any): Promise<Todo> {
   const validFields = [
     'text', 'completed', 'time', 'group', 'list_id', 'milestone_id', 'daily_task_id', 'parent_task_id',
     'deadline_date', 'deadline_time', 'deadline_recurring',
-    'description', 'effort', 'type', 'user_id'
+    'description', 'image_url', 'effort', 'type', 'user_id'
   ]
   const cleanedDbTodo: any = {}
   for (const field of validFields) {

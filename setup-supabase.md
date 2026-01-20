@@ -31,8 +31,26 @@
    - Paste and run it in the SQL Editor
    - This creates the `lists`, `todos`, and calendar-related tables
    - **Important**: If you get errors about missing `calendar_event_processed` table, run `migration-create-calendar-event-processed.sql`
+   - **For image support**: Run `migration-add-image-url-to-todos.sql` to add the `image_url` column
 
-4. **Restart your dev server:**
+4. **Set up Storage (for task images):**
+   - In Supabase dashboard, go to **Storage**
+   - Click **Create a new bucket**
+   - Name it `task-images`
+   - Make it **Public** (uncheck "Private bucket")
+   - Click **Create bucket**
+   - Go to **Policies** tab and create a policy:
+     - Policy name: "Allow authenticated users to upload images"
+     - Allowed operation: INSERT
+     - Target roles: authenticated
+     - Policy definition: `bucket_id = 'task-images'`
+     - Create another policy:
+       - Policy name: "Allow authenticated users to delete their images"
+       - Allowed operation: DELETE
+       - Target roles: authenticated
+       - Policy definition: `bucket_id = 'task-images' AND auth.uid()::text = (storage.foldername(name))[1]`
+
+5. **Restart your dev server:**
    ```bash
    npm run dev
    ```

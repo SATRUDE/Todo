@@ -1,82 +1,50 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { Goal } from "../lib/database";
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
+interface Todo {
+  id: number;
+  text: string;
+  completed: boolean;
+  time?: string;
+  description?: string | null;
+  listId?: number;
+  deadline?: {
+    date: Date;
+    time: string;
+    recurring?: string;
+  };
+  effort?: number;
+  type?: 'task' | 'reminder';
 }
 
 interface WorkshopProps {
   onBack: () => void;
+  tasks: Todo[];
+  goals: Goal[];
 }
 
-export function Workshop({ onBack }: WorkshopProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: "Hello! I'm your AI workshop assistant. I can help you break down tasks, suggest improvements, provide motivation, and answer questions about productivity. What would you like to work on?"
-    }
-  ]);
-  const [inputMessage, setInputMessage] = useState("");
+export function Workshop({ onBack, tasks, goals }: WorkshopProps) {
+  const [report, setReport] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const inputContainerRef = useRef<HTMLDivElement>(null);
-  const outerContainerRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
-  // Log layout on mount and window resize
+  // Load saved report and last sync time from localStorage on mount
   useEffect(() => {
-    // #region agent log
-    const logLayout = () => {
-      if (inputContainerRef.current && outerContainerRef.current) {
-        const inputRect = inputContainerRef.current.getBoundingClientRect();
-        const outerRect = outerContainerRef.current.getBoundingClientRect();
-        const inputComputed = window.getComputedStyle(inputContainerRef.current);
-        const outerComputed = window.getComputedStyle(outerContainerRef.current);
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:useEffect:layout',message:'Layout dimensions check',data:{inputTop:inputRect.top,inputBottom:inputRect.bottom,inputHeight:inputRect.height,outerTop:outerRect.top,outerBottom:outerRect.bottom,outerHeight:outerRect.height,windowHeight:window.innerHeight,isInputVisible:inputRect.top < window.innerHeight && inputRect.bottom > 0,inputComputedPosition:inputComputed.position,outerComputedOverflow:outerComputed.overflow},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      }
-    };
-    logLayout();
-    window.addEventListener('resize', logLayout);
-    return () => window.removeEventListener('resize', logLayout);
-    // #endregion
+    const savedReport = localStorage.getItem('workshop-report');
+    const savedSyncTime = localStorage.getItem('workshop-last-sync');
+    if (savedReport) {
+      setReport(savedReport);
+    }
+    if (savedSyncTime) {
+      setLastSyncTime(new Date(savedSyncTime));
+    }
   }, []);
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    // #region agent log
-    setTimeout(() => {
-      if (inputContainerRef.current) {
-        const rect = inputContainerRef.current.getBoundingClientRect();
-        const computed = window.getComputedStyle(inputContainerRef.current);
-        const parentRect = inputContainerRef.current.parentElement?.getBoundingClientRect();
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:useEffect:messages',message:'Input container visibility after message change',data:{messagesCount:messages.length,isLoading,hasInputContainer:!!inputContainerRef.current,top:rect.top,bottom:rect.bottom,height:rect.height,width:rect.width,isVisible:rect.top < window.innerHeight && rect.bottom > 0,computedDisplay:computed.display,computedVisibility:computed.visibility,computedZIndex:computed.zIndex,parentTop:parentRect?.top,parentBottom:parentRect?.bottom,parentHeight:parentRect?.height,windowHeight:window.innerHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      }
-    }, 100);
-    // #endregion
-  }, [messages, isLoading]);
-
-  // Auto-resize textarea
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = inputRef.current.scrollHeight + 'px';
-    }
-  }, [inputMessage]);
-
-  const handleSend = async () => {
-    if (!inputMessage.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      role: 'user',
-      content: inputMessage.trim()
-    };
-
-    // Add user message immediately
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage("");
+  const generateReport = async () => {
     setIsLoading(true);
+    setError(null);
 
     try {
       // Get current user session
@@ -85,11 +53,19 @@ export function Workshop({ onBack }: WorkshopProps) {
         throw new Error('User not authenticated');
       }
 
-      // Build conversation history for API (excluding system message)
-      const conversationHistory = messages.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }));
+      // Sanitize tasks and goals before sending (convert Date objects to strings)
+      const sanitizedTasks = tasks.map(task => {
+        const sanitized = { ...task };
+        if (sanitized.deadline && sanitized.deadline.date instanceof Date) {
+          sanitized.deadline = {
+            ...sanitized.deadline,
+            date: sanitized.deadline.date.toISOString().split('T')[0] // Convert to YYYY-MM-DD
+          };
+        }
+        return sanitized;
+      });
+
+      const sanitizedGoals = goals.map(goal => ({ ...goal }));
 
       // Call the API endpoint
       const response = await fetch('/api/workshop', {
@@ -98,65 +74,134 @@ export function Workshop({ onBack }: WorkshopProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: userMessage.content,
-          conversationHistory: conversationHistory,
-          userId: user.id
+          userId: user.id,
+          tasks: sanitizedTasks,
+          goals: sanitizedGoals,
+          reportType: 'workshop'
         }),
       });
 
+      // Check if response has content before parsing
+      const contentType = response.headers.get('content-type');
+      const text = await response.text();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        if (text && contentType?.includes('application/json')) {
+          try {
+            const errorData = JSON.parse(text);
+            errorMessage = errorData.message || errorData.error || errorMessage;
+          } catch (e) {
+            errorMessage = text || errorMessage;
+          }
+        } else if (text) {
+          errorMessage = text;
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
-      
-      // Add assistant response
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.message
-      };
+      // Parse JSON response
+      if (!text) {
+        throw new Error('Empty response from server');
+      }
 
-      setMessages(prev => [...prev, assistantMessage]);
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`);
+      }
+
+      const reportContent = data.message || data.report || '';
+      setReport(reportContent);
+      const syncTime = new Date();
+      setLastSyncTime(syncTime);
+      // Save to localStorage
+      localStorage.setItem('workshop-report', reportContent);
+      localStorage.setItem('workshop-last-sync', syncTime.toISOString());
     } catch (error) {
       console.error('Error calling workshop API:', error);
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please make sure the OpenAI API key is configured correctly.`
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      setError(error instanceof Error ? error.message : 'Unknown error occurred');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  // Parse report into sections
+  const parseReportSections = (reportText: string) => {
+    const sections: { title: string; content: string }[] = [];
+    
+    // Try to split by common section markers
+    const tasksMatch = reportText.match(/##?\s*Tasks?\s*Overview?/i);
+    const goalsMatch = reportText.match(/##?\s*Goals?\s*Overview?/i);
+    
+    if (tasksMatch && goalsMatch) {
+      const tasksIndex = tasksMatch.index || 0;
+      const goalsIndex = goalsMatch.index || reportText.length;
+      
+      if (tasksIndex < goalsIndex) {
+        sections.push({
+          title: 'Tasks Overview',
+          content: reportText.substring(tasksIndex + tasksMatch[0].length, goalsIndex).trim()
+        });
+        sections.push({
+          title: 'Goals Overview',
+          content: reportText.substring(goalsIndex + goalsMatch[0].length).trim()
+        });
+      } else {
+        sections.push({
+          title: 'Goals Overview',
+          content: reportText.substring(goalsIndex + goalsMatch[0].length, tasksIndex).trim()
+        });
+        sections.push({
+          title: 'Tasks Overview',
+          content: reportText.substring(tasksIndex + tasksMatch[0].length).trim()
+        });
+      }
+    } else if (tasksMatch) {
+      sections.push({
+        title: 'Tasks Overview',
+        content: reportText.substring((tasksMatch.index || 0) + tasksMatch[0].length).trim()
+      });
+    } else if (goalsMatch) {
+      sections.push({
+        title: 'Goals Overview',
+        content: reportText.substring((goalsMatch.index || 0) + goalsMatch[0].length).trim()
+      });
+    } else {
+      // If no clear sections, try to split by double newlines or other patterns
+      const parts = reportText.split(/\n\s*\n/);
+      if (parts.length >= 2) {
+        sections.push({
+          title: 'Tasks Overview',
+          content: parts[0].trim()
+        });
+        sections.push({
+          title: 'Goals Overview',
+          content: parts.slice(1).join('\n\n').trim()
+        });
+      } else {
+        // Fallback: show entire report as single section
+        sections.push({
+          title: 'Report',
+          content: reportText.trim()
+        });
+      }
     }
+    
+    return sections;
   };
+
+  const reportSections = report ? parseReportSections(report) : [];
 
   return (
     <div 
       className="relative shrink-0 w-full flex flex-col" 
       style={{ height: '100vh', maxHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#110c10' }}
-      // #region agent log
-      ref={(el) => {
-        if (el) {
-          outerContainerRef.current = el;
-          setTimeout(() => {
-            const rect = el.getBoundingClientRect();
-            const computed = window.getComputedStyle(el);
-            fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:outerContainer:render',message:'Outer container dimensions',data:{height:rect.height,width:rect.width,top:rect.top,bottom:rect.bottom,computedHeight:computed.height,computedMaxHeight:computed.maxHeight,windowHeight:window.innerHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
-          }, 50);
-        }
-      }}
-      // #endregion
     >
       <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden" style={{ backgroundColor: '#110c10' }}>
         {/* Header */}
-        <div className="content-stretch flex items-center gap-[16px] relative shrink-0 w-full px-[20px] pt-[20px] pb-[20px]">
+        <div className="content-stretch flex items-center gap-[16px] relative shrink-0 w-full px-[20px] pt-[20px] pb-[12px]">
           <div 
             className="relative shrink-0 size-[32px] cursor-pointer"
             onClick={onBack}
@@ -173,125 +218,102 @@ export function Workshop({ onBack }: WorkshopProps) {
               </g>
             </svg>
           </div>
-          <div className="content-stretch flex flex-col items-start relative shrink-0">
+          <div className="content-stretch flex flex-col items-start relative shrink-0 flex-1">
             <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">Workshop</p>
+            {lastSyncTime && (
+              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] text-[14px] text-[#A1A1AA] mt-[4px]">
+                Last synced: {lastSyncTime.toLocaleString()}
+              </p>
+            )}
+          </div>
+          <div 
+            className="relative shrink-0 cursor-pointer"
+            onClick={generateReport}
+            style={{ opacity: isLoading ? 0.5 : 1, pointerEvents: isLoading ? 'none' : 'auto' }}
+          >
+            <svg 
+              className={`block size-[24px] ${isLoading ? 'animate-spin' : ''}`}
+              fill="none" 
+              preserveAspectRatio="none" 
+              viewBox="0 0 24 24" 
+              strokeWidth="1.5" 
+              stroke="#E1E6EE"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
           </div>
         </div>
 
-        {/* Messages Container - Scrollable */}
+        {/* Report Container - Scrollable */}
         <div className="flex-1 w-full flex flex-col relative min-h-0 overflow-hidden px-[20px]" style={{ backgroundColor: '#110c10' }}>
-          <div className="flex-1 overflow-y-auto flex flex-col gap-[16px] pb-4" style={{ WebkitOverflowScrolling: 'touch', overflowY: 'scroll', paddingBottom: '100px' }}>
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-[12px] px-[16px] py-[12px] ${
-                    message.role === 'user'
-                      ? 'bg-[#0B64F9] text-white'
-                      : 'bg-[#1f2022] text-[#E1E6EE] border border-[#2a2b2d]'
-                  }`}
-                >
-                  <p 
-                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] text-[16px] whitespace-pre-wrap break-words"
+          <div className="flex-1 overflow-y-auto flex flex-col gap-[24px] pb-[20px]" style={{ WebkitOverflowScrolling: 'touch', overflowY: 'scroll' }}>
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-[40px]">
+                <div className="flex gap-[4px] mb-[16px]">
+                  <div 
+                    className="w-2 h-2 bg-[#E1E6EE] rounded-full" 
                     style={{ 
-                      color: message.role === 'user' ? '#FFFFFF' : '#E1E6EE'
+                      animation: 'bounce 1.4s infinite',
+                      animationDelay: '0ms'
                     }}
-                    ref={(el) => {
-                      // #region agent log
-                      if (el) {
-                        const computedStyle = window.getComputedStyle(el);
-                        const parentEl = el.parentElement;
-                        const parentComputedStyle = parentEl ? window.getComputedStyle(parentEl) : null;
-                        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:message:p:render',message:'Message text styling check',data:{role:message.role,contentLength:message.content.length,elementColor:computedStyle.color,elementTextColor:computedStyle.color,parentColor:parentComputedStyle?.color,parentTextColor:parentComputedStyle?.color,inlineStyle:el.getAttribute('style'),hasTextWhite:el.classList.contains('text-white'),hasTextColor:el.classList.contains('text-[#E1E6EE]')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                      }
-                      // #endregion
+                  ></div>
+                  <div 
+                    className="w-2 h-2 bg-[#E1E6EE] rounded-full" 
+                    style={{ 
+                      animation: 'bounce 1.4s infinite',
+                      animationDelay: '200ms'
                     }}
-                  >
-                    {message.content}
-                  </p>
+                  ></div>
+                  <div 
+                    className="w-2 h-2 bg-[#E1E6EE] rounded-full" 
+                    style={{ 
+                      animation: 'bounce 1.4s infinite',
+                      animationDelay: '400ms'
+                    }}
+                  ></div>
                 </div>
+                <p className="font-['Inter:Regular',sans-serif] font-normal text-[#E1E6EE] text-[16px]">Generating report...</p>
               </div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[12px]">
-                  <div className="flex gap-[4px]">
-                    <div 
-                      className="w-2 h-2 bg-[#E1E6EE] rounded-full" 
-                      style={{ 
-                        animation: 'bounce 1.4s infinite',
-                        animationDelay: '0ms'
-                      }}
-                    ></div>
-                    <div 
-                      className="w-2 h-2 bg-[#E1E6EE] rounded-full" 
-                      style={{ 
-                        animation: 'bounce 1.4s infinite',
-                        animationDelay: '200ms'
-                      }}
-                    ></div>
-                    <div 
-                      className="w-2 h-2 bg-[#E1E6EE] rounded-full" 
-                      style={{ 
-                        animation: 'bounce 1.4s infinite',
-                        animationDelay: '400ms'
-                      }}
-                    ></div>
+            ) : error ? (
+              <div className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[12px]">
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] text-[16px] text-[#E1E6EE]">
+                  {error}
+                </p>
+                <button
+                  onClick={generateReport}
+                  className="mt-[12px] bg-[rgba(225,230,238,0.1)] hover:bg-[rgba(225,230,238,0.15)] px-[16px] py-[8px] rounded-[8px] text-[#E1E6EE] text-[14px]"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : reportSections.length > 0 ? (
+              reportSections.map((section, index) => (
+                <div key={index} className="flex flex-col gap-[12px]">
+                  <h2 className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] text-[22px] text-white tracking-[-0.242px]">
+                    {section.title}
+                  </h2>
+                  <div className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[16px]">
+                    <p 
+                      className="font-['Inter:Regular',sans-serif] font-normal leading-[1.6] text-[16px] whitespace-pre-wrap break-words"
+                      style={{ color: '#A1A1AA' }}
+                    >
+                      {section.content}
+                    </p>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[12px]">
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] text-[16px] text-[#E1E6EE]">
+                  No report available. Click the refresh button to generate one.
+                </p>
               </div>
             )}
-            <div ref={messagesEndRef} />
             {/* Spacer to prevent cutoff */}
             <div className="w-full" style={{ height: '20px' }} />
           </div>
-        </div>
-
-        {/* Input Area - Fixed at bottom, outside scrollable area */}
-        <div 
-          className="flex gap-[8px] items-end w-full shrink-0 px-[20px] pt-[16px] pb-[20px]"
-          style={{ position: 'fixed', bottom: '0', left: '0', right: '0', width: '100%', backgroundColor: '#110c10', borderTop: '1px solid rgba(225,230,238,0.1)', zIndex: 999 }}
-          // #region agent log
-          ref={(el) => {
-            if (el) {
-              inputContainerRef.current = el;
-              setTimeout(() => {
-                const rect = el.getBoundingClientRect();
-                const computed = window.getComputedStyle(el);
-                const parentRect = el.parentElement?.getBoundingClientRect();
-                fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:inputContainer:render',message:'Input container render check',data:{top:rect.top,bottom:rect.bottom,height:rect.height,width:rect.width,isVisible:rect.top < window.innerHeight && rect.bottom > 0,computedDisplay:computed.display,computedPosition:computed.position,computedZIndex:computed.zIndex,computedPaddingBottom:computed.paddingBottom,parentTop:parentRect?.top,parentBottom:parentRect?.bottom,parentHeight:parentRect?.height,windowHeight:window.innerHeight,viewportBottom:window.innerHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-              }, 50);
-            }
-          }}
-          // #endregion
-        >
-          <textarea
-            ref={inputRef}
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
-            disabled={isLoading}
-            className="flex-1 bg-[rgba(225,230,238,0.1)] border border-transparent rounded-[12px] px-[16px] py-[12px] font-['Inter:Regular',sans-serif] text-[16px] resize-none focus:outline-none focus:border-[rgba(225,230,238,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ 
-              minHeight: '48px', 
-              maxHeight: '120px',
-              color: '#FFFFFF',
-              caretColor: '#FFFFFF'
-            }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!inputMessage.trim() || isLoading}
-            className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Send</p>
-          </button>
         </div>
       </div>
     </div>
   );
 }
-

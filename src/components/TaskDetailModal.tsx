@@ -1,4 +1,4 @@
-import { useState, useEffect, KeyboardEvent, useRef } from "react";
+import { useState, useEffect, KeyboardEvent, useRef, ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import svgPaths from "../imports/svg-e51h379o38";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
@@ -6,6 +6,7 @@ import { SelectListModal } from "./SelectListModal";
 import { SelectMilestoneModal } from "./SelectMilestoneModal";
 import { DeadlineModal } from "./DeadlineModal";
 import { linkifyText } from "../lib/textUtils";
+import { supabase } from "../lib/supabase";
 
 interface ListItem {
   id: number;
@@ -32,6 +33,7 @@ interface Todo {
   milestoneId?: number;
   parentTaskId?: number | null;
   description?: string | null;
+  imageUrl?: string | null;
   deadline?: {
     date: Date;
     time: string;
@@ -45,9 +47,9 @@ interface TaskDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   task: Todo;
-  onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder') => void;
+  onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder', imageUrl?: string | null) => void;
   onDeleteTask: (taskId: number) => void;
-  onCreateTask?: (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder') => void;
+  onCreateTask?: (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder', imageUrl?: string | null) => void;
   lists?: ListItem[];
   milestones?: MilestoneWithGoal[];
   onFetchSubtasks?: (parentTaskId: number) => Promise<Todo[]>;
@@ -77,6 +79,8 @@ function getTextNodes(element: Node): Text[] {
 export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
   const [taskDescription, setTaskDescription] = useState(task.description || "");
+  const [imageUrl, setImageUrl] = useState<string | null>(task.imageUrl || null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isSelectListOpen, setIsSelectListOpen] = useState(false);
   const [isSelectMilestoneOpen, setIsSelectMilestoneOpen] = useState(false);
   const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
@@ -93,6 +97,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
   const descriptionInputRef = useRef<HTMLDivElement>(null);
   const subtaskInputRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -103,6 +108,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     }
     setTaskInput(task.text);
     setTaskDescription(task.description || "");
+    setImageUrl(task.imageUrl || null);
     setSelectedListId(task.listId !== undefined && task.listId !== 0 && task.listId !== -1 ? task.listId : null);
     setSelectedMilestoneId(task.milestoneId || null);
     setDeadline(task.deadline || null);
@@ -156,11 +162,112 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     if (taskInput.trim() === "") return;
     // Check if this is a new task (temporary ID < 0) and we have onCreateTask
     if (task.id < 0 && onCreateTask) {
-      onCreateTask(taskInput, taskDescription || null, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, effort > 0 ? effort : undefined, taskType);
+      onCreateTask(taskInput, taskDescription || null, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, effort > 0 ? effort : undefined, taskType, imageUrl);
     } else {
-      onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, effort > 0 ? effort : undefined, taskType);
+      onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, effort > 0 ? effort : undefined, taskType, imageUrl);
     }
     onClose();
+  };
+
+  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image size must be less than 10MB');
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Delete old image if it exists
+      if (imageUrl) {
+        try {
+          const oldImagePath = imageUrl.split('/').slice(-2).join('/'); // Extract path from URL
+          await supabase.storage.from('task-images').remove([oldImagePath]);
+        } catch (error) {
+          console.error('Error deleting old image:', error);
+          // Continue even if deletion fails
+        }
+      }
+
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('task-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Upload error details:', uploadError);
+        throw new Error(uploadError.message || 'Upload failed');
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('task-images')
+        .getPublicUrl(fileName);
+
+      setImageUrl(publicUrl);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to upload image: ${errorMessage}. Please check that the Supabase Storage bucket 'task-images' is set up correctly.`);
+    } finally {
+      setIsUploadingImage(false);
+      // Reset input
+      if (imageInputRef.current) {
+        imageInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDeleteImage = async () => {
+    if (!imageUrl) return;
+
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Extract path from URL
+      const imagePath = imageUrl.split('/').slice(-2).join('/');
+
+      // Delete from Supabase Storage
+      const { error } = await supabase.storage
+        .from('task-images')
+        .remove([imagePath]);
+
+      if (error) {
+        throw error;
+      }
+
+      setImageUrl(null);
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      alert('Failed to delete image. Please try again.');
+    }
   };
 
   const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -409,7 +516,10 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
       
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
+        <div 
+          className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet"
+          style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
+        >
           {/* Handle */}
           <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
             <div className="h-[20px] relative shrink-0 w-[100px]">
@@ -421,8 +531,17 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
             </div>
           </div>
 
-          {/* Content */}
-          <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full">
+          {/* Scrollable Content */}
+          <div 
+            className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full"
+            style={{ 
+              overflowY: 'auto', 
+              WebkitOverflowScrolling: 'touch', 
+              maxHeight: 'calc(90vh - 120px)', 
+              minHeight: 0, 
+              overflowX: 'hidden' 
+            }}
+          >
             {/* Title and Description Section */}
             <div className="content-stretch flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
               {/* Task Name Input */}
@@ -673,6 +792,61 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
               `}</style>
             </div>
 
+            {/* Hidden file input for image upload */}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              id="image-upload-input"
+              disabled={isUploadingImage}
+              style={{ display: 'none' }}
+            />
+
+            {/* Image Section - Under description */}
+            {imageUrl && (
+              <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                <div className="relative w-full max-w-md">
+                  <img 
+                    src={imageUrl} 
+                    alt="Task image" 
+                    className="w-full rounded-lg object-cover max-h-[300px]"
+                  />
+                </div>
+                {/* Delete Image Button */}
+                <div 
+                  className="bg-[rgba(239,65,35,0.2)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(239,65,35,0.25)] transition-colors"
+                  onClick={handleDeleteImage}
+                  style={{ backgroundColor: 'rgba(239,65,35,0.2)', borderRadius: '100px' }}
+                >
+                  <div className="relative shrink-0 size-[20px]">
+                    <svg
+                      className="block size-full"
+                      fill="none"
+                      preserveAspectRatio="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <g>
+                        <path
+                          d={deleteIconPaths.pf5e3c80}
+                          stroke="#ef4123"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="1.5"
+                        />
+                      </g>
+                    </svg>
+                  </div>
+                  <p 
+                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" 
+                    style={{ color: '#ef4123' }}
+                  >
+                    Delete Image
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Subtasks Section - Only show when subtasks exist */}
             {subtasks.length > 0 && (
               <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full px-0 py-0">
@@ -765,6 +939,23 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                     </svg>
                   </div>
                   <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getSelectedListName()}</p>
+                </div>
+
+                {/* Add Image Button */}
+                <div 
+                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                  onClick={() => {
+                    if (!isUploadingImage && imageInputRef.current) {
+                      imageInputRef.current.click();
+                    }
+                  }}
+                >
+                  <div className="relative shrink-0 size-[20px]">
+                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                    </svg>
+                  </div>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Add Image</p>
                 </div>
 
                 {/* Add Subtask Button */}

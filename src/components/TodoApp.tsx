@@ -77,6 +77,7 @@ interface Todo {
   time?: string;
   group?: string;
   description?: string | null;
+  imageUrl?: string | null;
   listId?: number; // -1 for completed, 0 for today, positive numbers for custom lists
   milestoneId?: number; // Foreign key to milestones table
   dailyTaskId?: number | null; // Foreign key to daily_tasks table
@@ -939,7 +940,7 @@ export function TodoApp() {
     }
   };
 
-  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number, type?: 'task' | 'reminder') => {
+  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number, type?: 'task' | 'reminder', imageUrl?: string | null) => {
     const newTodo: Todo = {
       id: Date.now(), // Temporary ID
       text: taskText,
@@ -950,6 +951,7 @@ export function TodoApp() {
       milestoneId: milestoneId,
       deadline: deadline,
       description: description ?? null,
+      imageUrl: imageUrl ?? null,
       effort: effort,
       type: type || 'task',
     };
@@ -1561,7 +1563,7 @@ export function TodoApp() {
     setTodos(displayTasks);
   };
 
-  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder') => {
+  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder', imageUrl?: string | null) => {
     try {
       const todo = todos.find(t => t.id === taskId);
       if (!todo) return;
@@ -1589,6 +1591,10 @@ export function TodoApp() {
 
       if (description !== undefined) {
         updateData.description = description;
+      }
+      
+      if (imageUrl !== undefined) {
+        updateData.imageUrl = imageUrl;
       }
       
       if (deadline !== undefined) {
@@ -3806,7 +3812,11 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           />
         )
       ) : currentPage === "workshop" ? (
-        <Workshop onBack={() => setCurrentPage("dashboard")} />
+        <Workshop 
+          onBack={() => setCurrentPage("dashboard")} 
+          tasks={todos}
+          goals={goals}
+        />
       ) : currentPage === "goals" ? (
         isSecondaryDataLoading ? (
           <div className="flex items-center justify-center h-full">
