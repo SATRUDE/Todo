@@ -71,27 +71,29 @@ module.exports = async function handler(req, res) {
   console.log('[push/subscribe] Received subscription', subscription.endpoint, 'for user', userId);
 
   // Get Supabase credentials from environment variables
+  // Use service role key to bypass RLS (required for serverless functions)
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   // #region agent log
   try {
-    fs.appendFileSync(logPath, JSON.stringify({location:'api/push/subscribe.js:handler:checkCredentials',message:'Checking Supabase credentials',data:{hasSupabaseUrl:!!supabaseUrl,hasSupabaseKey:!!supabaseKey,urlLength:supabaseUrl?.length,keyLength:supabaseKey?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'4'})+'\n');
+    fs.appendFileSync(logPath, JSON.stringify({location:'api/push/subscribe.js:handler:checkCredentials',message:'Checking Supabase credentials',data:{hasSupabaseUrl:!!supabaseUrl,hasSupabaseServiceRoleKey:!!supabaseServiceRoleKey,urlLength:supabaseUrl?.length,keyLength:supabaseServiceRoleKey?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'4'})+'\n');
   } catch(e){}
   // #endregion
 
-  if (!supabaseUrl || !supabaseKey) {
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
     console.error('[push/subscribe] Missing Supabase credentials');
     // #region agent log
     try {
-      fs.appendFileSync(logPath, JSON.stringify({location:'api/push/subscribe.js:handler:missingCredentials',message:'Missing Supabase credentials',data:{hasSupabaseUrl:!!supabaseUrl,hasSupabaseKey:!!supabaseKey},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'4'})+'\n');
+      fs.appendFileSync(logPath, JSON.stringify({location:'api/push/subscribe.js:handler:missingCredentials',message:'Missing Supabase credentials',data:{hasSupabaseUrl:!!supabaseUrl,hasSupabaseServiceRoleKey:!!supabaseServiceRoleKey},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'4'})+'\n');
     } catch(e){}
     // #endregion
-    return res.status(500).json({ error: 'Server configuration error' });
+    return res.status(500).json({ error: 'Server configuration error: Missing SUPABASE_SERVICE_ROLE_KEY' });
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Create Supabase client with service role key (bypasses RLS)
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     // #region agent log
     try {
