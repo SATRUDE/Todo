@@ -35,17 +35,63 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
   }
 
   try {
-    // Register service worker if not already registered
+    // Check if service worker is already registered
+    let registration = await navigator.serviceWorker.getRegistration();
+    
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:waitingForSW',message:'Waiting for service worker ready',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:checkRegistration',message:'Checking for existing service worker registration',data:{hasRegistration:!!registration},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
     // #endregion
-    const registration = await navigator.serviceWorker.ready;
+    
+    // If not registered, try to register it
+    if (!registration) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:registeringSW',message:'No registration found, attempting to register service worker',data:{swPath:'/sw.js'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
+      // #endregion
+      try {
+        registration = await navigator.serviceWorker.register('/sw.js', {
+          scope: '/',
+        });
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:swRegistered',message:'Service worker registration attempted',data:{hasRegistration:!!registration,registrationState:registration?.installing?.state || registration?.waiting?.state || registration?.active?.state},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
+        // #endregion
+        console.log('Service worker registration initiated');
+      } catch (regError) {
+        console.error('Failed to register service worker:', regError);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:swRegisterError',message:'Service worker registration failed',data:{errorName:regError?.name,errorMessage:regError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
+        // #endregion
+        return null;
+      }
+    }
+    
+    // Wait for service worker to be ready (with timeout)
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:swReady',message:'Service worker ready',data:{hasRegistration:!!registration},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:waitingForSW',message:'Waiting for service worker ready',data:{hasRegistration:!!registration},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
+    // #endregion
+    
+    // Wait for service worker to be ready with a timeout
+    const readyPromise = navigator.serviceWorker.ready;
+    const timeoutPromise = new Promise<ServiceWorkerRegistration>((_, reject) => 
+      setTimeout(() => reject(new Error('Service worker ready timeout after 10 seconds')), 10000)
+    );
+    
+    let readyRegistration: ServiceWorkerRegistration;
+    try {
+      readyRegistration = await Promise.race([readyPromise, timeoutPromise]);
+    } catch (timeoutError) {
+      // If timeout, try to use the registration we have
+      if (registration) {
+        readyRegistration = registration;
+      } else {
+        throw timeoutError;
+      }
+    }
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:swReady',message:'Service worker ready',data:{hasRegistration:!!readyRegistration},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
     // #endregion
 
     // Check if already subscribed
-    let subscription = await registration.pushManager.getSubscription();
+    let subscription = await readyRegistration.pushManager.getSubscription();
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:checkExisting',message:'Checking existing subscription',data:{hasSubscription:!!subscription},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
     // #endregion
@@ -78,13 +124,16 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
       console.warn('VAPID public key not found. Push notifications will not work.');
       console.warn('Generate VAPID keys with: web-push generate-vapid-keys');
       console.warn('Add VITE_VAPID_PUBLIC_KEY to your .env file');
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:noVapidKey',message:'VAPID key missing',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'4'})}).catch(()=>{});
+      // #endregion
       return null;
     }
     
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:beforeSubscribe',message:'About to subscribe to push',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:beforeSubscribe',message:'About to subscribe to push',data:{hasReadyRegistration:!!readyRegistration},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
     // #endregion
-    subscription = await registration.pushManager.subscribe({
+    subscription = await readyRegistration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
     });
@@ -96,6 +145,9 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
     return subscription;
   } catch (error) {
     console.error('Error subscribing to push notifications:', error);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'notifications.ts:subscribeToPushNotifications:catch',message:'Exception in subscribeToPushNotifications',data:{errorName:error?.name,errorMessage:error?.message,errorStack:error?.stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'2'})}).catch(()=>{});
+    // #endregion
     return null;
   }
 }
