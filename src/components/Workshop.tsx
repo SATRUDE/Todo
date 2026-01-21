@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { Goal } from "../lib/database";
 
 interface Todo {
   id: number;
@@ -21,22 +20,24 @@ interface Todo {
 interface WorkshopProps {
   onBack: () => void;
   tasks: Todo[];
-  goals: Goal[];
 }
 
-export function Workshop({ onBack, tasks, goals }: WorkshopProps) {
+export function Workshop({ onBack, tasks }: WorkshopProps) {
   const [report, setReport] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
-  // Load saved report and last sync time from localStorage on mount
+  // Load saved Tasks Overview report and last sync time from localStorage on mount
   useEffect(() => {
-    const savedReport = localStorage.getItem('workshop-report');
+    const savedTasksReport = localStorage.getItem('workshop-tasks-report');
     const savedSyncTime = localStorage.getItem('workshop-last-sync');
-    if (savedReport) {
-      setReport(savedReport);
+    
+    if (savedTasksReport) {
+      const tasksSection = `## Tasks Overview\n\n${savedTasksReport}`;
+      setReport(tasksSection);
     }
+    
     if (savedSyncTime) {
       setLastSyncTime(new Date(savedSyncTime));
     }
@@ -55,17 +56,22 @@ export function Workshop({ onBack, tasks, goals }: WorkshopProps) {
 
       // Sanitize tasks and goals before sending (convert Date objects to strings)
       const sanitizedTasks = tasks.map(task => {
-        const sanitized = { ...task };
+        const sanitized: any = { ...task };
         if (sanitized.deadline && sanitized.deadline.date instanceof Date) {
+          // Convert Date to YYYY-MM-DD format using local timezone (not UTC)
+          const date = sanitized.deadline.date;
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const dateString = `${year}-${month}-${day}`;
+          
           sanitized.deadline = {
             ...sanitized.deadline,
-            date: sanitized.deadline.date.toISOString().split('T')[0] // Convert to YYYY-MM-DD
+            date: dateString as any // Convert to YYYY-MM-DD using local timezone
           };
         }
         return sanitized;
       });
-
-      const sanitizedGoals = goals.map(goal => ({ ...goal }));
 
       // Call the API endpoint
       const response = await fetch('/api/workshop', {
@@ -76,8 +82,9 @@ export function Workshop({ onBack, tasks, goals }: WorkshopProps) {
         body: JSON.stringify({
           userId: user.id,
           tasks: sanitizedTasks,
-          goals: sanitizedGoals,
-          reportType: 'workshop'
+          goals: [],
+          reportType: 'workshop',
+          sectionType: 'tasks'
         }),
       });
 
@@ -113,12 +120,22 @@ export function Workshop({ onBack, tasks, goals }: WorkshopProps) {
       }
 
       const reportContent = data.message || data.report || '';
-      setReport(reportContent);
-      const syncTime = new Date();
-      setLastSyncTime(syncTime);
-      // Save to localStorage
-      localStorage.setItem('workshop-report', reportContent);
-      localStorage.setItem('workshop-last-sync', syncTime.toISOString());
+      
+      // Extract Tasks Overview
+      const tasksMatch = reportContent.match(/##\s*Tasks?\s*Overview?\s*\n([\s\S]*?)(?=##\s*Goals?\s*Overview|$)/i);
+      const tasksContent = tasksMatch ? tasksMatch[1].trim() : reportContent.trim();
+      
+      // Set report with Tasks Overview only
+      const tasksSection = `## Tasks Overview\n\n${tasksContent}`;
+      setReport(tasksSection);
+      
+      // Save Tasks Overview
+      if (tasksContent) {
+        localStorage.setItem('workshop-tasks-report', tasksContent);
+        const syncTime = new Date();
+        setLastSyncTime(syncTime);
+        localStorage.setItem('workshop-last-sync', syncTime.toISOString());
+      }
     } catch (error) {
       console.error('Error calling workshop API:', error);
       setError(error instanceof Error ? error.message : 'Unknown error occurred');
@@ -127,66 +144,158 @@ export function Workshop({ onBack, tasks, goals }: WorkshopProps) {
     }
   };
 
+  // Parse Tasks Overview into grouped insight sections
+  // Returns array of sections, each with a title and array of insight texts
+  const parseTasksInsights = (tasksContent: string): { title: string; insights: string[] }[] => {
+    const sections: { title: string; insights: string[] }[] = [];
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:entry',message:'Starting parseTasksInsights',data:{tasksContentLength:tasksContent.length,tasksContentPreview:tasksContent.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
+    // Split by markdown headings (###)
+    const headingSections = tasksContent.split(/(?=###\s+)/);
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:sections',message:'Split into heading sections',data:{sectionCount:headingSections.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
+    for (const section of headingSections) {
+      const trimmed = section.trim();
+      if (!trimmed || trimmed.length < 10) continue;
+      
+      // Check for ### heading
+      const headingMatch = trimmed.match(/^###\s+(.+?)(?:\n|$)/);
+      if (headingMatch) {
+        const title = headingMatch[1].trim();
+        let content = trimmed.replace(/^###\s+.+?\n?/, '').trim();
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:foundHeading',message:'Found heading section',data:{title,contentLength:content.length,contentPreview:content.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        
+        // Remove any repeated title variations (like "asks Due Today" or malformed titles)
+        content = content.replace(/^asks\s+Due\s+Today.*?-\s*/i, '');
+        content = content.replace(/^asks\s+Due\s+Tomorrow.*?-\s*/i, '');
+        content = content.replace(/^asks\s+Due\s+This\s+Week.*?-\s*/i, '');
+        content = content.replace(/^Tasks\s+Due\s+Today.*?-\s*/i, '');
+        content = content.replace(/^Tasks\s+Due\s+Tomorrow.*?-\s*/i, '');
+        content = content.replace(/^Tasks\s+Due\s+This\s+Week.*?-\s*/i, '');
+        
+        // Split content into lines
+        const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:splitLines',message:'Split content into lines',data:{lineCount:lines.length,firstFewLines:lines.slice(0,5)},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        
+        // Find where insights start (bullet points starting with "-" that are NOT tasks)
+        let insightsStartIndex = -1;
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          // If line starts with "-" and doesn't contain task markers like [Due:], it's an insight
+          if (line.startsWith('-') && !line.includes('[Due:') && !line.match(/^\d+\./)) {
+            insightsStartIndex = i;
+            break;
+          }
+        }
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:foundInsights',message:'Found insights start index',data:{insightsStartIndex,hasInsights:insightsStartIndex >= 0},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        
+        if (insightsStartIndex >= 0) {
+          // Extract only the insights (bullet points)
+          const insightLines = lines.slice(insightsStartIndex);
+          const insightsText = insightLines.join('\n');
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:extractedInsights',message:'Extracted insights text',data:{insightsTextLength:insightsText.length,insightsTextPreview:insightsText.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
+          
+          if (insightsText.trim().length > 0) {
+            // Split insights by lines starting with "-" to get individual insights
+            const individualInsights = insightsText.split(/\n(?=-)/).map(insight => {
+              // Remove leading "- " and clean up whitespace
+              return insight.replace(/^-\s*/, '').trim();
+            }).filter(insight => insight.length > 10);
+            
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:individualInsights',message:'Created individual insights',data:{insightCount:individualInsights.length,insights:individualInsights.map(i => i.substring(0,50))},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
+            
+            // Group all insights under this section title
+            if (individualInsights.length > 0) {
+              sections.push({
+                title: title,
+                insights: individualInsights
+              });
+            }
+          }
+        } else if (content.length > 20) {
+          // Fallback: if no clear insights section, use the whole content as a single insight
+          sections.push({ title, insights: [content] });
+        }
+      }
+    }
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:return',message:'Returning parsed sections',data:{sectionCount:sections.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
+    return sections.length > 0 ? sections : [{ title: 'Tasks Overview', insights: [tasksContent] }];
+  };
+
   // Parse report into sections
   const parseReportSections = (reportText: string) => {
-    const sections: { title: string; content: string }[] = [];
+    const sections: { title: string; content: string; insights?: { title: string; insights: string[] }[] }[] = [];
     
     // Try to split by common section markers
     const tasksMatch = reportText.match(/##?\s*Tasks?\s*Overview?/i);
     const goalsMatch = reportText.match(/##?\s*Goals?\s*Overview?/i);
+    
+    let tasksContent = '';
+    let goalsContent = '';
     
     if (tasksMatch && goalsMatch) {
       const tasksIndex = tasksMatch.index || 0;
       const goalsIndex = goalsMatch.index || reportText.length;
       
       if (tasksIndex < goalsIndex) {
-        sections.push({
-          title: 'Tasks Overview',
-          content: reportText.substring(tasksIndex + tasksMatch[0].length, goalsIndex).trim()
-        });
-        sections.push({
-          title: 'Goals Overview',
-          content: reportText.substring(goalsIndex + goalsMatch[0].length).trim()
-        });
+        tasksContent = reportText.substring(tasksIndex + tasksMatch[0].length, goalsIndex).trim();
+        goalsContent = reportText.substring(goalsIndex + goalsMatch[0].length).trim();
       } else {
-        sections.push({
-          title: 'Goals Overview',
-          content: reportText.substring(goalsIndex + goalsMatch[0].length, tasksIndex).trim()
-        });
-        sections.push({
-          title: 'Tasks Overview',
-          content: reportText.substring(tasksIndex + tasksMatch[0].length).trim()
-        });
+        goalsContent = reportText.substring(goalsIndex + goalsMatch[0].length, tasksIndex).trim();
+        tasksContent = reportText.substring(tasksIndex + tasksMatch[0].length).trim();
       }
     } else if (tasksMatch) {
-      sections.push({
-        title: 'Tasks Overview',
-        content: reportText.substring((tasksMatch.index || 0) + tasksMatch[0].length).trim()
-      });
+      tasksContent = reportText.substring((tasksMatch.index || 0) + tasksMatch[0].length).trim();
     } else if (goalsMatch) {
-      sections.push({
-        title: 'Goals Overview',
-        content: reportText.substring((goalsMatch.index || 0) + goalsMatch[0].length).trim()
-      });
+      goalsContent = reportText.substring((goalsMatch.index || 0) + goalsMatch[0].length).trim();
     } else {
       // If no clear sections, try to split by double newlines or other patterns
       const parts = reportText.split(/\n\s*\n/);
       if (parts.length >= 2) {
-        sections.push({
-          title: 'Tasks Overview',
-          content: parts[0].trim()
-        });
-        sections.push({
-          title: 'Goals Overview',
-          content: parts.slice(1).join('\n\n').trim()
-        });
+        tasksContent = parts[0].trim();
+        goalsContent = parts.slice(1).join('\n\n').trim();
       } else {
         // Fallback: show entire report as single section
         sections.push({
           title: 'Report',
           content: reportText.trim()
         });
+        return sections;
       }
+    }
+    
+    // Parse Tasks Overview into insights
+    if (tasksContent) {
+      const tasksInsights = parseTasksInsights(tasksContent);
+      sections.push({
+        title: 'Tasks Overview',
+        content: tasksContent,
+        insights: tasksInsights
+      });
     }
     
     return sections;
@@ -292,14 +401,47 @@ export function Workshop({ onBack, tasks, goals }: WorkshopProps) {
                   <h2 className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] text-[22px] text-white tracking-[-0.242px]">
                     {section.title}
                   </h2>
-                  <div className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[16px]">
-                    <p 
-                      className="font-['Inter:Regular',sans-serif] font-normal leading-[1.6] text-[16px] whitespace-pre-wrap break-words"
-                      style={{ color: '#A1A1AA' }}
-                    >
-                      {section.content}
-                    </p>
-                  </div>
+                  {section.insights && section.insights.length > 0 ? (
+                    // Render grouped insight sections for Tasks Overview
+                    <div className="flex flex-col gap-[12px]">
+                      {section.insights.map((insightSection, sectionIndex) => (
+                        <div 
+                          key={sectionIndex} 
+                          className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[16px]"
+                        >
+                          <h3 className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] text-[18px] text-white tracking-[-0.198px] mb-[12px]">
+                            {insightSection.title}
+                          </h3>
+                          <ul className="flex flex-col gap-[8px] list-none pl-0">
+                            {insightSection.insights.map((insight, insightIndex) => (
+                              <li 
+                                key={insightIndex}
+                                className="flex items-start gap-[8px]"
+                              >
+                                <span className="text-white mt-[4px] shrink-0">•</span>
+                                <p 
+                                  className="font-['Inter:Regular',sans-serif] font-normal leading-[1.6] text-[16px] break-words flex-1"
+                                  style={{ color: '#A1A1AA' }}
+                                >
+                                  {insight}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    // Fallback: Render as single block if no insights parsed
+                    <div className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[16px]">
+                      <p 
+                        className="font-['Inter:Regular',sans-serif] font-normal leading-[1.6] text-[16px] whitespace-pre-wrap break-words"
+                        style={{ color: '#A1A1AA' }}
+                      >
+                        {section.content}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))
             ) : (

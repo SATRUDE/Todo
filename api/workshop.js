@@ -75,8 +75,8 @@ function formatTaskForAI(todo) {
   }
 }
 
-// Format goal for display in AI context
-function formatGoalForAI(goal, milestones = []) {
+// Format goal for display in AI context with progress metrics
+function formatGoalForAI(goal, milestones = [], metrics = null) {
   let formatted = `- ${goal.text || goal.name || 'Untitled goal'}`;
   if (goal.description) {
     formatted += `\n  Description: ${goal.description}`;
@@ -85,6 +85,28 @@ function formatGoalForAI(goal, milestones = []) {
     formatted += ' (inactive)';
   }
   const goalMilestones = milestones.filter(m => m.goal_id === goal.id || m.goalId === goal.id);
+  
+  // Add progress metrics if available
+  if (metrics) {
+    formatted += `\n  Progress Summary:`;
+    formatted += `\n    - Milestones: ${metrics.completedMilestones}/${metrics.totalMilestones} completed (${Math.round(metrics.milestoneCompletionRate)}%)`;
+    formatted += `\n    - Tasks: ${metrics.completedTasks}/${metrics.totalTasks} completed (${Math.round(metrics.taskCompletionRate)}%)`;
+    formatted += `\n    - Recent Activity: ${metrics.recentCompletedTasks} tasks completed in last 7 days`;
+    if (metrics.velocity > 0) {
+      formatted += `\n    - Velocity: ~${metrics.velocity.toFixed(1)} tasks/week`;
+    }
+    if (metrics.daysToNextDeadline !== null) {
+      if (metrics.daysToNextDeadline < 0) {
+        formatted += `\n    - Next Deadline: OVERDUE by ${Math.abs(metrics.daysToNextDeadline)} days`;
+      } else {
+        formatted += `\n    - Next Deadline: ${metrics.daysToNextDeadline} days away`;
+      }
+    }
+    if (metrics.requiredVelocity !== null && metrics.requiredVelocity > 0) {
+      formatted += `\n    - Required Velocity: ~${metrics.requiredVelocity.toFixed(1)} tasks/week to meet deadline`;
+    }
+  }
+  
   if (goalMilestones.length > 0) {
     formatted += `\n  Milestones (${goalMilestones.length}):`;
     goalMilestones.forEach(milestone => {
@@ -131,7 +153,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const body = parseBody(req) || {};
-    let { userId, tasks = [], goals = [], reportType } = body;
+    let { userId, tasks = [], goals = [], reportType, sectionType = 'both' } = body;
 
     // Ensure tasks and goals are arrays
     if (!Array.isArray(tasks)) {
@@ -218,6 +240,103 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // Fetch tasks linked to milestones for progress tracking
+    let goalTasks = {}; // Map goal_id -> array of tasks
+    if (milestones.length > 0) {
+      try {
+        const milestoneIds = milestones.map(m => m.id).filter(id => id !== undefined && id !== null);
+        if (milestoneIds.length > 0) {
+          const { data: tasksData, error: tasksError } = await supabase
+            .from('todos')
+            .select('id, text, completed, milestone_id, created_at, updated_at')
+            .in('milestone_id', milestoneIds)
+            .or(`user_id.is.null,user_id.eq.${userId}`);
+
+          if (!tasksError && tasksData) {
+            // Group tasks by goal_id via milestones
+            goals.forEach(goal => {
+              const goalMilestoneIds = milestones
+                .filter(m => (m.goal_id === goal.id || m.goalId === goal.id))
+                .map(m => m.id);
+              goalTasks[goal.id] = tasksData.filter(t => goalMilestoneIds.includes(t.milestone_id));
+            });
+          }
+        }
+      } catch (tasksError) {
+        console.error('[workshop] Error fetching goal tasks:', tasksError);
+        // Continue without task data if fetch fails
+      }
+    }
+
+    // Calculate progress metrics for each goal
+    function calculateGoalMetrics(goal, goalMilestones, goalTasksList) {
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      const totalMilestones = goalMilestones.length;
+      const completedMilestones = goalMilestones.filter(m => m.completed).length;
+      const milestoneCompletionRate = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
+      
+      const allTasks = goalTasksList || [];
+      const totalTasks = allTasks.length;
+      const completedTasks = allTasks.filter(t => t.completed).length;
+      const taskCompletionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+      
+      // Tasks completed in last 7 days
+      const recentCompletedTasks = allTasks.filter(t => {
+        if (!t.completed) return false;
+        if (!t.updated_at) return false;
+        const updatedAt = new Date(t.updated_at);
+        return updatedAt >= sevenDaysAgo;
+      }).length;
+      
+      // Calculate velocity (tasks completed per week)
+      // Get all completed tasks with updated_at timestamps
+      const completedTasksWithDates = allTasks.filter(t => t.completed && t.updated_at);
+      let velocity = 0;
+      if (completedTasksWithDates.length > 0) {
+        const oldestCompletion = new Date(Math.min(...completedTasksWithDates.map(t => new Date(t.updated_at).getTime())));
+        const daysSinceStart = Math.max(1, (now - oldestCompletion) / (1000 * 60 * 60 * 24));
+        const weeksSinceStart = daysSinceStart / 7;
+        velocity = weeksSinceStart > 0 ? completedTasksWithDates.length / weeksSinceStart : completedTasksWithDates.length;
+      }
+      
+      // Find next incomplete milestone deadline
+      const incompleteMilestones = goalMilestones.filter(m => !m.completed && m.deadline_date);
+      let daysToNextDeadline = null;
+      if (incompleteMilestones.length > 0) {
+        const nextDeadline = incompleteMilestones
+          .map(m => new Date(m.deadline_date))
+          .sort((a, b) => a - b)[0];
+        const daysDiff = Math.ceil((nextDeadline - now) / (1000 * 60 * 60 * 24));
+        daysToNextDeadline = daysDiff;
+      }
+      
+      // Calculate required velocity
+      const remainingTasks = totalTasks - completedTasks;
+      const remainingMilestones = totalMilestones - completedMilestones;
+      let requiredVelocity = null;
+      if (remainingTasks > 0 && daysToNextDeadline !== null && daysToNextDeadline > 0) {
+        const weeksRemaining = daysToNextDeadline / 7;
+        requiredVelocity = weeksRemaining > 0 ? remainingTasks / weeksRemaining : remainingTasks;
+      }
+      
+      return {
+        totalMilestones,
+        completedMilestones,
+        milestoneCompletionRate,
+        totalTasks,
+        completedTasks,
+        taskCompletionRate,
+        recentCompletedTasks,
+        velocity,
+        daysToNextDeadline,
+        requiredVelocity,
+        remainingTasks,
+        remainingMilestones
+      };
+    }
+
     // Format tasks for AI context
     let tasksContext = '';
     try {
@@ -236,34 +355,113 @@ module.exports = async function handler(req, res) {
               deadlineDate = new Date(t.deadline_date);
             }
             if (!deadlineDate || isNaN(deadlineDate.getTime())) return false;
-            return deadlineDate < new Date() && !t.completed;
+            
+            // Compare dates only (not times) - a task due today is NOT overdue
+            // Parse date strings as local dates (YYYY-MM-DD format should be treated as local, not UTC)
+            let parsedDeadline = deadlineDate;
+            if (typeof deadlineDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(deadlineDate)) {
+              const [year, month, day] = deadlineDate.split('-').map(Number);
+              parsedDeadline = new Date(year, month - 1, day); // Create local date (not UTC)
+            } else if (!(deadlineDate instanceof Date)) {
+              parsedDeadline = new Date(deadlineDate);
+            }
+            
+            // Get today's date in local timezone (not UTC)
+            const now = new Date();
+            const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const deadlineLocal = new Date(parsedDeadline.getFullYear(), parsedDeadline.getMonth(), parsedDeadline.getDate());
+            
+            // Only overdue if deadline date is BEFORE today (not today or future)
+            return deadlineLocal.getTime() < todayLocal.getTime() && !t.completed;
           } catch (error) {
             console.error('[workshop] Error checking overdue task:', error, t);
             return false;
           }
         });
 
+        // Categorize tasks by due date
+        // Parse date strings as local dates (YYYY-MM-DD format should be treated as local, not UTC)
+        const parseDateString = (dateStr) => {
+          if (!dateStr) return null;
+          // If it's already a Date object, return it
+          if (dateStr instanceof Date) return dateStr;
+          // If it's a string in YYYY-MM-DD format, parse it as local date
+          if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day); // Create local date (not UTC)
+          }
+          // Otherwise, try to parse as Date
+          return new Date(dateStr);
+        };
+
+        // Get today's date in local timezone (not UTC)
+        const now = new Date();
+        const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const tomorrowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        const weekFromNowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
+
+        const tasksDueToday = incompleteTasks.filter(t => {
+          try {
+            if (!t.deadline && !t.deadline_date) return false;
+            let deadlineDate = null;
+            if (t.deadline?.date) {
+              deadlineDate = parseDateString(t.deadline.date);
+            } else if (t.deadline_date) {
+              deadlineDate = parseDateString(t.deadline_date);
+            }
+            if (!deadlineDate || isNaN(deadlineDate.getTime())) return false;
+            // Compare dates in local timezone
+            const deadlineLocal = new Date(deadlineDate.getFullYear(), deadlineDate.getMonth(), deadlineDate.getDate());
+            return deadlineLocal.getTime() === todayLocal.getTime();
+          } catch (error) {
+            return false;
+          }
+        });
+
+        const tasksDueTomorrow = incompleteTasks.filter(t => {
+          try {
+            if (!t.deadline && !t.deadline_date) return false;
+            let deadlineDate = null;
+            if (t.deadline?.date) {
+              deadlineDate = parseDateString(t.deadline.date);
+            } else if (t.deadline_date) {
+              deadlineDate = parseDateString(t.deadline_date);
+            }
+            if (!deadlineDate || isNaN(deadlineDate.getTime())) return false;
+            // Compare dates in local timezone
+            const deadlineLocal = new Date(deadlineDate.getFullYear(), deadlineDate.getMonth(), deadlineDate.getDate());
+            return deadlineLocal.getTime() === tomorrowLocal.getTime();
+          } catch (error) {
+            return false;
+          }
+        });
+
+        const tasksDueThisWeek = incompleteTasks.filter(t => {
+          try {
+            if (!t.deadline && !t.deadline_date) return false;
+            let deadlineDate = null;
+            if (t.deadline?.date) {
+              deadlineDate = parseDateString(t.deadline.date);
+            } else if (t.deadline_date) {
+              deadlineDate = parseDateString(t.deadline_date);
+            }
+            if (!deadlineDate || isNaN(deadlineDate.getTime())) return false;
+            // Compare dates in local timezone
+            const deadlineLocal = new Date(deadlineDate.getFullYear(), deadlineDate.getMonth(), deadlineDate.getDate());
+            return deadlineLocal.getTime() > tomorrowLocal.getTime() && deadlineLocal.getTime() <= weekFromNowLocal.getTime();
+          } catch (error) {
+            return false;
+          }
+        });
+
+        const tasksWithoutDeadlines = incompleteTasks.filter(t => !t.deadline && !t.deadline_date);
+
         tasksContext = '\n\n## Tasks\n\n';
         
-        if (incompleteTasks.length > 0) {
-          tasksContext += `Active Tasks (${incompleteTasks.length}):\n`;
-          incompleteTasks.slice(0, 30).forEach(todo => {
-            try {
-              tasksContext += formatTaskForAI(todo) + '\n';
-            } catch (error) {
-              console.error('[workshop] Error formatting task:', error, todo);
-              tasksContext += `- ${todo.text || 'Untitled task'}\n`;
-            }
-          });
-          if (incompleteTasks.length > 30) {
-            tasksContext += `... and ${incompleteTasks.length - 30} more active tasks\n`;
-          }
-        } else {
-          tasksContext += 'No active tasks.\n';
-        }
+        tasksContext += `Total Active Tasks: ${incompleteTasks.length}\n\n`;
 
         if (overdueTasks.length > 0) {
-          tasksContext += `\nOverdue Tasks (${overdueTasks.length}):\n`;
+          tasksContext += `Overdue Tasks (${overdueTasks.length} - deadlines BEFORE today):\n`;
           overdueTasks.slice(0, 10).forEach(todo => {
             try {
               tasksContext += formatTaskForAI(todo) + '\n';
@@ -272,6 +470,71 @@ module.exports = async function handler(req, res) {
               tasksContext += `- ${todo.text || 'Untitled task'}\n`;
             }
           });
+          tasksContext += '\n';
+        }
+
+        if (tasksDueToday.length > 0) {
+          tasksContext += `Tasks Due Today (${tasksDueToday.length}):\n`;
+          tasksDueToday.slice(0, 15).forEach(todo => {
+            try {
+              tasksContext += formatTaskForAI(todo) + '\n';
+            } catch (error) {
+              console.error('[workshop] Error formatting task due today:', error, todo);
+              tasksContext += `- ${todo.text || 'Untitled task'}\n`;
+            }
+          });
+          if (tasksDueToday.length > 15) {
+            tasksContext += `... and ${tasksDueToday.length - 15} more tasks due today\n`;
+          }
+          tasksContext += '\n';
+        }
+
+        if (tasksDueTomorrow.length > 0) {
+          tasksContext += `Tasks Due Tomorrow (${tasksDueTomorrow.length}):\n`;
+          tasksDueTomorrow.slice(0, 15).forEach(todo => {
+            try {
+              tasksContext += formatTaskForAI(todo) + '\n';
+            } catch (error) {
+              console.error('[workshop] Error formatting task due tomorrow:', error, todo);
+              tasksContext += `- ${todo.text || 'Untitled task'}\n`;
+            }
+          });
+          if (tasksDueTomorrow.length > 15) {
+            tasksContext += `... and ${tasksDueTomorrow.length - 15} more tasks due tomorrow\n`;
+          }
+          tasksContext += '\n';
+        }
+
+        if (tasksDueThisWeek.length > 0) {
+          tasksContext += `Tasks Due This Week (${tasksDueThisWeek.length}):\n`;
+          tasksDueThisWeek.slice(0, 20).forEach(todo => {
+            try {
+              tasksContext += formatTaskForAI(todo) + '\n';
+            } catch (error) {
+              console.error('[workshop] Error formatting task due this week:', error, todo);
+              tasksContext += `- ${todo.text || 'Untitled task'}\n`;
+            }
+          });
+          if (tasksDueThisWeek.length > 20) {
+            tasksContext += `... and ${tasksDueThisWeek.length - 20} more tasks due this week\n`;
+          }
+          tasksContext += '\n';
+        }
+
+        if (tasksWithoutDeadlines.length > 0) {
+          tasksContext += `Tasks Without Deadlines (${tasksWithoutDeadlines.length}):\n`;
+          tasksWithoutDeadlines.slice(0, 20).forEach(todo => {
+            try {
+              tasksContext += formatTaskForAI(todo) + '\n';
+            } catch (error) {
+              console.error('[workshop] Error formatting task without deadline:', error, todo);
+              tasksContext += `- ${todo.text || 'Untitled task'}\n`;
+            }
+          });
+          if (tasksWithoutDeadlines.length > 20) {
+            tasksContext += `... and ${tasksWithoutDeadlines.length - 20} more tasks without deadlines\n`;
+          }
+          tasksContext += '\n';
         }
 
         if (completedTasks.length > 0) {
@@ -293,7 +556,7 @@ module.exports = async function handler(req, res) {
       tasksContext = '\n\n## Tasks\n\nError processing tasks.\n';
     }
 
-    // Format goals for AI context
+    // Format goals for AI context with progress metrics
     let goalsContext = '';
     try {
       if (goals && goals.length > 0) {
@@ -306,7 +569,10 @@ module.exports = async function handler(req, res) {
           goalsContext += `Active Goals (${activeGoals.length}):\n`;
           activeGoals.forEach(goal => {
             try {
-              goalsContext += formatGoalForAI(goal, milestones) + '\n';
+              const goalMilestones = milestones.filter(m => m.goal_id === goal.id || m.goalId === goal.id);
+              const goalTasksList = goalTasks[goal.id] || [];
+              const metrics = calculateGoalMetrics(goal, goalMilestones, goalTasksList);
+              goalsContext += formatGoalForAI(goal, milestones, metrics) + '\n';
             } catch (error) {
               console.error('[workshop] Error formatting goal:', error, goal);
               goalsContext += `- ${goal.text || goal.name || 'Untitled goal'}\n`;
@@ -320,7 +586,10 @@ module.exports = async function handler(req, res) {
           goalsContext += `\nInactive Goals (${inactiveGoals.length}):\n`;
           inactiveGoals.forEach(goal => {
             try {
-              goalsContext += formatGoalForAI(goal, milestones) + '\n';
+              const goalMilestones = milestones.filter(m => m.goal_id === goal.id || m.goalId === goal.id);
+              const goalTasksList = goalTasks[goal.id] || [];
+              const metrics = calculateGoalMetrics(goal, goalMilestones, goalTasksList);
+              goalsContext += formatGoalForAI(goal, milestones, metrics) + '\n';
             } catch (error) {
               console.error('[workshop] Error formatting inactive goal:', error, goal);
               goalsContext += `- ${goal.text || goal.name || 'Untitled goal'}\n`;
@@ -335,21 +604,130 @@ module.exports = async function handler(req, res) {
       goalsContext = '\n\n## Goals\n\nError processing goals.\n';
     }
 
+    // Determine which sections to generate
+    const generateTasks = sectionType === 'both' || sectionType === 'tasks';
+    const generateGoals = sectionType === 'both' || sectionType === 'goals';
+
     // Build system message for report generation
-    const systemMessage = `You are an AI assistant that analyzes tasks and goals to provide planning insights. Your role is to generate a structured report that helps the user understand their current situation and plan better.
+    let systemMessage = `You are an AI assistant that analyzes tasks and goals to provide planning insights. Your role is to generate a structured report that helps the user understand their current situation and plan better.
 
-Generate a report with two clear sections:
-1. **Tasks Overview** - Analyze the user's tasks, identify priorities, highlight overdue items, suggest focus areas, and provide actionable insights
-2. **Goals Overview** - Review goal progress, assess milestone completion, identify blockers, and provide recommendations
+CRITICAL INSTRUCTIONS FOR TASKS ANALYSIS:
+1. **Overdue Tasks**: ONLY mention overdue tasks if they are explicitly listed in the context. If no overdue tasks are listed, DO NOT discuss overdue tasks at all. Do NOT calculate or infer overdue tasks yourself.
+2. **Focus on Current and Upcoming Tasks**: The primary focus should be on:
+   - Tasks due TODAY (these are the immediate priorities)
+   - Tasks due TOMORROW (planning for the next day)
+   - Tasks due THIS WEEK (upcoming priorities)
+   - Tasks without deadlines (backlog items that may need scheduling)
+3. **Provide Actionable Insights**: Analyze the tasks provided and give specific, actionable advice about:
+   - What to focus on today
+   - How to plan for tomorrow and this week
+   - Patterns you notice (e.g., many tasks in one area, time management opportunities)
+   - Suggestions for task organization and prioritization
+4. **Be Specific**: Reference actual tasks from the lists provided, not generic advice.
+5. **Formatting Requirements**:
+   - DO NOT repeat section titles or headings anywhere in your response
+   - DO NOT include titles like "asks Due Today" or any variation of section titles
+   - For each time period (Today, Tomorrow, This Week), use the heading ONCE, then immediately list the tasks, then provide insights
+   - Format insights as individual bullet points (one per line), NOT as a single paragraph
+   - Each insight should be a separate, standalone item starting with "-"
+   - Do NOT use subheadings like "Actionable Insights for Today" - just list the insights directly after the tasks
+   - After the section heading (e.g., "### Tasks Due Today (Immediate Priorities)"), go directly to listing tasks, then insights - NO repeated titles
 
-Write in a clear, professional, and helpful tone. Focus on actionable insights and recommendations. Be specific about what you observe in their tasks and goals. Use markdown formatting with ## for section headers.
+Generate a report with ${generateTasks && generateGoals ? 'two clear sections' : 'one clear section'}:${generateTasks ? `
+1. **Tasks Overview** - Analyze the user's current and upcoming tasks:
+   - For tasks due TODAY: Use heading "### Tasks Due Today (Immediate Priorities)" ONCE, then list the tasks, then provide individual actionable insights (one per line, as bullet points starting with "-")
+   - For tasks due TOMORROW: Use heading "### Tasks Due Tomorrow (Planning for the Next Day)" ONCE, then list the tasks, then provide individual actionable insights (one per line, as bullet points starting with "-")
+   - For tasks due THIS WEEK: Use heading "### Tasks Due This Week (Upcoming Priorities)" ONCE, then list notable tasks, then provide individual actionable insights (one per line, as bullet points starting with "-")
+   - Only mention overdue tasks if they are explicitly listed (otherwise skip this entirely)
+   - Analyze tasks without deadlines if relevant
+   - Each insight should be specific and actionable, referencing actual tasks from the lists` : ''}${generateGoals ? `${generateTasks ? '\n2' : '1'}. **Goals Overview** - Provide a data-driven analysis of each goal with:
+   - **Status Assessment**: For each goal, determine if it's "On Track", "At Risk", or "Behind" based on:
+     * Milestone completion rate vs. time elapsed (compare completed milestones to total milestones and consider deadlines)
+     * Recent task completion velocity (tasks completed in last 7 days)
+     * Upcoming deadline proximity (if next deadline is within 7 days or overdue, flag as At Risk or Behind)
+   - **Progress Analysis**: 
+     * Report tasks completed in last 7 days per goal (use the "Recent Activity" metric provided)
+     * Compare current velocity (tasks/week) to required velocity (if provided) to meet deadlines
+     * Identify trends: Is progress accelerating, maintaining pace, or slowing down?
+     * Calculate completion rates: milestone completion % and task completion %
+   - **Prediction**: 
+     * Based on current velocity and remaining milestones/tasks, predict if goal will be achieved
+     * Use milestone deadlines and completion rates to estimate completion date
+     * State clearly: "Likely to achieve by [date]", "At risk - needs attention", or "Unlikely to achieve on time"
+   - **Actionable Adjustments**:
+     * If behind: Provide specific recommendations (e.g., "Need to complete 2 more tasks/week to meet deadline")
+     * If at risk: Suggest priority actions to get back on track
+     * If on track: Provide optimization suggestions to maintain or accelerate progress
+   - **Format**: For each goal, structure as:
+     * Goal name with status badge: "[Goal Name] - [On Track/At Risk/Behind]"
+     * Progress summary: "X/Y milestones completed (Z%), N tasks completed in last 7 days"
+     * Prediction: Clear statement about likelihood of achievement
+     * Key adjustments: 2-3 specific, actionable recommendations as bullet points` : ''}
 
-Format your response as:
+Write in a clear, professional, and helpful tone. Focus on actionable insights and recommendations. Be specific about what you observe in their tasks and goals. Use markdown formatting with ## for main section headers and ### for subsections.
+
+CRITICAL: Each section heading (### Tasks Due Today, etc.) should appear EXACTLY ONCE. Do NOT repeat it or include variations of it anywhere else in that section.
+
+CRITICAL FORMATTING RULES - YOU MUST FOLLOW THESE EXACTLY:
+- Use markdown headings: ## for main sections, ### for subsections
+- Each subsection heading appears EXACTLY ONCE - do NOT repeat it
+- After each subsection heading, list tasks first (as numbered list 1., 2., 3., etc.)
+- After listing tasks, provide insights as individual bullet points, each starting with "-" on a new line
+- Do NOT write paragraphs - use bullet points for insights
+- Do NOT repeat the subsection title anywhere after the heading
+- Do NOT include text like "asks Due Today" or any variation
+
+Example of CORRECT format:
+### Tasks Due Today (Immediate Priorities)
+1. Task one [Due: 1/21/2026]
+2. Task two [Due: 1/21/2026]
+- Prioritize task one as it's urgent
+- Allocate time for task two in the morning
+- Consider batching similar tasks together
+
+Example of INCORRECT format (DO NOT DO THIS):
+### Tasks Due Today (Immediate Priorities)
+asks Due Today (Immediate Priorities) - Task one, task two. Prioritize task one as it's urgent. Allocate time for task two.
+
+Format your response EXACTLY as:${generateTasks ? `
 ## Tasks Overview
-[Your analysis of tasks here]
 
+### Tasks Due Today (Immediate Priorities)
+[Numbered list of tasks: 1. Task name [Due: date], 2. Task name [Due: date], etc.]
+- [First insight as bullet point]
+- [Second insight as bullet point]
+- [Third insight as bullet point]
+
+### Tasks Due Tomorrow (Planning for the Next Day)
+[Numbered list of tasks: 1. Task name [Due: date], 2. Task name [Due: date], etc.]
+- [First insight as bullet point]
+- [Second insight as bullet point]
+
+### Tasks Due This Week (Upcoming Priorities)
+[Numbered list of notable tasks: 1. Task name [Due: date], 2. Task name [Due: date], etc.]
+- [First insight as bullet point]
+- [Second insight as bullet point]` : ''}${generateGoals ? `
 ## Goals Overview
-[Your analysis of goals here]` + tasksContext + goalsContext;
+
+For each goal, provide:
+
+### [Goal Name] - [Status: On Track / At Risk / Behind]
+
+**Progress Summary:**
+- X/Y milestones completed (Z%)
+- N tasks completed in last 7 days
+- M% task completion rate
+- Velocity: ~N tasks/week
+
+**Prediction:**
+[Clear statement: Likely to achieve by [date] / At risk - needs attention / Unlikely to achieve on time]
+
+**Key Adjustments:**
+- [Specific actionable recommendation 1]
+- [Specific actionable recommendation 2]
+- [Specific actionable recommendation 3]
+
+[Repeat for each goal]` : ''}` + (generateTasks ? tasksContext : '') + (generateGoals ? goalsContext : '');
 
     // Build messages for OpenAI
     const messages = [
@@ -359,7 +737,11 @@ Format your response as:
       },
       {
         role: 'user',
-        content: 'Please generate a comprehensive report analyzing my tasks and goals to help me plan better.'
+        content: generateTasks && generateGoals 
+          ? 'Please generate a comprehensive report analyzing my tasks and goals to help me plan better.'
+          : generateGoals 
+          ? 'Please generate a Goals Overview analyzing my goals, their progress, milestone completion, blockers, and provide recommendations.'
+          : 'Please generate a Tasks Overview analyzing my current and upcoming tasks to help me plan better.'
       }
     ];
 
@@ -379,6 +761,12 @@ Format your response as:
 
     const assistantMessage = completion.choices[0]?.message?.content;
 
+    // #region agent log
+    const fs = require('fs');
+    const logPath = '/Users/markdiffey/Documents/Todo/.cursor/debug.log';
+    fs.appendFileSync(logPath, JSON.stringify({location:'api/workshop.js:aiResponse:received',message:'Received AI response',data:{responseLength:assistantMessage?.length,responsePreview:assistantMessage?.substring(0,500),hasTasksDueToday:assistantMessage?.includes('Tasks Due Today'),hasRepeatedTitle:assistantMessage?.includes('asks Due Today'),hasBulletPoints:assistantMessage?.includes('- '),hasParagraphFormat:assistantMessage?.match(/Tasks Due Today.*asks Due Today/) !== null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})+'\n');
+    // #endregion
+
     if (!assistantMessage) {
       console.error('[workshop] No message in OpenAI response:', completion);
       return res.status(500).json({
@@ -386,6 +774,10 @@ Format your response as:
         message: 'The AI did not return a response'
       });
     }
+
+    // #region agent log
+    fs.appendFileSync(logPath, JSON.stringify({location:'api/workshop.js:aiResponse:fullResponse',message:'Full AI response content',data:{fullResponse:assistantMessage},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})+'\n');
+    // #endregion
 
     // Return the response
     return res.status(200).json({

@@ -3815,7 +3815,6 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         <Workshop 
           onBack={() => setCurrentPage("dashboard")} 
           tasks={todos}
-          goals={goals}
         />
       ) : currentPage === "goals" ? (
         isSecondaryDataLoading ? (
