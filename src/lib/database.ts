@@ -120,6 +120,7 @@ export interface Goal {
   text: string
   description?: string | null
   is_active?: boolean
+  deadline_date?: string | null // YYYY-MM-DD string
   created_at?: string
   updated_at?: string
 }
@@ -1016,7 +1017,7 @@ export async function fetchGoals(): Promise<Goal[]> {
   return data || []
 }
 
-export async function createGoal(goal: { text: string; description?: string | null; is_active?: boolean }): Promise<Goal> {
+export async function createGoal(goal: { text: string; description?: string | null; is_active?: boolean; deadline_date?: string | null }): Promise<Goal> {
   const userId = await ensureAuthenticated()
   
   // If setting to active, check if there are already 4 active goals
@@ -1044,6 +1045,7 @@ export async function createGoal(goal: { text: string; description?: string | nu
     text: goal.text,
     description: goal.description || null,
     is_active: isActive,
+    deadline_date: goal.deadline_date || null,
   }
   
   const { data, error } = await supabase
@@ -1060,7 +1062,7 @@ export async function createGoal(goal: { text: string; description?: string | nu
   return data
 }
 
-export async function updateGoal(id: number, goal: { text: string; description?: string | null; is_active?: boolean }): Promise<Goal> {
+export async function updateGoal(id: number, goal: { text: string; description?: string | null; is_active?: boolean; deadline_date?: string | null }): Promise<Goal> {
   const userId = await ensureAuthenticated()
   
   // If setting to active, check if there are already 4 active goals
@@ -1089,6 +1091,10 @@ export async function updateGoal(id: number, goal: { text: string; description?:
   
   if (goal.is_active !== undefined) {
     updateData.is_active = goal.is_active
+  }
+  
+  if (goal.deadline_date !== undefined) {
+    updateData.deadline_date = goal.deadline_date
   }
   
   const { data, error } = await supabase
@@ -1129,6 +1135,7 @@ export function dbGoalToDisplayGoal(dbGoal: Goal): any {
     text: dbGoal.text,
     description: dbGoal.description || undefined,
     is_active: dbGoal.is_active !== false, // Default to true if not set
+    deadline_date: dbGoal.deadline_date || undefined,
   }
 }
 

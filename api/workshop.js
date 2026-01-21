@@ -685,10 +685,10 @@ Generate a report with ${generateTasks && generateGoals ? 'two clear sections' :
    - Only mention overdue tasks if they are explicitly listed (otherwise skip this entirely)
    - Analyze tasks without deadlines if relevant
    - Each insight should be specific and actionable, referencing actual tasks from the lists` : ''}${generateGoals ? `${generateTasks ? '\n2' : '1'}. **Goals Overview** - Provide a data-driven analysis of each goal with:
-   - **Status Assessment**: For each goal, determine if it's "On Track", "At Risk", or "Behind" based on:
+   - **Status Assessment**: For each goal, determine if it's "On Track", "At Risk", or "Failing" based on:
      * Milestone completion rate vs. time elapsed (compare completed milestones to total milestones and consider deadlines)
      * Recent task completion velocity (tasks completed in last 7 days)
-     * Upcoming deadline proximity (if next deadline is within 7 days or overdue, flag as At Risk or Behind)
+     * Upcoming deadline proximity (if next deadline is within 7 days or overdue, flag as At Risk or Failing)
    - **Progress Analysis**: 
      * Report tasks completed in last 7 days per goal (use the "Recent Activity" metric provided)
      * Compare current velocity (tasks/week) to required velocity (if provided) to meet deadlines
@@ -699,11 +699,11 @@ Generate a report with ${generateTasks && generateGoals ? 'two clear sections' :
      * Use milestone deadlines and completion rates to estimate completion date
      * State clearly: "Likely to achieve by [date]", "At risk - needs attention", or "Unlikely to achieve on time"
    - **Actionable Adjustments**:
-     * If behind: Provide specific recommendations (e.g., "Need to complete 2 more tasks/week to meet deadline")
+     * If failing: Provide specific recommendations (e.g., "Need to complete 2 more tasks/week to meet deadline")
      * If at risk: Suggest priority actions to get back on track
      * If on track: Provide optimization suggestions to maintain or accelerate progress
    - **Format**: For each goal, structure as:
-     * Goal name with status badge: "[Goal Name] - [On Track/At Risk/Behind]"
+     * Goal name with status badge: "[Goal Name] - [On Track/At Risk/Failing]"
      * Progress summary: "X/Y milestones completed (Z%), N tasks completed in last 7 days"
      * Prediction: Clear statement about likelihood of achievement
      * Key adjustments: 2-3 specific, actionable recommendations as bullet points` : ''}
@@ -755,7 +755,7 @@ Format your response EXACTLY as:${generateTasks ? `
 
 For each goal, provide:
 
-### [Goal Name] - [Status: On Track / At Risk / Behind]
+### [Goal Name] - [Status: On Track / At Risk / Failing]
 
 **Progress Summary:**
 - X/Y milestones completed (Z%)

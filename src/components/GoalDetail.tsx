@@ -29,7 +29,7 @@ interface Todo {
 interface GoalDetailProps {
   goal: Goal;
   onBack: () => void;
-  onUpdateGoal: (id: number, text: string, description?: string | null, is_active?: boolean) => Promise<void>;
+  onUpdateGoal: (id: number, text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => Promise<void>;
   onDeleteGoal: (id: number) => Promise<void>;
   onFetchMilestones: (goalId: number) => Promise<Milestone[]>;
   onCreateMilestone: (goalId: number, name: string, description?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<Milestone>;

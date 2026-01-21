@@ -127,6 +127,8 @@ export function TodoApp() {
   // selectedCommonTask uses display format (with deadline object), not database format
   const [selectedCommonTask, setSelectedCommonTask] = useState<{ id: number; text: string; description?: string | null; time?: string | null; deadline?: { date: Date; time: string; recurring?: string } } | null>(null);
   const [allMilestonesWithGoals, setAllMilestonesWithGoals] = useState<Array<{ id: number; name: string; goalId: number; goalName: string }>>([]);
+  const [goalMilestones, setGoalMilestones] = useState<Record<number, Milestone[]>>({});
+  const [goalTasks, setGoalTasks] = useState<Record<number, any[]>>({});
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [timeRangeFilter, setTimeRangeFilter] = useState<"today" | "week" | "month" | null>(null);
   const [loading, setLoading] = useState(true);
@@ -364,6 +366,46 @@ export function TodoApp() {
       console.error('Error loading milestones:', error);
     }
   };
+
+  // Load goal milestones and tasks for status calculation
+  useEffect(() => {
+    const loadGoalData = async () => {
+      if (goals.length === 0) return;
+      
+      const milestonesMap: Record<number, Milestone[]> = {};
+      const tasksMap: Record<number, any[]> = {};
+
+      for (const goal of goals) {
+        try {
+          // Fetch milestones for this goal
+          const milestones = await fetchMilestones(goal.id);
+          milestonesMap[goal.id] = milestones || [];
+
+          // Fetch tasks linked to these milestones
+          if (milestones && milestones.length > 0) {
+            const milestoneIds = milestones.map(m => m.id);
+            const { data: tasksData } = await supabase
+              .from('todos')
+              .select('id, text, completed, milestone_id, updated_at')
+              .in('milestone_id', milestoneIds);
+            
+            tasksMap[goal.id] = tasksData || [];
+          } else {
+            tasksMap[goal.id] = [];
+          }
+        } catch (error) {
+          console.error(`Error loading data for goal ${goal.id}:`, error);
+          milestonesMap[goal.id] = [];
+          tasksMap[goal.id] = [];
+        }
+      }
+
+      setGoalMilestones(milestonesMap);
+      setGoalTasks(tasksMap);
+    };
+
+    loadGoalData();
+  }, [goals]);
 
   // Load data from Supabase on mount (only if authenticated)
   useEffect(() => {
@@ -1474,9 +1516,9 @@ export function TodoApp() {
   };
 
   // Goals handlers
-  const handleUpdateGoal = async (id: number, text: string, description?: string | null, is_active?: boolean) => {
+  const handleUpdateGoal = async (id: number, text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => {
     try {
-      const updatedGoal = await updateGoal(id, { text, description, is_active });
+      const updatedGoal = await updateGoal(id, { text, description, is_active, deadline_date });
       const displayGoal = dbGoalToDisplayGoal(updatedGoal);
       setGoals(goals.map(goal => goal.id === id ? displayGoal : goal));
       // Update selectedGoal if it's the one being updated
@@ -1499,9 +1541,9 @@ export function TodoApp() {
     }
   };
 
-  const handleCreateGoal = async (text: string, description?: string | null, is_active?: boolean) => {
+  const handleCreateGoal = async (text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => {
     try {
-      const createdGoal = await createGoal({ text, description, is_active });
+      const createdGoal = await createGoal({ text, description, is_active, deadline_date });
       const displayGoal = dbGoalToDisplayGoal(createdGoal);
       setGoals([...goals, displayGoal]);
     } catch (error) {
@@ -1967,6 +2009,61 @@ export function TodoApp() {
   
   // Create a set of daily task texts for efficient lookup
   const dailyTaskTexts = new Set(dailyTaskItems.map(todo => todo.text.trim().toLowerCase()));
+
+  // Helper function to calculate goal status
+  const getGoalStatus = (goal: Goal): 'On track' | 'At risk' | 'Failing' | null => {
+    const milestones = goalMilestones[goal.id] || [];
+    const tasks = goalTasks[goal.id] || [];
+    
+    const totalMilestones = milestones.length;
+    const completedMilestones = milestones.filter(m => m.completed).length;
+    
+    // Get goal deadline or next incomplete milestone deadline
+    let nextDueDate: string | null = null;
+    if (goal.deadline_date) {
+      nextDueDate = goal.deadline_date;
+    } else {
+      // Fallback to next incomplete milestone deadline
+      const incompleteMilestones = milestones.filter(m => !m.completed && m.deadline_date);
+      if (incompleteMilestones.length > 0) {
+        const sorted = incompleteMilestones
+          .map(m => ({ date: new Date(m.deadline_date!), milestone: m }))
+          .sort((a, b) => a.date.getTime() - b.date.getTime());
+        nextDueDate = sorted[0].milestone.deadline_date!;
+      }
+    }
+
+    // Determine status
+    if (!nextDueDate) return null;
+    
+    const daysUntilDeadline = Math.ceil((new Date(nextDueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    const completionRate = totalMilestones > 0 ? completedMilestones / totalMilestones : 0;
+    
+    if (daysUntilDeadline < 0 || (daysUntilDeadline < 7 && completionRate < 0.5)) {
+      return 'Failing';
+    } else if (daysUntilDeadline < 14 || completionRate < 0.6) {
+      return 'At risk';
+    }
+    
+    return 'On track';
+  };
+
+  // Get status color
+  const getStatusColor = (status: string | null): string => {
+    if (!status) return '#5b5d62';
+    const statusLower = status.toLowerCase();
+    if (statusLower.includes('on track')) return '#00C853';
+    if (statusLower.includes('at risk')) return '#FFB300';
+    if (statusLower.includes('failing')) return '#F44336';
+    return '#5b5d62';
+  };
+
+  // Filter goals that are at risk or failing
+  const atRiskOrFailingGoals = goals.filter(goal => {
+    if (goal.is_active === false) return false;
+    const status = getGoalStatus(goal);
+    return status === 'At risk' || status === 'Failing';
+  });
   
   const regularTasks = todayTasks.filter(todo => {
     const isNotReminder = todo.type !== 'reminder';
@@ -2717,16 +2814,16 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               )}
 
             
-            {/* SCHEDULED Section - Reminders and Daily Tasks side by side */}
-            {((reminders.length > 0 || dailyTaskItems.length > 0) && (selectedTimeRange === "today" || selectedTimeRange === "tomorrow")) && (
-              <div className="content-stretch flex flex-col gap-[16px] items-start relative mb-[24px]" style={{ marginLeft: '20px', width: 'calc(100% - 40px)' }}>
+            {/* SCHEDULED Section - Reminders, Daily Tasks, and At-Risk Goals side by side */}
+            {((reminders.length > 0 || dailyTaskItems.length > 0 || atRiskOrFailingGoals.length > 0) && (selectedTimeRange === "today" || selectedTimeRange === "tomorrow")) && (
+              <div className="content-stretch flex flex-col gap-[16px] items-start mb-[24px]" style={{ width: '100%' }}>
                 {/* SCHEDULED Header */}
-                <div className="content-stretch flex items-center justify-between gap-[8px] relative shrink-0 w-full">
+                <div className="content-stretch flex items-center justify-between gap-[8px] relative shrink-0 w-full" style={{ marginLeft: '20px', width: 'calc(100% - 20px)' }}>
                   <p 
                     className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
                     style={{ fontSize: '12px' }}
                   >
-                    SCHEDULED
+                    NOTICE BOARD
                   </p>
                   <div 
                     className="relative shrink-0 cursor-pointer"
@@ -2761,7 +2858,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                     overflowY: 'hidden',
                     scrollbarWidth: 'none', // Firefox
                     msOverflowStyle: 'none', // IE/Edge
-                    WebkitOverflowScrolling: 'touch' // Smooth scrolling on iOS
+                    WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+                    contain: 'layout style paint'
                   }}
                 >
                   <style>{`
@@ -2775,6 +2873,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                       width: 'max-content',
                       minWidth: 'max-content',
                       display: 'inline-flex',
+                      marginLeft: '20px',
                       paddingRight: '20px'
                     }}
                   >
@@ -2901,6 +3000,101 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                               )}
                             </div>
                           ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* At-Risk/Failing Goals Box */}
+                  {atRiskOrFailingGoals.length > 0 && (
+                    <div 
+                      className="flex flex-col gap-[10px] items-start px-[16px] relative"
+                      style={{ 
+                        backgroundColor: '#1f2022',
+                        paddingTop: '16px',
+                        paddingBottom: '16px',
+                        borderRadius: '8px',
+                        minWidth: '300px',
+                        width: '300px'
+                      }}
+                    >
+                      {/* Header */}
+                      <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
+                        <div className="content-stretch flex items-center relative shrink-0">
+                          <p 
+                            className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
+                            style={{ fontSize: '12px' }}
+                          >
+                            GOALS
+                          </p>
+                        </div>
+                        <div className="content-stretch flex items-center relative shrink-0">
+                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
+                            {atRiskOrFailingGoals.length}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Goals List */}
+                      <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                          {atRiskOrFailingGoals.map((goal) => {
+                            const status = getGoalStatus(goal);
+                            return (
+                              <div
+                                key={goal.id}
+                                className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
+                                onClick={() => {
+                                  setSelectedGoal(goal);
+                                  setCurrentPage("goalDetail");
+                                }}
+                              >
+                                {/* Goal Row */}
+                                <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+                                  {/* Trophy Icon */}
+                                  <div className="relative shrink-0 size-[24px]">
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      strokeWidth="1.5"
+                                      stroke="#E1E6EE"
+                                      className="block size-full"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0"
+                                      />
+                                    </svg>
+                                  </div>
+                                  <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
+                                    <div className="content-stretch flex items-center relative shrink-0 w-full">
+                                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px]">
+                                        {goal.text}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Status */}
+                                {status && (
+                                  <div className="content-stretch flex items-start relative shrink-0">
+                                    <div className="content-stretch flex gap-[6px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
+                                      <div 
+                                        className="w-[8px] h-[8px] rounded-full"
+                                        style={{ backgroundColor: getStatusColor(status) }}
+                                      />
+                                      <p 
+                                        className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]"
+                                        style={{ color: getStatusColor(status) }}
+                                      >
+                                        {status}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                       </div>
                     </div>
                   )}
@@ -3841,10 +4035,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             setCurrentPage("goals");
             setSelectedGoal(null);
           }}
-          onUpdateGoal={async (id, text, description, is_active) => {
-            await handleUpdateGoal(id, text, description, is_active);
+          onUpdateGoal={async (id, text, description, is_active, deadline_date) => {
+            await handleUpdateGoal(id, text, description, is_active, deadline_date);
             // Update the selected goal in state
-            setSelectedGoal({ ...selectedGoal, text, description, is_active });
+            setSelectedGoal({ ...selectedGoal, text, description, is_active, deadline_date });
           }}
           onDeleteGoal={handleDeleteGoal}
           onFetchMilestones={async (goalId) => {

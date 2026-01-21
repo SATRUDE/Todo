@@ -1,19 +1,21 @@
 import { useState, useEffect } from "react";
 import { GoalDetailModal } from "./GoalDetailModal";
 import { supabase } from "../lib/supabase";
+import { fetchMilestones, Milestone } from "../lib/database";
 
 interface Goal {
   id: number;
   text: string;
   description?: string | null;
   is_active?: boolean;
+  deadline_date?: string | null;
 }
 
 interface GoalsProps {
   onBack: () => void;
   goals: Goal[];
-  onUpdateGoal: (id: number, text: string, description?: string | null, is_active?: boolean) => Promise<void>;
-  onCreateGoal: (text: string, description?: string | null, is_active?: boolean) => Promise<void>;
+  onUpdateGoal: (id: number, text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => Promise<void>;
+  onCreateGoal: (text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => Promise<void>;
   onDeleteGoal: (id: number) => Promise<void>;
   onSelectGoal: (goal: Goal) => void;
 }
@@ -31,6 +33,8 @@ export function Goals({
   const [goalsReport, setGoalsReport] = useState<string>("");
   const [isLoadingGoals, setIsLoadingGoals] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [goalMilestones, setGoalMilestones] = useState<Record<number, Milestone[]>>({});
+  const [goalTasks, setGoalTasks] = useState<Record<number, any[]>>({});
 
   // Load saved Goals Overview report and last sync time from localStorage on mount
   useEffect(() => {
@@ -54,6 +58,46 @@ export function Goals({
     }
   }, []);
 
+  // Fetch milestones and tasks for goals
+  useEffect(() => {
+    const loadGoalData = async () => {
+      const milestonesMap: Record<number, Milestone[]> = {};
+      const tasksMap: Record<number, any[]> = {};
+
+      for (const goal of goals) {
+        try {
+          // Fetch milestones for this goal
+          const milestones = await fetchMilestones(goal.id);
+          milestonesMap[goal.id] = milestones || [];
+
+          // Fetch tasks linked to these milestones
+          if (milestones && milestones.length > 0) {
+            const milestoneIds = milestones.map(m => m.id);
+            const { data: tasksData } = await supabase
+              .from('todos')
+              .select('id, text, completed, milestone_id, updated_at')
+              .in('milestone_id', milestoneIds);
+            
+            tasksMap[goal.id] = tasksData || [];
+          } else {
+            tasksMap[goal.id] = [];
+          }
+        } catch (error) {
+          console.error(`Error loading data for goal ${goal.id}:`, error);
+          milestonesMap[goal.id] = [];
+          tasksMap[goal.id] = [];
+        }
+      }
+
+      setGoalMilestones(milestonesMap);
+      setGoalTasks(tasksMap);
+    };
+
+    if (goals.length > 0) {
+      loadGoalData();
+    }
+  }, [goals]);
+
   const handleGoalClick = (goal: Goal) => {
     onSelectGoal(goal);
   };
@@ -74,20 +118,20 @@ export function Goals({
     setIsModalOpen(true);
   };
 
-  const handleCreateGoal = async (text: string, description?: string | null, is_active?: boolean) => {
-    await onCreateGoal(text, description, is_active);
+  const handleCreateGoal = async (text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => {
+    await onCreateGoal(text, description, is_active, deadline_date);
     handleCloseModal();
   };
 
-  const handleUpdateGoal = async (id: number, text: string, description?: string | null, is_active?: boolean) => {
-    await onUpdateGoal(id, text, description, is_active);
+  const handleUpdateGoal = async (id: number, text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => {
+    await onUpdateGoal(id, text, description, is_active, deadline_date);
     handleCloseModal();
   };
 
   // Parse Goals Overview into structured goal data
   interface GoalInsight {
     goalName: string;
-    status: 'On Track' | 'At Risk' | 'Behind' | null;
+    status: 'On Track' | 'At Risk' | 'Failing' | null;
     progressSummary: {
       milestonesCompleted?: string;
       tasksCompletedRecent?: string;
@@ -115,12 +159,12 @@ export function Goals({
         const headingText = headingMatch[1].trim();
         
         // Extract goal name and status from heading like "Goal Name - Status: On Track"
-        const statusMatch = headingText.match(/-\s*Status:\s*(On Track|At Risk|Behind)/i);
+        const statusMatch = headingText.match(/-\s*Status:\s*(On Track|At Risk|Failing)/i);
         const goalName = statusMatch 
           ? headingText.substring(0, statusMatch.index).trim()
           : headingText;
         const status = statusMatch 
-          ? (statusMatch[1] as 'On Track' | 'At Risk' | 'Behind')
+          ? (statusMatch[1] as 'On Track' | 'At Risk' | 'Failing')
           : null;
         
         let content = trimmed.replace(/^###\s+.+?\n?/, '').trim();
@@ -337,7 +381,7 @@ export function Goals({
     const statusLower = status.toLowerCase();
     if (statusLower.includes('on track')) return '#00C853';
     if (statusLower.includes('at risk')) return '#FFB300';
-    if (statusLower.includes('behind')) return '#F44336';
+    if (statusLower.includes('failing')) return '#F44336';
     return '#5b5d62';
   };
 
@@ -346,6 +390,68 @@ export function Goals({
     if (!progressSummary || !progressSummary.milestonesCompleted) return 0;
     const match = progressSummary.milestonesCompleted.match(/\((\d+)%\)/);
     return match ? parseInt(match[1], 10) : 0;
+  };
+
+  // Helper function to calculate goal metrics
+  const getGoalMetrics = (goalId: number) => {
+    const goal = goals.find(g => g.id === goalId);
+    const milestones = goalMilestones[goalId] || [];
+    const tasks = goalTasks[goalId] || [];
+    
+    const totalMilestones = milestones.length;
+    const completedMilestones = milestones.filter(m => m.completed).length;
+    
+    // Get goal deadline or next incomplete milestone deadline
+    let nextDueDate: string | null = null;
+    if (goal?.deadline_date) {
+      nextDueDate = goal.deadline_date;
+    } else {
+      // Fallback to next incomplete milestone deadline
+      const incompleteMilestones = milestones.filter(m => !m.completed && m.deadline_date);
+      if (incompleteMilestones.length > 0) {
+        const sorted = incompleteMilestones
+          .map(m => ({ date: new Date(m.deadline_date!), milestone: m }))
+          .sort((a, b) => a.date.getTime() - b.date.getTime());
+        nextDueDate = sorted[0].milestone.deadline_date!;
+      }
+    }
+
+    // Calculate tasks completed in last week
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const recentCompletedTasks = tasks.filter(t => {
+      if (!t.completed || !t.updated_at) return false;
+      return new Date(t.updated_at) >= oneWeekAgo;
+    }).length;
+
+    // Determine status (simplified - can be enhanced)
+    let status: 'On track' | 'At risk' | 'Failing' = 'On track';
+    if (nextDueDate) {
+      const daysUntilDeadline = Math.ceil((new Date(nextDueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+      const completionRate = totalMilestones > 0 ? completedMilestones / totalMilestones : 0;
+      
+      if (daysUntilDeadline < 0 || (daysUntilDeadline < 7 && completionRate < 0.5)) {
+        status = 'Failing';
+      } else if (daysUntilDeadline < 14 || completionRate < 0.6) {
+        status = 'At risk';
+      }
+    }
+
+    return {
+      totalMilestones,
+      completedMilestones,
+      nextDueDate,
+      recentCompletedTasks,
+      status
+    };
+  };
+
+  // Helper function to format due date
+  const formatDueDate = (dateString: string | null): string => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `Due ${date.getDate()} ${months[date.getMonth()]}`;
   };
 
 
@@ -443,39 +549,60 @@ export function Goals({
             ) : (
               <>
                 {/* Active Goals */}
-                {activeGoals.map((goal) => (
-                  <div
-                    key={goal.id}
-                    className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full cursor-pointer"
-                    onClick={() => handleGoalClick(goal)}
-                  >
-                    {/* Trophy Icon - green for active */}
-                    <div className="relative shrink-0 size-[24px]">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth="1.5"
-                        stroke="#00C853"
-                        className="block size-full"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0"
-                        />
-                      </svg>
-                    </div>
-                    {/* Goal Name */}
-                    <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                      <div className="content-stretch flex items-center relative shrink-0 w-full">
-                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px]">
-                          {goal.text}
-                        </p>
+                {activeGoals.map((goal) => {
+                  const metrics = getGoalMetrics(goal.id);
+                  return (
+                    <div
+                      key={goal.id}
+                      className="rounded-[12px] w-full cursor-pointer"
+                      style={{ 
+                        backgroundColor: '#1f2022',
+                        padding: '16px'
+                      }}
+                      onClick={() => handleGoalClick(goal)}
+                    >
+                      {/* Header: Due date and Status */}
+                      <div className="flex items-center justify-between mb-[12px]">
+                        {metrics.nextDueDate ? (
+                          <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px]" style={{ color: '#A1A1AA' }}>
+                            {formatDueDate(metrics.nextDueDate)}
+                          </p>
+                        ) : (
+                          <div />
+                        )}
+                        <div className="flex items-center gap-[6px]">
+                          <div 
+                            className="w-[8px] h-[8px] rounded-full"
+                            style={{ backgroundColor: getStatusColor(metrics.status) }}
+                          />
+                          <p 
+                            className="font-['Inter:Regular',sans-serif] font-normal text-[14px]"
+                            style={{ color: getStatusColor(metrics.status) }}
+                          >
+                            {metrics.status}
+                          </p>
+                        </div>
                       </div>
+
+                      {/* Goal Title */}
+                      <h3 className="font-['Inter:Medium',sans-serif] font-medium text-[18px] text-white mb-[10px] tracking-[-0.198px]">
+                        {goal.text}
+                      </h3>
+
+                      {/* Milestone Progress */}
+                      {metrics.totalMilestones > 0 && (
+                        <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] mb-[8px]" style={{ color: '#A1A1AA' }}>
+                          {metrics.completedMilestones}/{metrics.totalMilestones} milestones completed
+                        </p>
+                      )}
+
+                      {/* Recent Activity */}
+                      <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px]" style={{ color: '#5b5d62' }}>
+                        {metrics.recentCompletedTasks} task{metrics.recentCompletedTasks !== 1 ? 's' : ''} completed in last week
+                      </p>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 
                 {/* Inactive Goals */}
                 {inactiveGoals.map((goal) => (

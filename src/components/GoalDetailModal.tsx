@@ -1,20 +1,23 @@
 import { useState, useEffect, KeyboardEvent, useRef } from "react";
 import { createPortal } from "react-dom";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
+import svgPaths from "../imports/svg-e51h379o38";
+import { DeadlineModal } from "./DeadlineModal";
 
 interface Goal {
   id: number;
   text: string;
   description?: string | null;
   is_active?: boolean;
+  deadline_date?: string | null;
 }
 
 interface GoalDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   goal: Goal;
-  onUpdateGoal: (id: number, text: string, description?: string | null, is_active?: boolean) => void;
-  onCreateGoal?: (text: string, description?: string | null, is_active?: boolean) => void;
+  onUpdateGoal: (id: number, text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => void;
+  onCreateGoal?: (text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => void;
   onDeleteGoal: (id: number) => void;
 }
 
@@ -29,6 +32,10 @@ export function GoalDetailModal({
   const [goalInput, setGoalInput] = useState(goal.text);
   const [goalDescription, setGoalDescription] = useState(goal.description || "");
   const [isActive, setIsActive] = useState(goal.is_active !== false);
+  const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
+  const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(
+    goal.deadline_date ? { date: new Date(goal.deadline_date), time: "", recurring: undefined } : null
+  );
   const goalInputRef = useRef<HTMLTextAreaElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -37,6 +44,7 @@ export function GoalDetailModal({
     setGoalInput(goal.text);
     setGoalDescription(goal.description || "");
     setIsActive(goal.is_active !== false);
+    setDeadline(goal.deadline_date ? { date: new Date(goal.deadline_date), time: "", recurring: undefined } : null);
     
     // Auto-resize textareas when goal changes
     setTimeout(() => {
@@ -63,17 +71,24 @@ export function GoalDetailModal({
     };
   }, [isOpen]);
 
+  const handleSetDeadline = (date: Date, time: string, recurring?: string) => {
+    // For goals, we only use the date (no time)
+    setDeadline({ date, time: "", recurring: undefined });
+  };
+
   const handleSave = async () => {
     if (goalInput.trim() === "") return;
     
     try {
+      const deadlineDate = deadline ? deadline.date.toISOString().split('T')[0] : null;
+      
       if (goal.id < 0 && onCreateGoal) {
         // New goal - check if we can create it as active
         // The database function will enforce the 4 active goals limit
-        await onCreateGoal(goalInput, goalDescription || null, isActive);
+        await onCreateGoal(goalInput, goalDescription || null, isActive, deadlineDate);
       } else {
         // Update existing goal
-        await onUpdateGoal(goal.id, goalInput, goalDescription || null, isActive);
+        await onUpdateGoal(goal.id, goalInput, goalDescription || null, isActive, deadlineDate);
       }
       onClose();
     } catch (error) {
@@ -84,6 +99,22 @@ export function GoalDetailModal({
         alert('Failed to save goal. Check console for details.');
       }
     }
+  };
+
+  const getDeadlineText = () => {
+    if (!deadline) return "Deadline";
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const isToday = deadline.date.toDateString() === today.toDateString();
+    const isTomorrow = deadline.date.toDateString() === tomorrow.toDateString();
+    
+    if (isToday) return "Today";
+    if (isTomorrow) return "Tomorrow";
+    
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[deadline.date.getMonth()]} ${deadline.date.getDate()}`;
   };
 
   const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -182,6 +213,21 @@ export function GoalDetailModal({
                 <div className="flex flex-col gap-[16px] items-start relative shrink-0 w-full">
                   {/* Button Row */}
                   <div className="flex flex-wrap gap-[8px] items-center relative shrink-0 w-full">
+                    {/* Deadline Button */}
+                    <div 
+                      className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                      onClick={() => setIsDeadlineOpen(true)}
+                    >
+                      <div className="relative shrink-0 size-[20px]">
+                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
+                          <g>
+                            <path d={svgPaths.p186add80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+                          </g>
+                        </svg>
+                      </div>
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getDeadlineText()}</p>
+                    </div>
+
                     {/* Active Toggle */}
                     <div 
                       className="bg-[rgba(225,230,238,0.1)] box-border flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
@@ -257,6 +303,15 @@ export function GoalDetailModal({
               </div>
         </div>
       </div>
+
+      {/* Deadline Modal */}
+      <DeadlineModal
+        isOpen={isDeadlineOpen}
+        onClose={() => setIsDeadlineOpen(false)}
+        onSetDeadline={handleSetDeadline}
+        onClearDeadline={() => setDeadline(null)}
+        currentDeadline={deadline}
+      />
     </div>,
     document.body
   );
