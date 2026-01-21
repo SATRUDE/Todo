@@ -125,7 +125,25 @@ function formatGoalForAI(goal, milestones = [], metrics = null) {
   return formatted;
 }
 
+// Safe logging helper - only logs in development, silently fails in production
+function safeLog(location, message, data, hypothesisId) {
+  try {
+    // Only log to file in local development
+    if (process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
+      const fs = require('fs');
+      const path = require('path');
+      const logPath = path.join(process.cwd(), '.cursor', 'debug.log');
+      fs.appendFileSync(logPath, JSON.stringify({location, message, data, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId}) + '\n');
+    }
+  } catch(e) {
+    // Silently fail - don't break production
+  }
+}
+
 module.exports = async function handler(req, res) {
+  // #region agent log
+  safeLog('api/workshop.js:handler:entry', 'Workshop API called', {method: req.method, hasBody: !!req.body, sectionType: req.body?.sectionType}, 'A');
+  // #endregion
 
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -245,12 +263,19 @@ module.exports = async function handler(req, res) {
     if (milestones.length > 0) {
       try {
         const milestoneIds = milestones.map(m => m.id).filter(id => id !== undefined && id !== null);
+        // #region agent log
+        safeLog('api/workshop.js:fetchTasks:beforeQuery', 'Before task query', {milestonesCount: milestones.length, milestoneIdsCount: milestoneIds.length, userId}, 'B');
+        // #endregion
         if (milestoneIds.length > 0) {
           const { data: tasksData, error: tasksError } = await supabase
             .from('todos')
             .select('id, text, completed, milestone_id, created_at, updated_at')
             .in('milestone_id', milestoneIds)
             .or(`user_id.is.null,user_id.eq.${userId}`);
+
+          // #region agent log
+          safeLog('api/workshop.js:fetchTasks:afterQuery', 'After task query', {hasTasksData: !!tasksData, tasksCount: tasksData?.length, hasTasksError: !!tasksError, tasksError: tasksError?.message}, 'B');
+          // #endregion
 
           if (!tasksError && tasksData) {
             // Group tasks by goal_id via milestones
@@ -260,9 +285,15 @@ module.exports = async function handler(req, res) {
                 .map(m => m.id);
               goalTasks[goal.id] = tasksData.filter(t => goalMilestoneIds.includes(t.milestone_id));
             });
+            // #region agent log
+            safeLog('api/workshop.js:fetchTasks:grouped', 'Tasks grouped by goal', {goalTasksKeys: Object.keys(goalTasks), goalTasksCounts: Object.fromEntries(Object.entries(goalTasks).map(([k,v]) => [k, v.length]))}, 'B');
+            // #endregion
           }
         }
       } catch (tasksError) {
+        // #region agent log
+        safeLog('api/workshop.js:fetchTasks:error', 'Error fetching goal tasks', {errorMessage: tasksError?.message, errorStack: tasksError?.stack}, 'B');
+        // #endregion
         console.error('[workshop] Error fetching goal tasks:', tasksError);
         // Continue without task data if fetch fails
       }
@@ -270,6 +301,9 @@ module.exports = async function handler(req, res) {
 
     // Calculate progress metrics for each goal
     function calculateGoalMetrics(goal, goalMilestones, goalTasksList) {
+      // #region agent log
+      safeLog('api/workshop.js:calculateGoalMetrics:entry', 'Calculating metrics', {goalId: goal?.id, goalName: goal?.text, milestonesCount: goalMilestones?.length, tasksCount: goalTasksList?.length}, 'C');
+      // #endregion
       const now = new Date();
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       
@@ -321,7 +355,7 @@ module.exports = async function handler(req, res) {
         requiredVelocity = weeksRemaining > 0 ? remainingTasks / weeksRemaining : remainingTasks;
       }
       
-      return {
+      const metrics = {
         totalMilestones,
         completedMilestones,
         milestoneCompletionRate,
@@ -335,6 +369,10 @@ module.exports = async function handler(req, res) {
         remainingTasks,
         remainingMilestones
       };
+      // #region agent log
+      safeLog('api/workshop.js:calculateGoalMetrics:exit', 'Metrics calculated', {goalId: goal?.id, metrics}, 'C');
+      // #endregion
+      return metrics;
     }
 
     // Format tasks for AI context
@@ -571,9 +609,15 @@ module.exports = async function handler(req, res) {
             try {
               const goalMilestones = milestones.filter(m => m.goal_id === goal.id || m.goalId === goal.id);
               const goalTasksList = goalTasks[goal.id] || [];
+              // #region agent log
+              safeLog('api/workshop.js:formatGoals:beforeMetrics', 'Before calculating metrics for goal', {goalId: goal.id, goalName: goal.text, milestonesCount: goalMilestones.length, tasksCount: goalTasksList.length}, 'C');
+              // #endregion
               const metrics = calculateGoalMetrics(goal, goalMilestones, goalTasksList);
               goalsContext += formatGoalForAI(goal, milestones, metrics) + '\n';
             } catch (error) {
+              // #region agent log
+              safeLog('api/workshop.js:formatGoals:error', 'Error formatting goal', {goalId: goal.id, errorMessage: error?.message, errorStack: error?.stack}, 'C');
+              // #endregion
               console.error('[workshop] Error formatting goal:', error, goal);
               goalsContext += `- ${goal.text || goal.name || 'Untitled goal'}\n`;
             }
@@ -729,6 +773,10 @@ For each goal, provide:
 
 [Repeat for each goal]` : ''}` + (generateTasks ? tasksContext : '') + (generateGoals ? goalsContext : '');
 
+    // #region agent log
+    safeLog('api/workshop.js:beforeOpenAI', 'Before OpenAI API call', {generateTasks, generateGoals, goalsContextLength: goalsContext.length, tasksContextLength: tasksContext.length}, 'D');
+    // #endregion
+
     // Build messages for OpenAI
     const messages = [
       {
@@ -748,12 +796,18 @@ For each goal, provide:
     // Call OpenAI API
     let completion;
     try {
+      // #region agent log
+      safeLog('api/workshop.js:openai:beforeCall', 'Before OpenAI API call', {model: 'gpt-4o-mini', messagesCount: messages.length}, 'D');
+      // #endregion
       completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: messages,
         temperature: 0.7,
         max_tokens: 2000, // Increased for comprehensive reports
       });
+      // #region agent log
+      safeLog('api/workshop.js:openai:afterCall', 'After OpenAI API call', {hasCompletion: !!completion, hasChoices: !!completion?.choices, choicesCount: completion?.choices?.length, responseLength: completion?.choices?.[0]?.message?.content?.length}, 'D');
+      // #endregion
     } catch (openaiError) {
       console.error('[workshop] OpenAI API error:', openaiError);
       throw openaiError;
@@ -762,9 +816,7 @@ For each goal, provide:
     const assistantMessage = completion.choices[0]?.message?.content;
 
     // #region agent log
-    const fs = require('fs');
-    const logPath = '/Users/markdiffey/Documents/Todo/.cursor/debug.log';
-    fs.appendFileSync(logPath, JSON.stringify({location:'api/workshop.js:aiResponse:received',message:'Received AI response',data:{responseLength:assistantMessage?.length,responsePreview:assistantMessage?.substring(0,500),hasTasksDueToday:assistantMessage?.includes('Tasks Due Today'),hasRepeatedTitle:assistantMessage?.includes('asks Due Today'),hasBulletPoints:assistantMessage?.includes('- '),hasParagraphFormat:assistantMessage?.match(/Tasks Due Today.*asks Due Today/) !== null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})+'\n');
+    safeLog('api/workshop.js:aiResponse:received', 'Received AI response', {responseLength: assistantMessage?.length, responsePreview: assistantMessage?.substring(0, 500), hasTasksDueToday: assistantMessage?.includes('Tasks Due Today'), hasRepeatedTitle: assistantMessage?.includes('asks Due Today'), hasBulletPoints: assistantMessage?.includes('- '), hasParagraphFormat: assistantMessage?.match(/Tasks Due Today.*asks Due Today/) !== null}, 'A');
     // #endregion
 
     if (!assistantMessage) {
@@ -776,7 +828,7 @@ For each goal, provide:
     }
 
     // #region agent log
-    fs.appendFileSync(logPath, JSON.stringify({location:'api/workshop.js:aiResponse:fullResponse',message:'Full AI response content',data:{fullResponse:assistantMessage},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})+'\n');
+    safeLog('api/workshop.js:aiResponse:fullResponse', 'Full AI response content', {fullResponse: assistantMessage}, 'B');
     // #endregion
 
     // Return the response
@@ -787,6 +839,9 @@ For each goal, provide:
     });
 
   } catch (error) {
+    // #region agent log
+    safeLog('api/workshop.js:handler:error', 'Top-level error caught', {errorMessage: error?.message, errorStack: error?.stack, errorName: error?.name}, 'A');
+    // #endregion
     console.error('[workshop] Error:', error);
     
     // Ensure we always return valid JSON
