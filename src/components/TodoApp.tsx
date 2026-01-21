@@ -3202,6 +3202,145 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                       paddingRight: '20px'
                     }}
                   >
+                  {/* Daily Tasks Box */}
+                  {dailyTaskItems.length > 0 && (
+                    <div 
+                      className="flex flex-col gap-[10px] items-start px-[16px] relative"
+                      style={{ 
+                        backgroundColor: '#1f2022',
+                        paddingTop: '16px',
+                        paddingBottom: '16px',
+                        borderRadius: '8px',
+                        minWidth: '300px',
+                        width: '300px'
+                      }}
+                    >
+                      {/* Header */}
+                      <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
+                        <div className="content-stretch flex items-center relative shrink-0">
+                          <p 
+                            className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
+                            style={{ fontSize: '12px' }}
+                          >
+                            DAILY
+                          </p>
+                        </div>
+                        <div className="content-stretch flex items-center relative shrink-0">
+                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
+                            {dailyTaskItems.length}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Daily Tasks List */}
+                      <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                          {dailyTaskItems.map((todo) => (
+                            <div
+                              key={todo.id}
+                              className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
+                              onClick={() => handleTaskClick(todo)}
+                            >
+                              {/* Daily Task Row */}
+                              <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+                                {/* Checkbox */}
+                                <div
+                                  className="relative shrink-0 size-[24px] cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleTodo(todo.id);
+                                  }}
+                                >
+                                  <svg
+                                    className="block size-full"
+                                    fill="none"
+                                    preserveAspectRatio="none"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <circle
+                                      cx="12"
+                                      cy="12"
+                                      r="11.25"
+                                      stroke="#E1E6EE"
+                                      strokeWidth="1.5"
+                                      fill={todo.completed ? "#E1E6EE" : "none"}
+                                    />
+                                    {todo.completed && (
+                                      <path
+                                        d="M7 12L10 15L17 8"
+                                        stroke="#110c10"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    )}
+                                  </svg>
+                                </div>
+                                <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
+                                  <div className="content-stretch flex items-center relative shrink-0 w-full">
+                                    <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] ${
+                                      todo.completed ? "text-[#5b5d62] line-through" : "text-white"
+                                    }`}>
+                                      {todo.text}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Time */}
+                              {(todo.deadline?.time || todo.time) && (
+                                <div className="content-stretch flex items-start relative shrink-0">
+                                  <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
+                                    <div className="relative shrink-0 size-[20px]">
+                                      <svg
+                                        className="block size-full"
+                                        fill="none"
+                                        preserveAspectRatio="none"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <g>
+                                          <path
+                                            d={svgPathsToday.p19fddb00}
+                                            stroke="#5B5D62"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="1.5"
+                                          />
+                                        </g>
+                                      </svg>
+                                    </div>
+                                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
+                                      {todo.deadline?.time || todo.time}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Description */}
+                              {todo.description && todo.description.trim() && (
+                                <div 
+                                  className="w-full pl-[32px] overflow-hidden"
+                                  style={{ maxWidth: '100%', boxSizing: 'border-box' }}
+                                >
+                                  <p 
+                                    className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                                    style={{ 
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      maxWidth: '100%',
+                                      width: '100%'
+                                    }}
+                                  >
+                                    {linkifyText(todo.description)}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Reminders Box */}
                   {reminders.length > 0 && (
                     <div 
@@ -3423,145 +3562,6 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                               </div>
                             );
                           })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Daily Tasks Box */}
-                  {dailyTaskItems.length > 0 && (
-                    <div 
-                      className="flex flex-col gap-[10px] items-start px-[16px] relative"
-                      style={{ 
-                        backgroundColor: '#1f2022',
-                        paddingTop: '16px',
-                        paddingBottom: '16px',
-                        borderRadius: '8px',
-                        minWidth: '300px',
-                        width: '300px'
-                      }}
-                    >
-                      {/* Header */}
-                      <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
-                        <div className="content-stretch flex items-center relative shrink-0">
-                          <p 
-                            className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
-                            style={{ fontSize: '12px' }}
-                          >
-                            DAILY
-                          </p>
-                        </div>
-                        <div className="content-stretch flex items-center relative shrink-0">
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
-                            {dailyTaskItems.length}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Daily Tasks List */}
-                      <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                          {dailyTaskItems.map((todo) => (
-                            <div
-                              key={todo.id}
-                              className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
-                              onClick={() => handleTaskClick(todo)}
-                            >
-                              {/* Daily Task Row */}
-                              <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
-                                {/* Checkbox */}
-                                <div
-                                  className="relative shrink-0 size-[24px] cursor-pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleTodo(todo.id);
-                                  }}
-                                >
-                                  <svg
-                                    className="block size-full"
-                                    fill="none"
-                                    preserveAspectRatio="none"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <circle
-                                      cx="12"
-                                      cy="12"
-                                      r="11.25"
-                                      stroke="#E1E6EE"
-                                      strokeWidth="1.5"
-                                      fill={todo.completed ? "#E1E6EE" : "none"}
-                                    />
-                                    {todo.completed && (
-                                      <path
-                                        d="M7 12L10 15L17 8"
-                                        stroke="#110c10"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    )}
-                                  </svg>
-                                </div>
-                                <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                                  <div className="content-stretch flex items-center relative shrink-0 w-full">
-                                    <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] ${
-                                      todo.completed ? "text-[#5b5d62] line-through" : "text-white"
-                                    }`}>
-                                      {todo.text}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {/* Time */}
-                              {(todo.deadline?.time || todo.time) && (
-                                <div className="content-stretch flex items-start relative shrink-0">
-                                  <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
-                                    <div className="relative shrink-0 size-[20px]">
-                                      <svg
-                                        className="block size-full"
-                                        fill="none"
-                                        preserveAspectRatio="none"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <g>
-                                          <path
-                                            d={svgPathsToday.p19fddb00}
-                                            stroke="#5B5D62"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth="1.5"
-                                          />
-                                        </g>
-                                      </svg>
-                                    </div>
-                                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
-                                      {todo.deadline?.time || todo.time}
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {/* Description */}
-                              {todo.description && todo.description.trim() && (
-                                <div 
-                                  className="w-full pl-[32px] overflow-hidden"
-                                  style={{ maxWidth: '100%', boxSizing: 'border-box' }}
-                                >
-                                  <p 
-                                    className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
-                                    style={{ 
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap',
-                                      maxWidth: '100%',
-                                      width: '100%'
-                                    }}
-                                  >
-                                    {linkifyText(todo.description)}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          ))}
                       </div>
                     </div>
                   )}
