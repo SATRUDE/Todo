@@ -60,7 +60,9 @@ import {
   createMilestone,
   updateMilestone,
   deleteMilestone,
-  Milestone
+  Milestone,
+  fetchMilestoneUpdatesForMilestones,
+  MilestoneUpdate
 } from "../lib/database";
 import { 
   requestNotificationPermission, 
@@ -127,8 +129,54 @@ export function TodoApp() {
   // selectedCommonTask uses display format (with deadline object), not database format
   const [selectedCommonTask, setSelectedCommonTask] = useState<{ id: number; text: string; description?: string | null; time?: string | null; deadline?: { date: Date; time: string; recurring?: string } } | null>(null);
   const [allMilestonesWithGoals, setAllMilestonesWithGoals] = useState<Array<{ id: number; name: string; goalId: number; goalName: string }>>([]);
-  const [goalMilestones, setGoalMilestones] = useState<Record<number, Milestone[]>>({});
-  const [goalTasks, setGoalTasks] = useState<Record<number, any[]>>({});
+  const [goalMilestones, setGoalMilestones] = useState<Record<number, Milestone[]>>(() => {
+    // Load saved goal milestones from localStorage on mount
+    try {
+      const saved = localStorage.getItem('goal-milestones');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Error loading saved goal milestones:', error);
+    }
+    return {};
+  });
+  const [goalTasks, setGoalTasks] = useState<Record<number, any[]>>(() => {
+    // Load saved goal tasks from localStorage on mount
+    try {
+      const saved = localStorage.getItem('goal-tasks');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Error loading saved goal tasks:', error);
+    }
+    return {};
+  });
+  const [milestoneUpdates, setMilestoneUpdates] = useState<MilestoneUpdate[]>(() => {
+    // Load saved milestone updates from localStorage on mount
+    try {
+      const saved = localStorage.getItem('milestone-updates');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Error loading saved milestone updates:', error);
+    }
+    return [];
+  });
+  const [aiGoalStatuses, setAiGoalStatuses] = useState<Record<number, 'On track' | 'At risk' | 'Failing'>>(() => {
+    // Load saved goal statuses from localStorage on mount
+    try {
+      const saved = localStorage.getItem('goal-statuses');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Error loading saved goal statuses:', error);
+    }
+    return {};
+  });
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [timeRangeFilter, setTimeRangeFilter] = useState<"today" | "week" | "month" | null>(null);
   const [loading, setLoading] = useState(true);
@@ -406,6 +454,242 @@ export function TodoApp() {
 
     loadGoalData();
   }, [goals]);
+
+  // Fetch milestone updates when milestones change
+  useEffect(() => {
+    const loadMilestoneUpdates = async () => {
+      if (Object.keys(goalMilestones).length === 0) return;
+      
+      // Collect all milestone IDs
+      const allMilestoneIds: number[] = [];
+      Object.values(goalMilestones).forEach(milestones => {
+        milestones.forEach(m => {
+          allMilestoneIds.push(m.id);
+        });
+      });
+      
+      if (allMilestoneIds.length === 0) return;
+      
+      try {
+        const updates = await fetchMilestoneUpdatesForMilestones(allMilestoneIds);
+        setMilestoneUpdates(updates);
+      } catch (error) {
+        console.error('Error fetching milestone updates:', error);
+      }
+    };
+    
+    loadMilestoneUpdates();
+  }, [goalMilestones]);
+
+  // Fetch AI-determined goal statuses
+  useEffect(() => {
+    const fetchAiGoalStatuses = async () => {
+      // Only fetch if we have goals, milestones, and tasks loaded
+      if (goals.length === 0 || Object.keys(goalMilestones).length === 0) return;
+      
+      // Collect all milestones and tasks
+      const allMilestones: Milestone[] = [];
+      const allTasks: any[] = [];
+      
+      goals.forEach(goal => {
+        const milestones = goalMilestones[goal.id] || [];
+        const tasks = goalTasks[goal.id] || [];
+        allMilestones.push(...milestones);
+        allTasks.push(...tasks);
+      });
+
+      // Filter to only active goals with deadlines or milestones
+      const goalsToAnalyze = goals.filter(goal => {
+        if (goal.is_active === false) return false;
+        // Must have either goal deadline or at least one milestone with deadline
+        if (goal.deadline_date) return true;
+        const milestones = goalMilestones[goal.id] || [];
+        return milestones.some(m => m.deadline_date);
+      });
+
+      if (goalsToAnalyze.length === 0) return;
+
+      try {
+        const response = await fetch('/api/goal-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            goals: goalsToAnalyze,
+            milestones: allMilestones,
+            tasks: allTasks,
+            milestoneUpdates: milestoneUpdates,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.success && data.statuses) {
+          // Convert string keys to numbers
+          const statuses: Record<number, 'On track' | 'At risk' | 'Failing'> = {};
+          Object.entries(data.statuses).forEach(([goalId, status]) => {
+            statuses[parseInt(goalId)] = status as 'On track' | 'At risk' | 'Failing';
+          });
+          setAiGoalStatuses(statuses);
+          // Save to localStorage for instant loading on next page load
+          try {
+            localStorage.setItem('goal-statuses', JSON.stringify(statuses));
+          } catch (error) {
+            console.error('Error saving goal statuses to localStorage:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching AI goal statuses:', error);
+        // Silently fail - will fall back to algorithmic calculation
+      }
+    };
+
+    fetchAiGoalStatuses();
+  }, [goals, goalMilestones, goalTasks, milestoneUpdates]);
+
+  // Listen for milestone update changes
+  useEffect(() => {
+    const handleMilestoneUpdateChanged = () => {
+      // Reload milestone updates and refresh AI statuses
+      if (Object.keys(goalMilestones).length > 0) {
+        const allMilestoneIds: number[] = [];
+        Object.values(goalMilestones).forEach(milestones => {
+          milestones.forEach(m => {
+            allMilestoneIds.push(m.id);
+          });
+        });
+        
+        if (allMilestoneIds.length > 0) {
+          fetchMilestoneUpdatesForMilestones(allMilestoneIds)
+            .then(updates => {
+              setMilestoneUpdates(updates);
+              
+              // Save to localStorage for instant loading on next page load
+              try {
+                localStorage.setItem('milestone-updates', JSON.stringify(updates));
+              } catch (error) {
+                console.error('Error saving milestone updates to localStorage:', error);
+              }
+              
+              setTimeout(() => refreshAiGoalStatuses(), 500);
+            })
+            .catch(error => {
+              console.error('Error fetching milestone updates:', error);
+            });
+        }
+      }
+    };
+
+    window.addEventListener('milestoneUpdateChanged', handleMilestoneUpdateChanged);
+    return () => {
+      window.removeEventListener('milestoneUpdateChanged', handleMilestoneUpdateChanged);
+    };
+  }, [goalMilestones]);
+
+  // Function to manually refresh AI goal statuses (called after changes)
+  const refreshAiGoalStatuses = async () => {
+    // Reload milestone updates first
+    if (Object.keys(goalMilestones).length > 0) {
+      const allMilestoneIds: number[] = [];
+      Object.values(goalMilestones).forEach(milestones => {
+        milestones.forEach(m => {
+          allMilestoneIds.push(m.id);
+        });
+      });
+      
+      if (allMilestoneIds.length > 0) {
+        try {
+          const updates = await fetchMilestoneUpdatesForMilestones(allMilestoneIds);
+          setMilestoneUpdates(updates);
+          
+          // Save to localStorage for instant loading on next page load
+          try {
+            localStorage.setItem('milestone-updates', JSON.stringify(updates));
+          } catch (error) {
+            console.error('Error saving milestone updates to localStorage:', error);
+          }
+        } catch (error) {
+          console.error('Error fetching milestone updates:', error);
+        }
+      }
+    }
+    
+    // Then trigger the useEffect to fetch statuses
+    // We'll do this by temporarily updating a dependency or calling the fetch directly
+    if (goals.length === 0 || Object.keys(goalMilestones).length === 0) return;
+    
+    // Collect all milestones and tasks
+    const allMilestones: Milestone[] = [];
+    const allTasks: any[] = [];
+    
+    goals.forEach(goal => {
+      const milestones = goalMilestones[goal.id] || [];
+      const tasks = goalTasks[goal.id] || [];
+      allMilestones.push(...milestones);
+      allTasks.push(...tasks);
+    });
+
+    // Filter to only active goals with deadlines or milestones
+    const goalsToAnalyze = goals.filter(goal => {
+      if (goal.is_active === false) return false;
+      if (goal.deadline_date) return true;
+      const milestones = goalMilestones[goal.id] || [];
+      return milestones.some(m => m.deadline_date);
+    });
+
+    if (goalsToAnalyze.length === 0) return;
+
+    try {
+      // Get latest milestone updates
+      const allMilestoneIds: number[] = [];
+      Object.values(goalMilestones).forEach(milestones => {
+        milestones.forEach(m => {
+          allMilestoneIds.push(m.id);
+        });
+      });
+      const latestUpdates = allMilestoneIds.length > 0 
+        ? await fetchMilestoneUpdatesForMilestones(allMilestoneIds)
+        : [];
+
+      const response = await fetch('/api/goal-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          goals: goalsToAnalyze,
+          milestones: allMilestones,
+          tasks: allTasks,
+          milestoneUpdates: latestUpdates,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success && data.statuses) {
+        const statuses: Record<number, 'On track' | 'At risk' | 'Failing'> = {};
+        Object.entries(data.statuses).forEach(([goalId, status]) => {
+          statuses[parseInt(goalId)] = status as 'On track' | 'At risk' | 'Failing';
+        });
+        setAiGoalStatuses(statuses);
+        // Save to localStorage for instant loading on next page load
+        try {
+          localStorage.setItem('goal-statuses', JSON.stringify(statuses));
+        } catch (error) {
+          console.error('Error saving goal statuses to localStorage:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing AI goal statuses:', error);
+    }
+  };
 
   // Load data from Supabase on mount (only if authenticated)
   useEffect(() => {
@@ -949,6 +1233,38 @@ export function TodoApp() {
       });
       
       setTodos(updatedTodos);
+      
+      // Refresh AI goal statuses if this task is associated with a milestone
+      if (todo.milestoneId) {
+        // Reload goal tasks to get updated task data
+        const goalId = Object.keys(goalMilestones).find(gId => {
+          const milestones = goalMilestones[parseInt(gId)] || [];
+          return milestones.some(m => m.id === todo.milestoneId);
+        });
+        if (goalId) {
+          const milestones = goalMilestones[parseInt(goalId)] || [];
+          const milestoneTasks = updatedTodos.filter(t => 
+            t.milestoneId && milestones.some(m => m.id === t.milestoneId)
+          );
+          setGoalTasks(prev => {
+            const updated = {
+              ...prev,
+              [parseInt(goalId)]: milestoneTasks
+            };
+            
+            // Save to localStorage for instant loading
+            try {
+              localStorage.setItem('goal-tasks', JSON.stringify(updated));
+            } catch (error) {
+              console.error('Error saving goal tasks to localStorage:', error);
+            }
+            
+            return updated;
+          });
+          // Refresh AI statuses
+          setTimeout(() => refreshAiGoalStatuses(), 500);
+        }
+      }
       
       // Note: Calendar sync is manual only - users must explicitly sync from the calendar sync page
       
@@ -2010,8 +2326,14 @@ export function TodoApp() {
   // Create a set of daily task texts for efficient lookup
   const dailyTaskTexts = new Set(dailyTaskItems.map(todo => todo.text.trim().toLowerCase()));
 
-  // Helper function to calculate goal status
+  // Helper function to get goal status (AI-determined with algorithmic fallback)
   const getGoalStatus = (goal: Goal): 'On track' | 'At risk' | 'Failing' | null => {
+    // First, try to use AI-determined status
+    if (aiGoalStatuses[goal.id]) {
+      return aiGoalStatuses[goal.id];
+    }
+
+    // Fallback to algorithmic calculation if AI status not available
     const milestones = goalMilestones[goal.id] || [];
     const tasks = goalTasks[goal.id] || [];
     
@@ -2033,7 +2355,7 @@ export function TodoApp() {
       }
     }
 
-    // Determine status
+    // Determine status algorithmically (fallback)
     if (!nextDueDate) return null;
     
     const daysUntilDeadline = Math.ceil((new Date(nextDueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
@@ -2064,6 +2386,9 @@ export function TodoApp() {
     const status = getGoalStatus(goal);
     return status === 'At risk' || status === 'Failing';
   });
+
+  // All active goals (for NOTICE BOARD display)
+  const activeGoals = goals.filter(goal => goal.is_active !== false);
   
   const regularTasks = todayTasks.filter(todo => {
     const isNotReminder = todo.type !== 'reminder';
@@ -2815,7 +3140,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
 
             
             {/* SCHEDULED Section - Reminders, Daily Tasks, and At-Risk Goals side by side */}
-            {((reminders.length > 0 || dailyTaskItems.length > 0 || atRiskOrFailingGoals.length > 0) && (selectedTimeRange === "today" || selectedTimeRange === "tomorrow")) && (
+            {((reminders.length > 0 || dailyTaskItems.length > 0 || activeGoals.length > 0) && (selectedTimeRange === "today" || selectedTimeRange === "tomorrow")) && (
               <div className="content-stretch flex flex-col gap-[16px] items-start mb-[24px]" style={{ width: '100%' }}>
                 {/* SCHEDULED Header */}
                 <div className="content-stretch flex items-center justify-between gap-[8px] relative shrink-0 w-full" style={{ marginLeft: '20px', width: 'calc(100% - 20px)' }}>
@@ -3005,7 +3330,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   )}
 
                   {/* At-Risk/Failing Goals Box */}
-                  {atRiskOrFailingGoals.length > 0 && (
+                  {activeGoals.length > 0 && (
                     <div 
                       className="flex flex-col gap-[10px] items-start px-[16px] relative"
                       style={{ 
@@ -3019,7 +3344,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                     >
                       {/* Header */}
                       <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
-                        <div className="content-stretch flex items-center relative shrink-0">
+                        <div 
+                          className="content-stretch flex items-center relative shrink-0 cursor-pointer"
+                          onClick={() => setCurrentPage("goals")}
+                        >
                           <p 
                             className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
                             style={{ fontSize: '12px' }}
@@ -3029,14 +3357,14 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                         </div>
                         <div className="content-stretch flex items-center relative shrink-0">
                           <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
-                            {atRiskOrFailingGoals.length}
+                            {activeGoals.length}
                           </p>
                         </div>
                       </div>
 
                       {/* Goals List */}
                       <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                          {atRiskOrFailingGoals.map((goal) => {
+                          {activeGoals.map((goal) => {
                             const status = getGoalStatus(goal);
                             return (
                               <div
@@ -4046,14 +4374,57 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           }}
           onCreateMilestone={async (goalId, name, description, deadline) => {
             const created = await createMilestone({ goal_id: goalId, name, description, deadline: deadline || undefined });
+            // Refresh milestones and AI statuses
+            const goalMilestones = await fetchMilestones(goalId);
+            setGoalMilestones(prev => {
+              const updated = {
+                ...prev,
+                [goalId]: goalMilestones
+              };
+              // Save to localStorage
+              try {
+                localStorage.setItem('goal-milestones', JSON.stringify(updated));
+              } catch (error) {
+                console.error('Error saving goal milestones to localStorage:', error);
+              }
+              return updated;
+            });
+            setTimeout(() => refreshAiGoalStatuses(), 500);
             return created;
           }}
           onUpdateMilestone={async (id, name, description, deadline, achieved) => {
             const updated = await updateMilestone(id, { name, description, deadline: deadline || undefined, achieved });
+            // Refresh milestones and AI statuses
+            if (selectedGoal) {
+              const goalMilestones = await fetchMilestones(selectedGoal.id);
+              setGoalMilestones(prev => {
+                const updated = {
+                  ...prev,
+                  [selectedGoal.id]: goalMilestones
+                };
+                // Save to localStorage
+                try {
+                  localStorage.setItem('goal-milestones', JSON.stringify(updated));
+                } catch (error) {
+                  console.error('Error saving goal milestones to localStorage:', error);
+                }
+                return updated;
+              });
+              setTimeout(() => refreshAiGoalStatuses(), 500);
+            }
             return updated;
           }}
           onDeleteMilestone={async (id) => {
             await deleteMilestone(id);
+            // Refresh milestones and AI statuses
+            if (selectedGoal) {
+              const goalMilestones = await fetchMilestones(selectedGoal.id);
+              setGoalMilestones(prev => ({
+                ...prev,
+                [selectedGoal.id]: goalMilestones
+              }));
+              setTimeout(() => refreshAiGoalStatuses(), 500);
+            }
           }}
           onSelectMilestone={(milestone) => {
             setSelectedMilestone(milestone);
@@ -4091,6 +4462,24 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 }
               }
               setAllMilestonesWithGoals(allMilestones);
+              
+              // Also update goalMilestones state and save to localStorage
+              setGoalMilestones(prev => {
+                const updatedMilestones = {
+                  ...prev,
+                  [selectedGoal.id]: goalMilestones
+                };
+                // Save to localStorage
+                try {
+                  localStorage.setItem('goal-milestones', JSON.stringify(updatedMilestones));
+                } catch (error) {
+                  console.error('Error saving goal milestones to localStorage:', error);
+                }
+                return updatedMilestones;
+              });
+              
+              // Refresh AI goal statuses after milestone changed
+              setTimeout(() => refreshAiGoalStatuses(), 500);
             }
           }}
           onToggleAchieved={async (id, achieved) => {
@@ -4123,11 +4512,45 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   }
                 }
                 setAllMilestonesWithGoals(allMilestones);
+                setGoalMilestones(prev => {
+                  const updated = {
+                    ...prev,
+                    [selectedGoal.id]: goalMilestones
+                  };
+                  // Save to localStorage
+                  try {
+                    localStorage.setItem('goal-milestones', JSON.stringify(updated));
+                  } catch (error) {
+                    console.error('Error saving goal milestones to localStorage:', error);
+                  }
+                  return updated;
+                });
+                
+                // Refresh AI goal statuses after milestone achievement status changed
+                setTimeout(() => refreshAiGoalStatuses(), 500);
               }
             }
           }}
           onDeleteMilestone={async (id) => {
             await deleteMilestone(id);
+            // Refresh milestones and AI statuses
+            if (selectedGoal) {
+              const goalMilestones = await fetchMilestones(selectedGoal.id);
+              setGoalMilestones(prev => {
+                const updated = {
+                  ...prev,
+                  [selectedGoal.id]: goalMilestones
+                };
+                // Save to localStorage
+                try {
+                  localStorage.setItem('goal-milestones', JSON.stringify(updated));
+                } catch (error) {
+                  console.error('Error saving goal milestones to localStorage:', error);
+                }
+                return updated;
+              });
+              setTimeout(() => refreshAiGoalStatuses(), 500);
+            }
             setCurrentPage("goalDetail");
             setSelectedMilestone(null);
           }}

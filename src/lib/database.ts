@@ -137,6 +137,15 @@ export interface Milestone {
   updated_at?: string
 }
 
+export interface MilestoneUpdate {
+  id: number
+  milestone_id: number
+  user_id?: string
+  content: string
+  created_at?: string
+  updated_at?: string
+}
+
 // Convert database Todo to app Todo format
 export function dbTodoToAppTodo(dbTodo: any): Todo {
   return {
@@ -1387,5 +1396,201 @@ export async function deleteMilestone(id: number): Promise<void> {
     console.error('Error deleting milestone:', error)
     throw error
   }
+}
+
+// Milestone Updates
+export async function fetchMilestoneUpdates(milestoneId: number): Promise<MilestoneUpdate[]> {
+  const userId = await ensureAuthenticated()
+  
+  // Verify the milestone's goal belongs to the user
+  const { data: milestoneData } = await supabase
+    .from('milestones')
+    .select('goal_id')
+    .eq('id', milestoneId)
+    .single()
+  
+  if (!milestoneData) {
+    throw new Error('Milestone not found')
+  }
+  
+  const { data: goalData } = await supabase
+    .from('goals')
+    .select('user_id')
+    .eq('id', milestoneData.goal_id)
+    .eq('user_id', userId)
+    .single()
+  
+  if (!goalData) {
+    throw new Error('Goal not found or access denied')
+  }
+  
+  const { data, error } = await supabase
+    .from('milestone_updates')
+    .select('*')
+    .eq('milestone_id', milestoneId)
+    .order('created_at', { ascending: false })
+  
+  if (error) {
+    console.error('Error fetching milestone updates:', error)
+    throw error
+  }
+  
+  return data || []
+}
+
+export async function createMilestoneUpdate(milestoneId: number, content: string): Promise<MilestoneUpdate> {
+  const userId = await ensureAuthenticated()
+  
+  // Verify the milestone's goal belongs to the user
+  const { data: milestoneData } = await supabase
+    .from('milestones')
+    .select('goal_id')
+    .eq('id', milestoneId)
+    .single()
+  
+  if (!milestoneData) {
+    throw new Error('Milestone not found')
+  }
+  
+  const { data: goalData } = await supabase
+    .from('goals')
+    .select('user_id')
+    .eq('id', milestoneData.goal_id)
+    .eq('user_id', userId)
+    .single()
+  
+  if (!goalData) {
+    throw new Error('Goal not found or access denied')
+  }
+  
+  const { data, error } = await supabase
+    .from('milestone_updates')
+    .insert({
+      milestone_id: milestoneId,
+      user_id: userId,
+      content: content.trim()
+    })
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Error creating milestone update:', error)
+    throw error
+  }
+  
+  return data
+}
+
+export async function updateMilestoneUpdate(id: number, content: string): Promise<MilestoneUpdate> {
+  const userId = await ensureAuthenticated()
+  
+  // Verify the update belongs to the user
+  const { data: updateData } = await supabase
+    .from('milestone_updates')
+    .select('user_id')
+    .eq('id', id)
+    .single()
+  
+  if (!updateData) {
+    throw new Error('Milestone update not found')
+  }
+  
+  if (updateData.user_id !== userId) {
+    throw new Error('Access denied')
+  }
+  
+  const { data, error } = await supabase
+    .from('milestone_updates')
+    .update({ content: content.trim() })
+    .eq('id', id)
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Error updating milestone update:', error)
+    throw error
+  }
+  
+  return data
+}
+
+export async function deleteMilestoneUpdate(id: number): Promise<void> {
+  const userId = await ensureAuthenticated()
+  
+  // Verify the update belongs to the user
+  const { data: updateData } = await supabase
+    .from('milestone_updates')
+    .select('user_id')
+    .eq('id', id)
+    .single()
+  
+  if (!updateData) {
+    throw new Error('Milestone update not found')
+  }
+  
+  if (updateData.user_id !== userId) {
+    throw new Error('Access denied')
+  }
+  
+  const { error } = await supabase
+    .from('milestone_updates')
+    .delete()
+    .eq('id', id)
+  
+  if (error) {
+    console.error('Error deleting milestone update:', error)
+    throw error
+  }
+}
+
+// Fetch updates for multiple milestones at once
+export async function fetchMilestoneUpdatesForMilestones(milestoneIds: number[]): Promise<MilestoneUpdate[]> {
+  if (milestoneIds.length === 0) return []
+  
+  const userId = await ensureAuthenticated()
+  
+  // Verify all milestones belong to the user's goals
+  const { data: milestonesData } = await supabase
+    .from('milestones')
+    .select('id, goal_id')
+    .in('id', milestoneIds)
+  
+  if (!milestonesData || milestonesData.length === 0) {
+    return []
+  }
+  
+  // Get all goal IDs and verify they belong to the user
+  const goalIds = [...new Set(milestonesData.map(m => m.goal_id))]
+  const { data: goalsData } = await supabase
+    .from('goals')
+    .select('id')
+    .in('id', goalIds)
+    .eq('user_id', userId)
+  
+  if (!goalsData || goalsData.length === 0) {
+    return []
+  }
+  
+  const validGoalIds = goalsData.map(g => g.id)
+  const validMilestoneIds = milestonesData
+    .filter(m => validGoalIds.includes(m.goal_id))
+    .map(m => m.id)
+  
+  if (validMilestoneIds.length === 0) {
+    return []
+  }
+  
+  const { data, error } = await supabase
+    .from('milestone_updates')
+    .select('*')
+    .in('milestone_id', validMilestoneIds)
+    .order('created_at', { ascending: false })
+  
+  if (error) {
+    console.error('Error fetching milestone updates:', error)
+    throw error
+  }
+  
+  return data || []
 }
 

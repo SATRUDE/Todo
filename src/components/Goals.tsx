@@ -33,8 +33,54 @@ export function Goals({
   const [goalsReport, setGoalsReport] = useState<string>("");
   const [isLoadingGoals, setIsLoadingGoals] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const [goalMilestones, setGoalMilestones] = useState<Record<number, Milestone[]>>({});
-  const [goalTasks, setGoalTasks] = useState<Record<number, any[]>>({});
+  const [goalMilestones, setGoalMilestones] = useState<Record<number, Milestone[]>>(() => {
+    // Load saved goal milestones from localStorage on mount
+    try {
+      const saved = localStorage.getItem('goal-milestones');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Error loading saved goal milestones:', error);
+    }
+    return {};
+  });
+  const [goalTasks, setGoalTasks] = useState<Record<number, any[]>>(() => {
+    // Load saved goal tasks from localStorage on mount
+    try {
+      const saved = localStorage.getItem('goal-tasks');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Error loading saved goal tasks:', error);
+    }
+    return {};
+  });
+  const [milestoneUpdates, setMilestoneUpdates] = useState<MilestoneUpdate[]>(() => {
+    // Load saved milestone updates from localStorage on mount
+    try {
+      const saved = localStorage.getItem('milestone-updates');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Error loading saved milestone updates:', error);
+    }
+    return [];
+  });
+  const [aiGoalStatuses, setAiGoalStatuses] = useState<Record<number, 'On track' | 'At risk' | 'Failing'>>(() => {
+    // Load saved goal statuses from localStorage on mount
+    try {
+      const saved = localStorage.getItem('goal-statuses');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Error loading saved goal statuses:', error);
+    }
+    return {};
+  });
 
   // Load saved Goals Overview report and last sync time from localStorage on mount
   useEffect(() => {
@@ -91,12 +137,123 @@ export function Goals({
 
       setGoalMilestones(milestonesMap);
       setGoalTasks(tasksMap);
+      
+      // Save to localStorage for instant loading on next page load
+      try {
+        localStorage.setItem('goal-milestones', JSON.stringify(milestonesMap));
+        localStorage.setItem('goal-tasks', JSON.stringify(tasksMap));
+      } catch (error) {
+        console.error('Error saving goal data to localStorage:', error);
+      }
     };
 
     if (goals.length > 0) {
       loadGoalData();
     }
   }, [goals]);
+
+  // Fetch milestone updates when milestones change
+  useEffect(() => {
+    const loadMilestoneUpdates = async () => {
+      if (Object.keys(goalMilestones).length === 0) return;
+      
+      // Collect all milestone IDs
+      const allMilestoneIds: number[] = [];
+      Object.values(goalMilestones).forEach(milestones => {
+        milestones.forEach(m => {
+          allMilestoneIds.push(m.id);
+        });
+      });
+      
+      if (allMilestoneIds.length === 0) return;
+      
+      try {
+        const updates = await fetchMilestoneUpdatesForMilestones(allMilestoneIds);
+        setMilestoneUpdates(updates);
+        
+        // Save to localStorage for instant loading on next page load
+        try {
+          localStorage.setItem('milestone-updates', JSON.stringify(updates));
+        } catch (error) {
+          console.error('Error saving milestone updates to localStorage:', error);
+        }
+      } catch (error) {
+        console.error('Error fetching milestone updates:', error);
+      }
+    };
+    
+    loadMilestoneUpdates();
+  }, [goalMilestones]);
+
+  // Fetch AI-determined goal statuses
+  useEffect(() => {
+    const fetchAiGoalStatuses = async () => {
+      // Only fetch if we have goals, milestones, and tasks loaded
+      if (goals.length === 0 || Object.keys(goalMilestones).length === 0) return;
+      
+      // Collect all milestones and tasks
+      const allMilestones: Milestone[] = [];
+      const allTasks: any[] = [];
+      
+      goals.forEach(goal => {
+        const milestones = goalMilestones[goal.id] || [];
+        const tasks = goalTasks[goal.id] || [];
+        allMilestones.push(...milestones);
+        allTasks.push(...tasks);
+      });
+
+      // Filter to only active goals with deadlines or milestones
+      const goalsToAnalyze = goals.filter(goal => {
+        if (goal.is_active === false) return false;
+        // Must have either goal deadline or at least one milestone with deadline
+        if (goal.deadline_date) return true;
+        const milestones = goalMilestones[goal.id] || [];
+        return milestones.some(m => m.deadline_date);
+      });
+
+      if (goalsToAnalyze.length === 0) return;
+
+      try {
+        const response = await fetch('/api/goal-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            goals: goalsToAnalyze,
+            milestones: allMilestones,
+            tasks: allTasks,
+            milestoneUpdates: milestoneUpdates,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.success && data.statuses) {
+          // Convert string keys to numbers
+          const statuses: Record<number, 'On track' | 'At risk' | 'Failing'> = {};
+          Object.entries(data.statuses).forEach(([goalId, status]) => {
+            statuses[parseInt(goalId)] = status as 'On track' | 'At risk' | 'Failing';
+          });
+          setAiGoalStatuses(statuses);
+          // Save to localStorage for instant loading on next page load
+          try {
+            localStorage.setItem('goal-statuses', JSON.stringify(statuses));
+          } catch (error) {
+            console.error('Error saving goal statuses to localStorage:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching AI goal statuses:', error);
+        // Silently fail - will fall back to algorithmic calculation
+      }
+    };
+
+    fetchAiGoalStatuses();
+  }, [goals, goalMilestones, goalTasks, milestoneUpdates]);
 
   const handleGoalClick = (goal: Goal) => {
     onSelectGoal(goal);
@@ -424,9 +581,14 @@ export function Goals({
       return new Date(t.updated_at) >= oneWeekAgo;
     }).length;
 
-    // Determine status (simplified - can be enhanced)
+    // Determine status (AI-determined with algorithmic fallback)
     let status: 'On track' | 'At risk' | 'Failing' = 'On track';
-    if (nextDueDate) {
+    
+    // First, try to use AI-determined status
+    if (aiGoalStatuses[goalId]) {
+      status = aiGoalStatuses[goalId];
+    } else if (nextDueDate) {
+      // Fallback to algorithmic calculation if AI status not available
       const daysUntilDeadline = Math.ceil((new Date(nextDueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
       const completionRate = totalMilestones > 0 ? completedMilestones / totalMilestones : 0;
       
@@ -486,35 +648,6 @@ export function Goals({
               </div>
             </div>
             <div className="content-stretch flex items-center gap-[12px] relative shrink-0">
-              {/* Sync Button */}
-              <div className="flex flex-col items-center gap-[4px] relative shrink-0">
-                {/* #region agent log */}
-                {(() => {
-                  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:render:syncButton',message:'Rendering sync button',data:{hasLastSyncTime:!!lastSyncTime,lastSyncTimeISO:lastSyncTime?.toISOString(),lastSyncTimeString:lastSyncTime?.toLocaleTimeString(),isLoadingGoals},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'H'})}).catch(()=>{});
-                  return null;
-                })()}
-                {/* #endregion */}
-                <div 
-                  className="relative shrink-0 cursor-pointer"
-                  onClick={generateGoalsReport}
-                  style={{ opacity: isLoadingGoals ? 0.5 : 1, pointerEvents: isLoadingGoals ? 'none' : 'auto' }}
-                >
-                  <svg 
-                    className={`block size-[24px] ${isLoadingGoals ? 'animate-spin' : ''}`}
-                    fill="none" 
-                    preserveAspectRatio="none" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth="1.5" 
-                      stroke="#E1E6EE" 
-                      d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" 
-                    />
-                  </svg>
-                </div>
-              </div>
               {/* Plus Button */}
               <div 
                 className="relative shrink-0 size-[32px] cursor-pointer"
@@ -642,136 +775,6 @@ export function Goals({
             )}
           </div>
 
-          {/* Goals Overview AI Report */}
-          {goalsInsights.length > 0 && (
-            <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full mt-[24px]">
-              <h2 className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] text-[22px] text-white tracking-[-0.242px]">
-                Goals Overview
-              </h2>
-              <div className="flex flex-col gap-[16px] w-full">
-                {goalsInsights.map((goal, goalIndex) => (
-                  <div 
-                    key={goalIndex} 
-                    className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[20px] py-[20px] w-full"
-                  >
-                    {/* Header: Goal Name and Status Badge */}
-                    <div className="flex items-center justify-between mb-[16px]">
-                      <h3 className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] text-[20px] text-white tracking-[-0.22px] flex-1">
-                        {goal?.goalName || 'Unknown Goal'}
-                      </h3>
-                      {goal?.status && (
-                        <span 
-                          className="px-[12px] py-[4px] rounded-[6px] text-[14px] font-medium"
-                          style={{ 
-                            backgroundColor: getStatusColor(goal.status) + '20',
-                            color: getStatusColor(goal.status)
-                          }}
-                        >
-                          {goal.status}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Progress Bar */}
-                    {goal?.progressSummary?.milestonesCompleted && (
-                      <div className="mb-[16px]">
-                        <div className="flex items-center justify-between mb-[8px]">
-                          <span className="font-['Inter:Regular',sans-serif] text-[14px]" style={{ color: '#A1A1AA' }}>
-                            Milestones: {goal.progressSummary.milestonesCompleted}
-                          </span>
-                        </div>
-                        <div className="w-full bg-[#2a2b2d] rounded-full h-[8px] overflow-hidden">
-                          <div 
-                            className="h-full rounded-full transition-all"
-                            style={{ 
-                              width: `${getMilestonePercentage(goal.progressSummary)}%`,
-                              backgroundColor: getStatusColor(goal.status)
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Metrics Section */}
-                    {(goal?.progressSummary?.tasksCompletedRecent || 
-                      goal?.progressSummary?.taskCompletionRate || 
-                      goal?.progressSummary?.velocity) && (
-                      <div className="mb-[16px]">
-                        <h4 className="font-['Inter:Medium',sans-serif] font-medium text-[16px] text-white mb-[8px]">
-                          Progress:
-                        </h4>
-                        <ul className="flex flex-col gap-[6px] list-none pl-0">
-                          {goal.progressSummary.tasksCompletedRecent && (
-                            <li className="flex items-center gap-[8px]">
-                              <span style={{ color: '#A1A1AA' }}>•</span>
-                              <span className="font-['Inter:Regular',sans-serif] text-[14px]" style={{ color: '#A1A1AA' }}>
-                                {goal.progressSummary.tasksCompletedRecent} tasks completed in last 7 days
-                              </span>
-                            </li>
-                          )}
-                          {goal.progressSummary.taskCompletionRate && (
-                            <li className="flex items-center gap-[8px]">
-                              <span style={{ color: '#A1A1AA' }}>•</span>
-                              <span className="font-['Inter:Regular',sans-serif] text-[14px]" style={{ color: '#A1A1AA' }}>
-                                {goal.progressSummary.taskCompletionRate} task completion rate
-                              </span>
-                            </li>
-                          )}
-                          {goal.progressSummary.velocity && (
-                            <li className="flex items-center gap-[8px]">
-                              <span style={{ color: '#A1A1AA' }}>•</span>
-                              <span className="font-['Inter:Regular',sans-serif] text-[14px]" style={{ color: '#A1A1AA' }}>
-                                Velocity: {goal.progressSummary.velocity}
-                              </span>
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Prediction Section */}
-                    {goal?.prediction && (
-                      <div className="mb-[16px]">
-                        <h4 className="font-['Inter:Medium',sans-serif] font-medium text-[16px] text-white mb-[8px]">
-                          Prediction:
-                        </h4>
-                        <div className="flex items-start gap-[8px]">
-                          <span className="mt-[2px] shrink-0" style={{ color: '#A1A1AA' }}>
-                            {goal.status === 'On Track' ? '✓' : goal.status === 'At Risk' ? '⚠' : '✗'}
-                          </span>
-                          <p className="font-['Inter:Regular',sans-serif] text-[14px] flex-1" style={{ color: '#A1A1AA' }}>
-                            {goal.prediction}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Adjustments Section */}
-                    {goal?.adjustments && goal.adjustments.length > 0 && (
-                      <div>
-                        <h4 className="font-['Inter:Medium',sans-serif] font-medium text-[16px] text-white mb-[8px]">
-                          Adjustments:
-                        </h4>
-                        <ul className="flex flex-col gap-[6px] list-none pl-0">
-                          {goal.adjustments.map((adjustment, adjIndex) => (
-                            <li 
-                              key={adjIndex}
-                              className="flex items-start gap-[8px]"
-                            >
-                              <span className="mt-[2px] shrink-0" style={{ color: '#A1A1AA' }}>•</span>
-                              <p className="font-['Inter:Regular',sans-serif] text-[14px] flex-1" style={{ color: '#A1A1AA' }}>
-                                {adjustment}
-                              </p>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           
           {/* Spacer to prevent bottom cutoff */}
           <div className="w-full" style={{ height: '20px' }} />
