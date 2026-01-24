@@ -62,7 +62,10 @@ import {
   deleteMilestone,
   Milestone,
   fetchMilestoneUpdatesForMilestones,
-  MilestoneUpdate
+  MilestoneUpdate,
+  fetchGoalStatuses,
+  upsertGoalStatuses,
+  type GoalStatus
 } from "../lib/database";
 import { 
   requestNotificationPermission, 
@@ -488,16 +491,33 @@ export function TodoApp() {
     loadMilestoneUpdates();
   }, [goalMilestones]);
 
-  // Fetch AI-determined goal statuses
+  // Sync goal statuses from DB on load (source of truth across devices). Instant load from localStorage above.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    fetchGoalStatuses()
+      .then((statuses) => {
+        if (cancelled) return;
+        setAiGoalStatuses(statuses);
+        try {
+          localStorage.setItem('goal-statuses', JSON.stringify(statuses));
+        } catch (e) {
+          console.error('Error saving goal statuses to localStorage:', e);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) console.error('Error fetching goal statuses from DB:', err);
+      });
+    return () => { cancelled = true; };
+  }, [isAuthenticated]);
+
+  // Fetch AI-determined goal statuses (and persist to DB so they match across devices)
   useEffect(() => {
     const fetchAiGoalStatuses = async () => {
-      // Only fetch if we have goals, milestones, and tasks loaded
       if (goals.length === 0 || Object.keys(goalMilestones).length === 0) return;
       
-      // Collect all milestones and tasks
       const allMilestones: Milestone[] = [];
       const allTasks: any[] = [];
-      
       goals.forEach(goal => {
         const milestones = goalMilestones[goal.id] || [];
         const tasks = goalTasks[goal.id] || [];
@@ -505,23 +525,18 @@ export function TodoApp() {
         allTasks.push(...tasks);
       });
 
-      // Filter to only active goals with deadlines or milestones
       const goalsToAnalyze = goals.filter(goal => {
         if (goal.is_active === false) return false;
-        // Must have either goal deadline or at least one milestone with deadline
         if (goal.deadline_date) return true;
         const milestones = goalMilestones[goal.id] || [];
         return milestones.some(m => m.deadline_date);
       });
-
       if (goalsToAnalyze.length === 0) return;
 
       try {
         const response = await fetch('/api/goal-status', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             goals: goalsToAnalyze,
             milestones: allMilestones,
@@ -529,29 +544,23 @@ export function TodoApp() {
             milestoneUpdates: milestoneUpdates,
           }),
         });
-
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
         const data = await response.json();
-        if (data.success && data.statuses) {
-          // Convert string keys to numbers
-          const statuses: Record<number, 'On track' | 'At risk' | 'Failing'> = {};
-          Object.entries(data.statuses).forEach(([goalId, status]) => {
-            statuses[parseInt(goalId)] = status as 'On track' | 'At risk' | 'Failing';
-          });
-          setAiGoalStatuses(statuses);
-          // Save to localStorage for instant loading on next page load
-          try {
-            localStorage.setItem('goal-statuses', JSON.stringify(statuses));
-          } catch (error) {
-            console.error('Error saving goal statuses to localStorage:', error);
-          }
+        if (!data.success || !data.statuses) return;
+
+        const statuses: Record<number, GoalStatus> = {};
+        Object.entries(data.statuses).forEach(([goalId, status]) => {
+          statuses[parseInt(goalId)] = status as GoalStatus;
+        });
+        setAiGoalStatuses(statuses);
+        try {
+          await upsertGoalStatuses(statuses);
+          localStorage.setItem('goal-statuses', JSON.stringify(statuses));
+        } catch (e) {
+          console.error('Error persisting goal statuses:', e);
         }
       } catch (error) {
         console.error('Error fetching AI goal statuses:', error);
-        // Silently fail - will fall back to algorithmic calculation
       }
     };
 
@@ -681,16 +690,16 @@ export function TodoApp() {
 
       const data = await response.json();
       if (data.success && data.statuses) {
-        const statuses: Record<number, 'On track' | 'At risk' | 'Failing'> = {};
+        const statuses: Record<number, GoalStatus> = {};
         Object.entries(data.statuses).forEach(([goalId, status]) => {
-          statuses[parseInt(goalId)] = status as 'On track' | 'At risk' | 'Failing';
+          statuses[parseInt(goalId)] = status as GoalStatus;
         });
         setAiGoalStatuses(statuses);
-        // Save to localStorage for instant loading on next page load
         try {
+          await upsertGoalStatuses(statuses);
           localStorage.setItem('goal-statuses', JSON.stringify(statuses));
-        } catch (error) {
-          console.error('Error saving goal statuses to localStorage:', error);
+        } catch (e) {
+          console.error('Error persisting goal statuses:', e);
         }
       }
     } catch (error) {
@@ -4405,6 +4414,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               setSelectedGoal(goal);
               setCurrentPage("goalDetail");
             }}
+            aiGoalStatuses={aiGoalStatuses}
+            onRefreshGoalStatuses={refreshAiGoalStatuses}
           />
         )
       ) : currentPage === "goalDetail" && selectedGoal ? (

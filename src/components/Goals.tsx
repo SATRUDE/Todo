@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { GoalDetailModal } from "./GoalDetailModal";
 import { supabase } from "../lib/supabase";
-import { fetchMilestones, Milestone } from "../lib/database";
+import { fetchMilestones, Milestone, fetchMilestoneUpdatesForMilestones, MilestoneUpdate } from "../lib/database";
 
 interface Goal {
   id: number;
@@ -11,6 +11,8 @@ interface Goal {
   deadline_date?: string | null;
 }
 
+type GoalStatus = 'On track' | 'At risk' | 'Failing';
+
 interface GoalsProps {
   onBack: () => void;
   goals: Goal[];
@@ -18,6 +20,8 @@ interface GoalsProps {
   onCreateGoal: (text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => Promise<void>;
   onDeleteGoal: (id: number) => Promise<void>;
   onSelectGoal: (goal: Goal) => void;
+  aiGoalStatuses: Record<number, GoalStatus>;
+  onRefreshGoalStatuses?: () => Promise<void>;
 }
 
 export function Goals({ 
@@ -26,7 +30,9 @@ export function Goals({
   onUpdateGoal,
   onCreateGoal,
   onDeleteGoal,
-  onSelectGoal
+  onSelectGoal,
+  aiGoalStatuses,
+  onRefreshGoalStatuses
 }: GoalsProps) {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -68,18 +74,6 @@ export function Goals({
       console.error('Error loading saved milestone updates:', error);
     }
     return [];
-  });
-  const [aiGoalStatuses, setAiGoalStatuses] = useState<Record<number, 'On track' | 'At risk' | 'Failing'>>(() => {
-    // Load saved goal statuses from localStorage on mount
-    try {
-      const saved = localStorage.getItem('goal-statuses');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (error) {
-      console.error('Error loading saved goal statuses:', error);
-    }
-    return {};
   });
 
   // Load saved Goals Overview report and last sync time from localStorage on mount
@@ -184,76 +178,6 @@ export function Goals({
     
     loadMilestoneUpdates();
   }, [goalMilestones]);
-
-  // Fetch AI-determined goal statuses
-  useEffect(() => {
-    const fetchAiGoalStatuses = async () => {
-      // Only fetch if we have goals, milestones, and tasks loaded
-      if (goals.length === 0 || Object.keys(goalMilestones).length === 0) return;
-      
-      // Collect all milestones and tasks
-      const allMilestones: Milestone[] = [];
-      const allTasks: any[] = [];
-      
-      goals.forEach(goal => {
-        const milestones = goalMilestones[goal.id] || [];
-        const tasks = goalTasks[goal.id] || [];
-        allMilestones.push(...milestones);
-        allTasks.push(...tasks);
-      });
-
-      // Filter to only active goals with deadlines or milestones
-      const goalsToAnalyze = goals.filter(goal => {
-        if (goal.is_active === false) return false;
-        // Must have either goal deadline or at least one milestone with deadline
-        if (goal.deadline_date) return true;
-        const milestones = goalMilestones[goal.id] || [];
-        return milestones.some(m => m.deadline_date);
-      });
-
-      if (goalsToAnalyze.length === 0) return;
-
-      try {
-        const response = await fetch('/api/goal-status', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            goals: goalsToAnalyze,
-            milestones: allMilestones,
-            tasks: allTasks,
-            milestoneUpdates: milestoneUpdates,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        if (data.success && data.statuses) {
-          // Convert string keys to numbers
-          const statuses: Record<number, 'On track' | 'At risk' | 'Failing'> = {};
-          Object.entries(data.statuses).forEach(([goalId, status]) => {
-            statuses[parseInt(goalId)] = status as 'On track' | 'At risk' | 'Failing';
-          });
-          setAiGoalStatuses(statuses);
-          // Save to localStorage for instant loading on next page load
-          try {
-            localStorage.setItem('goal-statuses', JSON.stringify(statuses));
-          } catch (error) {
-            console.error('Error saving goal statuses to localStorage:', error);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching AI goal statuses:', error);
-        // Silently fail - will fall back to algorithmic calculation
-      }
-    };
-
-    fetchAiGoalStatuses();
-  }, [goals, goalMilestones, goalTasks, milestoneUpdates]);
 
   const handleGoalClick = (goal: Goal) => {
     onSelectGoal(goal);

@@ -1137,6 +1137,54 @@ export async function deleteGoal(id: number): Promise<void> {
   }
 }
 
+export type GoalStatus = 'On track' | 'At risk' | 'Failing'
+
+/** Fetch stored goal statuses from DB (source of truth across devices). */
+export async function fetchGoalStatuses(): Promise<Record<number, GoalStatus>> {
+  const userId = await ensureAuthenticated()
+  const { data, error } = await supabase
+    .from('goal_statuses')
+    .select('goal_id, status')
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Error fetching goal statuses:', error)
+    throw error
+  }
+
+  const out: Record<number, GoalStatus> = {}
+  for (const row of data || []) {
+    const s = row.status as GoalStatus
+    if (s === 'On track' || s === 'At risk' || s === 'Failing') {
+      out[Number(row.goal_id)] = s
+    }
+  }
+  return out
+}
+
+/** Upsert goal statuses after AI API returns. Keeps DB in sync across devices. */
+export async function upsertGoalStatuses(statuses: Record<number, GoalStatus>): Promise<void> {
+  const userId = await ensureAuthenticated()
+  const rows = Object.entries(statuses).map(([goalId, status]) => ({
+    user_id: userId,
+    goal_id: Number(goalId),
+    status,
+    updated_at: new Date().toISOString(),
+  }))
+
+  if (rows.length === 0) return
+
+  const { error } = await supabase.from('goal_statuses').upsert(rows, {
+    onConflict: 'user_id,goal_id',
+    ignoreDuplicates: false,
+  })
+
+  if (error) {
+    console.error('Error upserting goal statuses:', error)
+    throw error
+  }
+}
+
 // Convert database Goal to display format
 export function dbGoalToDisplayGoal(dbGoal: Goal): any {
   return {
