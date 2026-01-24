@@ -182,6 +182,7 @@ export function TodoApp() {
   const [loading, setLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(false);
   const [isSecondaryDataLoading, setIsSecondaryDataLoading] = useState(false);
+  const isGeneratingDailyTasksRef = useRef(false);
   const [milestonesLoaded, setMilestonesLoaded] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
@@ -394,6 +395,12 @@ export function TodoApp() {
       // Convert goals from database format to display format
       const displayGoals = goalsResult.map(dbGoalToDisplayGoal);
       setGoals(displayGoals);
+      
+      // Generate tasks from daily tasks for today (if not already generated)
+      if (displayDailyTasks.length > 0) {
+        // generateTasksFromDailyTasks will fetch fresh todos itself, so we don't need to pass existingTodos
+        await generateTasksFromDailyTasks(displayDailyTasks);
+      }
     } catch (error) {
       console.error('Error loading secondary data:', error);
     } finally {
@@ -1514,11 +1521,23 @@ export function TodoApp() {
 
   // Generate tasks from daily tasks for today
   const generateTasksFromDailyTasks = async (dailyTasksToCheck: any[], existingTodos?: Todo[]) => {
+    // Prevent concurrent execution
+    if (isGeneratingDailyTasksRef.current) {
+      return;
+    }
+    
+    isGeneratingDailyTasksRef.current = true;
+    
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const todosToCheck = existingTodos || todos;
+      // Always fetch fresh todos from database to avoid stale state
+      const freshTodos = await fetchTasks();
+      const todosToCheck = freshTodos.map(dbTodoToDisplayTodo);
+      
+      let tasksCreated = 0;
+      let tasksSkipped = 0;
       
       for (const dailyTask of dailyTasksToCheck) {
         // Use the assigned list, or default to Today (0) if no list is assigned
@@ -1545,6 +1564,33 @@ export function TodoApp() {
           return false;
         });
         
+        // Find all matching tasks to check for duplicates
+        const matchingTasks = todosToCheck.filter(todo => {
+          if (todo.completed) return false;
+          if (todo.dailyTaskId === dailyTask.id) {
+            if (todo.deadline) {
+              const deadlineDate = new Date(todo.deadline.date);
+              deadlineDate.setHours(0, 0, 0, 0);
+              return deadlineDate.getTime() === today.getTime();
+            }
+            return todo.listId === targetListId;
+          }
+          return false;
+        });
+        
+        // Clean up duplicates: if there are multiple tasks for today, keep only the first one
+        if (matchingTasks.length > 1) {
+          // Keep the first task (oldest), delete the rest
+          const tasksToDelete = matchingTasks.slice(1);
+          for (const duplicateTask of tasksToDelete) {
+            try {
+              await deleteTaskDb(duplicateTask.id);
+            } catch (error) {
+              console.error(`Error deleting duplicate task ${duplicateTask.id}:`, error);
+            }
+          }
+        }
+        
         // If no task exists for today, create one
         if (!existingTask) {
           const newTodo: Todo = {
@@ -1564,9 +1610,12 @@ export function TodoApp() {
           
           try {
             await createTask(newTodo);
+            tasksCreated++;
           } catch (error) {
             console.error(`Error creating task from daily task ${dailyTask.id}:`, error);
           }
+        } else {
+          tasksSkipped++;
         }
       }
       
@@ -1576,6 +1625,8 @@ export function TodoApp() {
       setTodos(displayTasks);
     } catch (error) {
       console.error('Error generating tasks from daily tasks:', error);
+    } finally {
+      isGeneratingDailyTasksRef.current = false;
     }
   };
 
