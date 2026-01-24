@@ -13,6 +13,11 @@ interface Goal {
 
 type GoalStatus = 'On track' | 'At risk' | 'Failing';
 
+interface GoalStatusInfo {
+  status: GoalStatus;
+  explanation?: string | null;
+}
+
 interface GoalsProps {
   onBack: () => void;
   goals: Goal[];
@@ -20,7 +25,7 @@ interface GoalsProps {
   onCreateGoal: (text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => Promise<void>;
   onDeleteGoal: (id: number) => Promise<void>;
   onSelectGoal: (goal: Goal) => void;
-  aiGoalStatuses: Record<number, GoalStatus>;
+  aiGoalStatuses: Record<number, GoalStatusInfo>;
   onRefreshGoalStatuses?: () => Promise<void>;
 }
 
@@ -507,10 +512,9 @@ export function Goals({
 
     // Determine status (AI-determined with algorithmic fallback)
     let status: 'On track' | 'At risk' | 'Failing' = 'On track';
-    
-    // First, try to use AI-determined status
-    if (aiGoalStatuses[goalId]) {
-      status = aiGoalStatuses[goalId];
+    const info = aiGoalStatuses[goalId];
+    if (info?.status) {
+      status = info.status;
     } else if (nextDueDate) {
       // Fallback to algorithmic calculation if AI status not available
       const daysUntilDeadline = Math.ceil((new Date(nextDueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
@@ -627,18 +631,29 @@ export function Goals({
                         ) : (
                           <div />
                         )}
-                        <div className="flex items-center gap-[6px]">
-                          <div 
-                            className="w-[8px] h-[8px] rounded-full"
-                            style={{ backgroundColor: getStatusColor(metrics.status) }}
-                          />
-                          <p 
-                            className="font-['Inter:Regular',sans-serif] font-normal text-[14px]"
-                            style={{ color: getStatusColor(metrics.status) }}
+                        {metrics.status && (
+                          <span
+                            className="font-['Inter:Medium',sans-serif] font-medium text-[13px] tracking-[-0.1px]"
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              backgroundColor:
+                                metrics.status === 'On track'
+                                  ? 'rgba(76, 175, 80, 0.2)'
+                                  : metrics.status === 'At risk'
+                                    ? 'rgba(255, 193, 7, 0.2)'
+                                    : 'rgba(244, 67, 54, 0.2)',
+                              color:
+                                metrics.status === 'On track'
+                                  ? '#81c784'
+                                  : metrics.status === 'At risk'
+                                    ? '#ffca28'
+                                    : '#e57373',
+                            }}
                           >
                             {metrics.status}
-                          </p>
-                        </div>
+                          </span>
+                        )}
                       </div>
 
                       {/* Goal Title */}

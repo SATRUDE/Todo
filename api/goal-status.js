@@ -54,7 +54,7 @@ function formatGoalForAnalysis(goal, milestones = [], tasks = [], milestoneUpdat
     return new Date(t.updated_at) >= oneWeekAgo;
   }).length;
 
-  let analysis = `Goal: "${goal.text}"`;
+  let analysis = `Goal ID: ${goal.id}\nGoal: "${goal.text}"`;
   if (goal.description) {
     analysis += `\nDescription: ${goal.description}`;
   }
@@ -192,19 +192,27 @@ For each goal, determine its status as one of:
 
 Be thoughtful, considerate, and default to optimism when progress is reasonable. Only use "At risk" or "Failing" when there are clear, specific concerns about goal achievement.
 
+For each goal, also provide a short explanation (2–4 sentences) in plain English. Explain why you chose that status. Be encouraging but honest. Use simple words. No jargon.
+
 Return ONLY a JSON object with this exact format:
 {
   "statuses": {
     "goalId1": "On track",
     "goalId2": "At risk",
     "goalId3": "Failing"
+  },
+  "explanations": {
+    "goalId1": "Your 2–4 sentence explanation for this goal.",
+    "goalId2": "Your 2–4 sentence explanation for this goal.",
+    "goalId3": "Your 2–4 sentence explanation for this goal."
   }
 }
 
-Where goalId is the goal's ID number. Use only the exact status strings: "On track", "At risk", or "Failing".`;
+Where goalId is the goal's ID number (each goal section starts with "Goal ID: X"). Use ONLY these exact IDs. Use only the exact status strings: "On track", "At risk", or "Failing". You MUST include every Goal ID present in the analysis in both "statuses" and "explanations"—do not skip any.`;
 
     // Build user message
-    const userMessage = `Analyze these goals and determine their status. Remember: default to "On track" when progress is reasonable. For consistency/habit goals like "train consistently", consider that temporary dips in recent activity are normal and not necessarily indicative of "At risk" status.\n\n${goalsAnalysis}\n\nReturn the status for each goal in the specified JSON format.`;
+    const goalIdsList = goals.map(g => g.id).join(', ');
+    const userMessage = `Analyze these goals and determine their status plus a short explanation for each. The goals have IDs: ${goalIdsList}. You MUST return a status and explanation for every one of these IDs—no omissions.\n\nRemember: default to "On track" when progress is reasonable. For consistency/habit goals like "train consistently", consider that temporary dips in recent activity are normal and not necessarily indicative of "At risk" status.\n\n${goalsAnalysis}\n\nReturn the status and explanation for each goal (IDs: ${goalIdsList}) in the specified JSON format.`;
 
     // Call OpenAI API
     let completion;
@@ -244,11 +252,27 @@ Where goalId is the goal's ID number. Use only the exact status strings: "On tra
       console.error('[goal-status] Invalid response format:', statusData);
       throw new Error('Invalid response format from AI');
     }
+    const explanations = statusData.explanations && typeof statusData.explanations === 'object'
+      ? statusData.explanations
+      : {};
 
-    // Return the statuses
+    const requestedIds = goals.map(g => String(g.id));
+    const returnedIds = Object.keys(statusData.statuses);
+    const missing = requestedIds.filter(id => !returnedIds.includes(id));
+    if (missing.length > 0) {
+      console.error('[goal-status] AI omitted goals:', missing, 'requested:', requestedIds, 'returned:', returnedIds);
+      return res.status(500).json({
+        success: false,
+        error: 'AI omitted goal statuses',
+        message: `Status missing for goal(s): ${missing.join(', ')}. Please retry.`
+      });
+    }
+
+    // Return the statuses and explanations
     return res.status(200).json({
       success: true,
-      statuses: statusData.statuses
+      statuses: statusData.statuses,
+      explanations
     });
 
   } catch (error) {

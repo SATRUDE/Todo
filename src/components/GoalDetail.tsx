@@ -8,6 +8,8 @@ interface Goal {
   text: string;
   description?: string | null;
   is_active?: boolean;
+  deadline_date?: string | null;
+  created_at?: string;
 }
 
 interface Milestone {
@@ -26,6 +28,12 @@ interface Todo {
   milestoneId?: number;
 }
 
+interface MilestoneUpdate {
+  milestone_id: number;
+  content: string;
+  created_at?: string;
+}
+
 interface GoalDetailProps {
   goal: Goal;
   onBack: () => void;
@@ -36,7 +44,14 @@ interface GoalDetailProps {
   onUpdateMilestone: (id: number, name: string, description?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<Milestone>;
   onDeleteMilestone: (id: number) => Promise<void>;
   onSelectMilestone?: (milestone: Milestone) => void;
-  todos?: Todo[]; // Tasks to check milestone completion
+  todos?: Todo[];
+  /** When provided, used for list. */
+  milestones?: Milestone[];
+  tasks?: { id: number; completed: boolean; milestone_id?: number; updated_at?: string }[];
+  milestoneUpdates?: MilestoneUpdate[];
+  /** From DB / bulk goal-status API. Same source as today-page score. */
+  goalStatus?: 'On track' | 'At risk' | 'Failing' | null;
+  goalExplanation?: string | null;
 }
 
 export function GoalDetail({ 
@@ -48,25 +63,33 @@ export function GoalDetail({
   onCreateMilestone,
   onUpdateMilestone,
   onDeleteMilestone,
-  onSelectMilestone
+  onSelectMilestone,
+  milestones: milestonesProp,
+  tasks = [],
+  milestoneUpdates = [],
+  goalStatus,
+  goalExplanation
 }: GoalDetailProps) {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [milestonesLocal, setMilestonesLocal] = useState<Milestone[]>([]);
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
   const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false);
 
+  const milestones = milestonesProp ?? milestonesLocal;
+
   useEffect(() => {
-    const loadMilestones = async () => {
+    if (milestonesProp != null) return;
+    const load = async () => {
       try {
-        const loadedMilestones = await onFetchMilestones(goal.id);
-        setMilestones(loadedMilestones);
-      } catch (error) {
-        console.error('Error loading milestones:', error);
+        const loaded = await onFetchMilestones(goal.id);
+        setMilestonesLocal(loaded);
+      } catch (e) {
+        console.error('Error loading milestones:', e);
       }
     };
-    loadMilestones();
-  }, [goal.id, onFetchMilestones]);
+    load();
+  }, [goal.id, onFetchMilestones, milestonesProp]);
 
   const handleGoalClick = () => {
     setSelectedGoal(goal);
@@ -78,8 +101,8 @@ export function GoalDetail({
     setSelectedGoal(null);
   };
 
-  const handleUpdateGoal = async (id: number, text: string, description?: string | null, is_active?: boolean) => {
-    await onUpdateGoal(id, text, description, is_active);
+  const handleUpdateGoal = async (id: number, text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => {
+    await onUpdateGoal(id, text, description, is_active, deadline_date);
     handleCloseModal();
   };
 
@@ -107,13 +130,13 @@ export function GoalDetail({
 
   const handleCreateMilestone = async (name: string, description?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => {
     const created = await onCreateMilestone(goal.id, name, description, deadline);
-    setMilestones([...milestones, created]);
+    if (milestonesProp == null) setMilestonesLocal((prev) => [...prev, created]);
     handleCloseMilestoneModal();
   };
 
   const handleUpdateMilestone = async (id: number, name: string, description?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => {
     const updated = await onUpdateMilestone(id, name, description, deadline);
-    setMilestones(milestones.map(m => m.id === id ? updated : m));
+    if (milestonesProp == null) setMilestonesLocal((prev) => prev.map((m) => (m.id === id ? updated : m)));
     handleCloseMilestoneModal();
   };
 
@@ -154,7 +177,7 @@ export function GoalDetail({
 
   const handleDeleteMilestone = async (id: number) => {
     await onDeleteMilestone(id);
-    setMilestones(milestones.filter(m => m.id !== id));
+    if (milestonesProp == null) setMilestonesLocal((prev) => prev.filter((m) => m.id !== id));
     handleCloseMilestoneModal();
   };
 
@@ -208,6 +231,45 @@ export function GoalDetail({
               </svg>
             </div>
           </div>
+
+          {/* AI score + explanation (from DB, same as today-page card; updated when recalibrated) */}
+          {goal?.id && (goalStatus || goalExplanation) && (
+            <div
+              className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full"
+              style={{ padding: '14px 16px', backgroundColor: '#1F2022', borderRadius: '10px' }}
+            >
+              {goalStatus && (
+                <div className="content-stretch flex items-center gap-[8px] relative shrink-0">
+                  <span
+                    className="font-['Inter:Medium',sans-serif] font-medium text-[13px] tracking-[-0.1px]"
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      backgroundColor:
+                        goalStatus === 'On track'
+                          ? 'rgba(76, 175, 80, 0.2)'
+                          : goalStatus === 'At risk'
+                            ? 'rgba(255, 193, 7, 0.2)'
+                            : 'rgba(244, 67, 54, 0.2)',
+                      color:
+                        goalStatus === 'On track'
+                          ? '#81c784'
+                          : goalStatus === 'At risk'
+                            ? '#ffca28'
+                            : '#e57373',
+                    }}
+                  >
+                    {goalStatus}
+                  </span>
+                </div>
+              )}
+              {goalExplanation && (
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.45] text-[#e1e6ee] text-[15px] tracking-[-0.15px]">
+                  {goalExplanation}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Goal Description */}
           {goal.description && goal.description.trim() !== "" && (

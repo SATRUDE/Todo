@@ -65,7 +65,8 @@ import {
   MilestoneUpdate,
   fetchGoalStatuses,
   upsertGoalStatuses,
-  type GoalStatus
+  type GoalStatus,
+  type GoalStatusInfo
 } from "../lib/database";
 import { 
   requestNotificationPermission, 
@@ -168,12 +169,25 @@ export function TodoApp() {
     }
     return [];
   });
-  const [aiGoalStatuses, setAiGoalStatuses] = useState<Record<number, 'On track' | 'At risk' | 'Failing'>>(() => {
-    // Load saved goal statuses from localStorage on mount
+  const [aiGoalStatuses, setAiGoalStatuses] = useState<Record<number, GoalStatusInfo>>(() => {
     try {
       const saved = localStorage.getItem('goal-statuses');
       if (saved) {
-        return JSON.parse(saved);
+        const raw = JSON.parse(saved) as Record<string, unknown>;
+        const out: Record<number, GoalStatusInfo> = {};
+        for (const [k, v] of Object.entries(raw)) {
+          const id = parseInt(k, 10);
+          if (Number.isNaN(id)) continue;
+          if (v && typeof v === 'object' && 'status' in v && typeof (v as { status: string }).status === 'string') {
+            const s = (v as { status: string; explanation?: string | null }).status;
+            if (s === 'On track' || s === 'At risk' || s === 'Failing') {
+              out[id] = { status: s, explanation: (v as { explanation?: string | null }).explanation ?? null };
+            }
+          } else if (v === 'On track' || v === 'At risk' || v === 'Failing') {
+            out[id] = { status: v, explanation: null };
+          }
+        }
+        return out;
       }
     } catch (error) {
       console.error('Error loading saved goal statuses:', error);
@@ -491,16 +505,16 @@ export function TodoApp() {
     loadMilestoneUpdates();
   }, [goalMilestones]);
 
-  // Sync goal statuses from DB on load (source of truth across devices). Instant load from localStorage above.
+  // Sync goal statuses + explanations from DB on load (source of truth). Instant load from localStorage above.
   useEffect(() => {
     if (!isAuthenticated) return;
     let cancelled = false;
     fetchGoalStatuses()
-      .then((statuses) => {
+      .then((info) => {
         if (cancelled) return;
-        setAiGoalStatuses(statuses);
+        setAiGoalStatuses(info);
         try {
-          localStorage.setItem('goal-statuses', JSON.stringify(statuses));
+          localStorage.setItem('goal-statuses', JSON.stringify(info));
         } catch (e) {
           console.error('Error saving goal statuses to localStorage:', e);
         }
@@ -549,13 +563,27 @@ export function TodoApp() {
         if (!data.success || !data.statuses) return;
 
         const statuses: Record<number, GoalStatus> = {};
+        const explanations: Record<number, string> = {};
         Object.entries(data.statuses).forEach(([goalId, status]) => {
-          statuses[parseInt(goalId)] = status as GoalStatus;
+          const id = parseInt(goalId);
+          statuses[id] = status as GoalStatus;
+          const expl = data.explanations?.[goalId];
+          if (typeof expl === 'string' && expl.trim()) explanations[id] = expl.trim();
         });
-        setAiGoalStatuses(statuses);
+        const info: Record<number, GoalStatusInfo> = {};
+        Object.entries(statuses).forEach(([goalId, status]) => {
+          info[parseInt(goalId)] = { status, explanation: explanations[parseInt(goalId)] ?? null };
+        });
+        setAiGoalStatuses(prev => ({ ...prev, ...info }));
         try {
-          await upsertGoalStatuses(statuses);
-          localStorage.setItem('goal-statuses', JSON.stringify(statuses));
+          await upsertGoalStatuses(statuses, explanations);
+          try {
+            const prev = JSON.parse(localStorage.getItem('goal-statuses') || '{}') as Record<number, GoalStatusInfo>;
+            const merged = { ...prev, ...info };
+            localStorage.setItem('goal-statuses', JSON.stringify(merged));
+          } catch (_) {
+            localStorage.setItem('goal-statuses', JSON.stringify(info));
+          }
         } catch (e) {
           console.error('Error persisting goal statuses:', e);
         }
@@ -656,7 +684,6 @@ export function TodoApp() {
       const milestones = goalMilestones[goal.id] || [];
       return milestones.some(m => m.deadline_date);
     });
-
     if (goalsToAnalyze.length === 0) return;
 
     try {
@@ -691,13 +718,27 @@ export function TodoApp() {
       const data = await response.json();
       if (data.success && data.statuses) {
         const statuses: Record<number, GoalStatus> = {};
+        const explanations: Record<number, string> = {};
         Object.entries(data.statuses).forEach(([goalId, status]) => {
-          statuses[parseInt(goalId)] = status as GoalStatus;
+          const id = parseInt(goalId);
+          statuses[id] = status as GoalStatus;
+          const expl = data.explanations?.[goalId];
+          if (typeof expl === 'string' && expl.trim()) explanations[id] = expl.trim();
         });
-        setAiGoalStatuses(statuses);
+        const info: Record<number, GoalStatusInfo> = {};
+        Object.entries(statuses).forEach(([goalId, status]) => {
+          info[parseInt(goalId)] = { status, explanation: explanations[parseInt(goalId)] ?? null };
+        });
+        setAiGoalStatuses(prev => ({ ...prev, ...info }));
         try {
-          await upsertGoalStatuses(statuses);
-          localStorage.setItem('goal-statuses', JSON.stringify(statuses));
+          await upsertGoalStatuses(statuses, explanations);
+          try {
+            const prev = JSON.parse(localStorage.getItem('goal-statuses') || '{}') as Record<number, GoalStatusInfo>;
+            const merged = { ...prev, ...info };
+            localStorage.setItem('goal-statuses', JSON.stringify(merged));
+          } catch (_) {
+            localStorage.setItem('goal-statuses', JSON.stringify(info));
+          }
         } catch (e) {
           console.error('Error persisting goal statuses:', e);
         }
@@ -2388,10 +2429,8 @@ export function TodoApp() {
 
   // Helper function to get goal status (AI-determined with algorithmic fallback)
   const getGoalStatus = (goal: Goal): 'On track' | 'At risk' | 'Failing' | null => {
-    // First, try to use AI-determined status
-    if (aiGoalStatuses[goal.id]) {
-      return aiGoalStatuses[goal.id];
-    }
+    const info = aiGoalStatuses[goal.id];
+    if (info?.status) return info.status;
 
     // Fallback to algorithmic calculation if AI status not available
     const milestones = goalMilestones[goal.id] || [];
@@ -3568,7 +3607,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                             return (
                               <div
                                 key={goal.id}
-                                className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
+                                className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer rounded-[10px]"
+                                style={{ padding: '12px 14px', backgroundColor: '#252628' }}
                                 onClick={() => {
                                   setSelectedGoal(goal);
                                   setCurrentPage("goalDetail");
@@ -3595,28 +3635,36 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                                   </div>
                                   <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
                                     <div className="content-stretch flex items-center relative shrink-0 w-full">
-                                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px]">
+                                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] truncate">
                                         {goal.text}
                                       </p>
                                     </div>
                                   </div>
                                 </div>
-                                
-                                {/* Status */}
+                                {/* Status badge — line below */}
                                 {status && (
-                                  <div className="content-stretch flex items-start relative shrink-0">
-                                    <div className="content-stretch flex gap-[6px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
-                                      <div 
-                                        className="w-[8px] h-[8px] rounded-full"
-                                        style={{ backgroundColor: getStatusColor(status) }}
-                                      />
-                                      <p 
-                                        className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]"
-                                        style={{ color: getStatusColor(status) }}
-                                      >
-                                        {status}
-                                      </p>
-                                    </div>
+                                  <div className="content-stretch flex items-center pl-[32px] relative shrink-0 w-full">
+                                    <span
+                                      className="font-['Inter:Medium',sans-serif] font-medium text-[13px] tracking-[-0.1px]"
+                                      style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        backgroundColor:
+                                          status === 'On track'
+                                            ? 'rgba(76, 175, 80, 0.2)'
+                                            : status === 'At risk'
+                                              ? 'rgba(255, 193, 7, 0.2)'
+                                              : 'rgba(244, 67, 54, 0.2)',
+                                        color:
+                                          status === 'On track'
+                                            ? '#81c784'
+                                            : status === 'At risk'
+                                              ? '#ffca28'
+                                              : '#e57373',
+                                      }}
+                                    >
+                                      {status}
+                                    </span>
                                   </div>
                                 )}
                               </div>
@@ -4421,6 +4469,15 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
       ) : currentPage === "goalDetail" && selectedGoal ? (
         <GoalDetail
           goal={selectedGoal}
+          milestones={goalMilestones[selectedGoal.id]}
+          tasks={goalTasks[selectedGoal.id]}
+          milestoneUpdates={(() => {
+            const ms = goalMilestones[selectedGoal.id] || [];
+            const ids = new Set(ms.map((m) => m.id));
+            return (milestoneUpdates || []).filter((u) => ids.has(u.milestone_id));
+          })()}
+          goalStatus={aiGoalStatuses[selectedGoal.id]?.status ?? null}
+          goalExplanation={aiGoalStatuses[selectedGoal.id]?.explanation ?? null}
           onBack={() => {
             setCurrentPage("goals");
             setSelectedGoal(null);

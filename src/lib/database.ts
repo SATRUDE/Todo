@@ -1139,12 +1139,17 @@ export async function deleteGoal(id: number): Promise<void> {
 
 export type GoalStatus = 'On track' | 'At risk' | 'Failing'
 
-/** Fetch stored goal statuses from DB (source of truth across devices). */
-export async function fetchGoalStatuses(): Promise<Record<number, GoalStatus>> {
+export interface GoalStatusInfo {
+  status: GoalStatus
+  explanation?: string | null
+}
+
+/** Fetch stored goal statuses + explanations from DB (source of truth across devices). */
+export async function fetchGoalStatuses(): Promise<Record<number, GoalStatusInfo>> {
   const userId = await ensureAuthenticated()
   const { data, error } = await supabase
     .from('goal_statuses')
-    .select('goal_id, status')
+    .select('goal_id, status, explanation')
     .eq('user_id', userId)
 
   if (error) {
@@ -1152,23 +1157,30 @@ export async function fetchGoalStatuses(): Promise<Record<number, GoalStatus>> {
     throw error
   }
 
-  const out: Record<number, GoalStatus> = {}
+  const out: Record<number, GoalStatusInfo> = {}
   for (const row of data || []) {
     const s = row.status as GoalStatus
     if (s === 'On track' || s === 'At risk' || s === 'Failing') {
-      out[Number(row.goal_id)] = s
+      out[Number(row.goal_id)] = {
+        status: s,
+        explanation: row.explanation != null ? String(row.explanation) : null,
+      }
     }
   }
   return out
 }
 
-/** Upsert goal statuses after AI API returns. Keeps DB in sync across devices. */
-export async function upsertGoalStatuses(statuses: Record<number, GoalStatus>): Promise<void> {
+/** Upsert goal statuses + explanations after AI API returns. Keeps DB in sync across devices. */
+export async function upsertGoalStatuses(
+  statuses: Record<number, GoalStatus>,
+  explanations?: Record<number, string> | null
+): Promise<void> {
   const userId = await ensureAuthenticated()
   const rows = Object.entries(statuses).map(([goalId, status]) => ({
     user_id: userId,
     goal_id: Number(goalId),
     status,
+    explanation: explanations && explanations[Number(goalId)] != null ? explanations[Number(goalId)] : null,
     updated_at: new Date().toISOString(),
   }))
 
