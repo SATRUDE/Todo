@@ -5,15 +5,17 @@ interface CalendarTaskSuggestionsProps {
   onAcceptSuggestion?: (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => void;
   onDismiss?: () => void;
   onTaskClick?: (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => void;
+  onEventProcessed?: () => void;
 }
 
 export interface CalendarTaskSuggestionsRef {
   removeSuggestion: (eventId: string) => void;
+  loadSuggestions: () => Promise<void>;
 }
 
 export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, CalendarTaskSuggestionsProps>(
-  ({ onAcceptSuggestion, onDismiss, onTaskClick }, ref) => {
-  const [suggestions, setSuggestions] = useState<Array<{
+  ({ onAcceptSuggestion, onDismiss, onTaskClick, onEventProcessed }, ref) => {
+  type Suggestion = {
     text: string;
     description?: string;
     deadline?: {
@@ -21,49 +23,102 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
       time: string;
     };
     event: CalendarEvent;
-  }>>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  };
 
-  useEffect(() => {
-    const loadSuggestions = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Fetch events and processed event IDs in parallel
-        const [events, processedIds] = await Promise.all([
-          fetchCalendarEvents(),
-          getProcessedEventIds()
-        ]);
-        
-        // Filter out processed events
-        const unprocessedEvents = filterProcessedEvents(events, processedIds);
-        const taskSuggestions = suggestTasksFromEvents(unprocessedEvents);
-        
-        // Map suggestions with event data
-        const suggestionsWithEvents = taskSuggestions.map((suggestion, index) => ({
-          ...suggestion,
-          event: unprocessedEvents[index],
+  // Load persisted suggestions from localStorage on mount
+  const loadPersistedSuggestions = (): Suggestion[] => {
+    try {
+      const saved = localStorage.getItem('calendar-suggestions');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Convert date strings back to Date objects
+        return parsed.map((s: any) => ({
+          ...s,
+          deadline: s.deadline ? {
+            ...s.deadline,
+            date: new Date(s.deadline.date)
+          } : undefined,
+          event: {
+            ...s.event,
+            start: s.event.start,
+            end: s.event.end
+          }
         }));
-        
-        setSuggestions(suggestionsWithEvents);
-      } catch (err) {
-        console.error('Error loading calendar suggestions:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load suggestions');
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Error loading persisted suggestions:', error);
+    }
+    return [];
+  };
 
-    loadSuggestions();
-  }, []);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>(() => loadPersistedSuggestions());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(() => {
+    // Check if we have persisted suggestions
+    try {
+      const saved = localStorage.getItem('calendar-suggestions');
+      return !!saved && JSON.parse(saved).length > 0;
+    } catch {
+      return false;
+    }
+  });
 
-  // Expose removeSuggestion method to parent via ref
+  // Save suggestions to localStorage whenever they change
+  useEffect(() => {
+    if (suggestions.length > 0 || hasLoadedOnce) {
+      try {
+        localStorage.setItem('calendar-suggestions', JSON.stringify(suggestions));
+      } catch (error) {
+        console.error('Error saving suggestions to localStorage:', error);
+      }
+    }
+  }, [suggestions, hasLoadedOnce]);
+
+  const loadSuggestions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch events and processed event IDs in parallel
+      const [events, processedIds] = await Promise.all([
+        fetchCalendarEvents(),
+        getProcessedEventIds()
+      ]);
+      
+      // Filter out processed events
+      const unprocessedEvents = filterProcessedEvents(events, processedIds);
+      const taskSuggestions = suggestTasksFromEvents(unprocessedEvents);
+      
+      // Map suggestions with event data
+      const suggestionsWithEvents = taskSuggestions.map((suggestion, index) => ({
+        ...suggestion,
+        event: unprocessedEvents[index],
+      }));
+      
+      setSuggestions(suggestionsWithEvents);
+      setHasLoadedOnce(true);
+    } catch (err) {
+      console.error('Error loading calendar suggestions:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load suggestions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Expose removeSuggestion and loadSuggestions methods to parent via ref
   useImperativeHandle(ref, () => ({
     removeSuggestion: (eventId: string) => {
-      setSuggestions(prev => prev.filter(s => s.event.id !== eventId));
-    }
+      setSuggestions(prev => {
+        const updated = prev.filter(s => s.event.id !== eventId);
+        // Clear localStorage if all suggestions are removed
+        if (updated.length === 0) {
+          localStorage.removeItem('calendar-suggestions');
+        }
+        return updated;
+      });
+    },
+    loadSuggestions: loadSuggestions
   }));
 
   const handleDismissEvent = async (eventId: string) => {
@@ -73,6 +128,10 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
       // Remove the dismissed suggestion from the list
       setSuggestions(prev => prev.filter(s => s.event.id !== eventId));
       console.log('[CalendarTaskSuggestions] Event dismissed successfully');
+      // Notify parent to update count
+      if (onEventProcessed) {
+        onEventProcessed();
+      }
     } catch (err) {
       console.error('[CalendarTaskSuggestions] Error dismissing event:', err);
       alert(`Failed to dismiss event: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -93,6 +152,10 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
       // Remove the accepted suggestion from the list
       setSuggestions(prev => prev.filter(s => s.event.id !== suggestion.eventId));
       console.log('[CalendarTaskSuggestions] Suggestion removed from list');
+      // Notify parent to update count
+      if (onEventProcessed) {
+        onEventProcessed();
+      }
     } catch (err) {
       console.error('[CalendarTaskSuggestions] Error accepting suggestion:', err);
       console.error('[CalendarTaskSuggestions] Error details:', err);
@@ -112,6 +175,28 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
     return (
       <div className="w-full p-4">
         <p className="text-[#EF4123] text-[16px]">{error}</p>
+      </div>
+    );
+  }
+
+  if (!hasLoadedOnce) {
+    return (
+      <div className="w-full flex flex-col gap-[16px]">
+        <div className="flex items-center gap-[12px]">
+          <div className="relative shrink-0 size-[20px]">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE" className="size-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+            </svg>
+          </div>
+          <p className="font-['Inter:Medium',sans-serif] font-medium text-[20px] text-white">
+            Suggested Tasks from Calendar
+          </p>
+        </div>
+        <div className="w-full p-[24px] bg-[#1a161a] rounded-lg border border-[#2a252a] flex flex-col items-start justify-center gap-[8px]">
+          <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62] text-left">
+            Click the sync button to load calendar events
+          </p>
+        </div>
       </div>
     );
   }

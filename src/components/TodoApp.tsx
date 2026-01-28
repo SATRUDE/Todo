@@ -883,48 +883,16 @@ export function TodoApp() {
     }
   }, [isAuthenticated, isCalendarSyncing, checkCalendarEvents]);
 
-  // Auto-sync calendar once per day
+  // Calendar sync is now only triggered by:
+  // 1. Manual sync button click
+  // 2. Server-side cron job (api/calendar/sync-cron.js)
+  // No automatic client-side syncing
+  
+  // Check calendar event count on mount (to show banner if there are events, but don't sync)
   useEffect(() => {
     if (!isAuthenticated) return;
-
-    const checkAndSyncCalendar = async () => {
-      try {
-        const lastSyncStr = localStorage.getItem('calendar-last-sync');
-        const now = new Date();
-        
-        if (!lastSyncStr) {
-          // First time - sync immediately
-          await syncCalendar();
-          return;
-        }
-
-        const lastSync = new Date(lastSyncStr);
-        const hoursSinceSync = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60);
-        
-        // Sync if it's been more than 24 hours
-        if (hoursSinceSync >= 24) {
-          await syncCalendar();
-        } else {
-          // Still check for events even if we don't sync
-          await checkCalendarEvents();
-        }
-      } catch (error) {
-        console.error('Error in calendar auto-sync check:', error);
-      }
-    };
-
-    // Check on mount
-    checkAndSyncCalendar();
-    
-    // Check every hour to see if we need to sync
-    const intervalId = setInterval(() => {
-      checkAndSyncCalendar();
-    }, 3600000); // 1 hour
-    
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [isAuthenticated, syncCalendar, checkCalendarEvents]);
+    checkCalendarEvents();
+  }, [isAuthenticated, checkCalendarEvents]);
 
   // Auto-sync every minute (initial load is handled by the initialize effect above)
   useEffect(() => {
@@ -2983,9 +2951,11 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                     <p className="font-['Inter:Regular',sans-serif] font-normal text-[16px] text-white flex-1">
                       {calendarPendingEventsCount} calendar event{calendarPendingEventsCount !== 1 ? 's' : ''} ready to sync
                     </p>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#8fe594" className="size-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                    </svg>
+                    <div className="relative shrink-0 size-[20px]">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#8fe594" className="block size-full">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
               )}
@@ -4498,6 +4468,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           lists={lists}
           onSync={syncCalendar}
           isSyncing={isCalendarSyncing}
+          onEventProcessed={checkCalendarEvents}
         />
       ) : currentPage === "commonTasks" ? (
         isSecondaryDataLoading ? (

@@ -9,6 +9,7 @@ interface CalendarSyncProps {
   lists?: Array<{ id: number; name: string; color: string; count: number; isShared: boolean }>;
   onSync?: () => Promise<void>;
   isSyncing?: boolean;
+  onEventProcessed?: () => void;
 }
 
 interface Todo {
@@ -26,7 +27,7 @@ interface Todo {
   };
 }
 
-export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing = false }: CalendarSyncProps) {
+export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing = false, onEventProcessed }: CalendarSyncProps) {
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<{ text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string } | null>(null);
   const suggestionsRef = useRef<CalendarTaskSuggestionsRef>(null);
@@ -34,6 +35,22 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
   const handleTaskClick = (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => {
     setSelectedSuggestion(suggestion);
     setIsTaskDetailOpen(true);
+  };
+
+  const handleSync = async () => {
+    if (!onSync || isSyncing) return;
+    
+    try {
+      // Call the parent sync function
+      await onSync();
+      
+      // After sync completes, reload the suggestions
+      if (suggestionsRef.current) {
+        await suggestionsRef.current.loadSuggestions();
+      }
+    } catch (error) {
+      console.error('[CalendarSync] Error syncing:', error);
+    }
   };
 
   const handleCreateTask = async (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder') => {
@@ -62,6 +79,11 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
       // Remove the suggestion from the list
       if (suggestionsRef.current) {
         suggestionsRef.current.removeSuggestion(eventId);
+      }
+
+      // Notify parent to update count
+      if (onEventProcessed) {
+        onEventProcessed();
       }
 
       // Close the modal
@@ -117,11 +139,30 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
             {/* Sync Button */}
             {onSync && (
               <div 
-                className={`relative shrink-0 size-[32px] cursor-pointer ${isSyncing ? 'opacity-50' : ''}`}
-                onClick={() => !isSyncing && onSync()}
+                className={`relative shrink-0 size-[32px] cursor-pointer ${isSyncing ? '' : ''}`}
+                onClick={handleSync}
                 title="Sync calendar"
               >
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '32px', height: '32px' }}>
+                <style>{`
+                  @keyframes spin {
+                    from {
+                      transform: rotate(0deg);
+                    }
+                    to {
+                      transform: rotate(360deg);
+                    }
+                  }
+                  .sync-spinning {
+                    animation: spin 1s linear infinite;
+                  }
+                `}</style>
+                <svg 
+                  className={`block size-full ${isSyncing ? 'sync-spinning' : ''}`}
+                  fill="none" 
+                  preserveAspectRatio="none" 
+                  viewBox="0 0 24 24" 
+                  style={{ width: '32px', height: '32px', transformOrigin: 'center' }}
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -140,6 +181,7 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
               <CalendarTaskSuggestions
                 ref={suggestionsRef}
                 onTaskClick={handleTaskClick}
+                onEventProcessed={onEventProcessed}
               />
             </div>
           )}
