@@ -415,14 +415,46 @@ module.exports = async function handler(req, res) {
 
         // Process daily tasks
         if (dailyTasks && dailyTasks.length > 0) {
+          // Clean up old daily tasks from previous days (delete and replace behavior)
+          const todayStr = formatLocalDate(today);
+          if (todayStr) {
+            const oldDailyTasks = existingTodos.filter(todo => {
+              if (!todo.daily_task_id) return false;
+              if (!todo.deadline_date) return false;
+              // Delete daily tasks from previous days (before today)
+              return todo.deadline_date < todayStr;
+            });
+            
+            // Delete old daily tasks
+            for (const oldTask of oldDailyTasks) {
+              try {
+                const { error: deleteError } = await supabase
+                  .from('todos')
+                  .delete()
+                  .eq('id', oldTask.id);
+                
+                if (deleteError) {
+                  console.error(`❌ Error deleting old daily task ${oldTask.id}:`, deleteError);
+                  errors.push({ userId, type: 'daily_task_delete', taskId: oldTask.id, error: deleteError.message });
+                } else {
+                  console.log(`🗑️ Deleted old daily task ${oldTask.id} from ${oldTask.deadline_date}`);
+                }
+              } catch (error) {
+                console.error(`❌ Error deleting old daily task ${oldTask.id}:`, error);
+                errors.push({ userId, type: 'daily_task_delete', taskId: oldTask.id, error: error.message });
+              }
+            }
+          }
+          
           for (const dailyTask of dailyTasks) {
             try {
               const tomorrowStr = formatLocalDate(tomorrow);
               if (!tomorrowStr) continue;
 
               // Check if a task already exists for tomorrow from this daily task template
+              // Include completed tasks in the check - if a task was already created for tomorrow (even if completed),
+              // we shouldn't create a new one
               const existingTask = existingTodos.find(todo => {
-                if (todo.completed) return false;
                 if (todo.daily_task_id === dailyTask.id) {
                   // Check if it has tomorrow's date as deadline
                   if (todo.deadline_date === tomorrowStr) {

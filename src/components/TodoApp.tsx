@@ -75,6 +75,12 @@ import {
   getPushSubscription,
   sendTestPushNotification
 } from "../lib/notifications";
+import { 
+  fetchCalendarEvents, 
+  getProcessedEventIds, 
+  filterProcessedEvents,
+  getCalendarConnection
+} from "../lib/calendar";
 
 interface Todo {
   id: number;
@@ -216,7 +222,8 @@ export function TodoApp() {
   const [selectedListFilterIds, setSelectedListFilterIds] = useState<Set<number>>(new Set());
   const [isFilterListsModalOpen, setIsFilterListsModalOpen] = useState(false);
   const [isScheduledExpanded, setIsScheduledExpanded] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [calendarPendingEventsCount, setCalendarPendingEventsCount] = useState<number>(0);
+  const [isCalendarSyncing, setIsCalendarSyncing] = useState(false);
   
   // Check if we're on the reset password route
   useEffect(() => {
@@ -805,19 +812,15 @@ export function TodoApp() {
     }
   }, [currentPage, goals.length, milestonesLoaded, isSecondaryDataLoading]);
 
-  // Sync function to manually refresh data from database
-  const handleSync = async () => {
-    if (!isAuthenticated || isSyncing) return;
+  // Auto-sync function to refresh data from database (called automatically every minute)
+  const autoSync = async () => {
+    if (!isAuthenticated) return;
     
     try {
-      setIsSyncing(true);
-      setConnectionError(null);
-      
       // Validate Supabase configuration
       const configCheck = validateSupabaseConfig();
       if (!configCheck.valid) {
-        setConnectionError(configCheck.error || 'Invalid Supabase configuration');
-        setIsSyncing(false);
+        // Don't set connection error on auto-sync failures to avoid disrupting user
         return;
       }
       
@@ -833,19 +836,109 @@ export function TodoApp() {
         await loadMilestones();
       }
     } catch (error: any) {
-      console.error('Error syncing data:', error);
-      
-      if (error.message?.includes('Invalid API key') || error.message?.includes('JWT')) {
-        setConnectionError('Invalid Supabase credentials. Please check your .env file.');
-      } else if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
-        setConnectionError('Connected to Supabase, but tables not found. Please run the SQL schema from supabase-schema.sql in your Supabase SQL Editor.');
-      } else {
-        setConnectionError(`Connection error: ${error.message || 'Failed to connect to Supabase'}`);
-      }
-    } finally {
-      setIsSyncing(false);
+      // Silently log errors during auto-sync to avoid disrupting user
+      console.error('Error during auto-sync:', error);
     }
   };
+
+  // Check for unprocessed calendar events
+  const checkCalendarEvents = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      const connection = await getCalendarConnection();
+      if (!connection) {
+        setCalendarPendingEventsCount(0);
+        return;
+      }
+
+      const [events, processedIds] = await Promise.all([
+        fetchCalendarEvents(),
+        getProcessedEventIds()
+      ]);
+      
+      const unprocessedEvents = filterProcessedEvents(events, processedIds);
+      setCalendarPendingEventsCount(unprocessedEvents.length);
+    } catch (error) {
+      // Silently handle errors (calendar might not be connected)
+      console.error('Error checking calendar events:', error);
+      setCalendarPendingEventsCount(0);
+    }
+  }, [isAuthenticated]);
+
+  // Sync calendar events (fetch and check for unprocessed)
+  const syncCalendar = useCallback(async () => {
+    if (!isAuthenticated || isCalendarSyncing) return;
+    
+    try {
+      setIsCalendarSyncing(true);
+      await checkCalendarEvents();
+      
+      // Store last sync date in localStorage
+      localStorage.setItem('calendar-last-sync', new Date().toISOString());
+    } catch (error) {
+      console.error('Error syncing calendar:', error);
+    } finally {
+      setIsCalendarSyncing(false);
+    }
+  }, [isAuthenticated, isCalendarSyncing, checkCalendarEvents]);
+
+  // Auto-sync calendar once per day
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const checkAndSyncCalendar = async () => {
+      try {
+        const lastSyncStr = localStorage.getItem('calendar-last-sync');
+        const now = new Date();
+        
+        if (!lastSyncStr) {
+          // First time - sync immediately
+          await syncCalendar();
+          return;
+        }
+
+        const lastSync = new Date(lastSyncStr);
+        const hoursSinceSync = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60);
+        
+        // Sync if it's been more than 24 hours
+        if (hoursSinceSync >= 24) {
+          await syncCalendar();
+        } else {
+          // Still check for events even if we don't sync
+          await checkCalendarEvents();
+        }
+      } catch (error) {
+        console.error('Error in calendar auto-sync check:', error);
+      }
+    };
+
+    // Check on mount
+    checkAndSyncCalendar();
+    
+    // Check every hour to see if we need to sync
+    const intervalId = setInterval(() => {
+      checkAndSyncCalendar();
+    }, 3600000); // 1 hour
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isAuthenticated, syncCalendar, checkCalendarEvents]);
+
+  // Auto-sync every minute (initial load is handled by the initialize effect above)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    // Set up interval to sync every minute
+    const intervalId = setInterval(() => {
+      autoSync();
+    }, 60000); // 60 seconds = 1 minute
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isAuthenticated]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -1586,6 +1679,29 @@ export function TodoApp() {
       const freshTodos = await fetchTasks();
       const todosToCheck = freshTodos.map(dbTodoToDisplayTodo);
       
+      // Clean up old daily tasks from previous days (delete and replace behavior)
+      // Find all daily tasks that are from previous days
+      const oldDailyTasks = todosToCheck.filter(todo => {
+        if (!todo.dailyTaskId) return false;
+        if (!todo.deadline) return false;
+        const deadlineDate = new Date(todo.deadline.date);
+        deadlineDate.setHours(0, 0, 0, 0);
+        return deadlineDate.getTime() < today.getTime();
+      });
+      
+      // Delete old daily tasks
+      for (const oldTask of oldDailyTasks) {
+        try {
+          await deleteTaskDb(oldTask.id);
+        } catch (error) {
+          console.error(`Error deleting old daily task ${oldTask.id}:`, error);
+        }
+      }
+      
+      // Reload todos after cleanup to get fresh state
+      const todosAfterCleanup = await fetchTasks();
+      const todosToCheckAfterCleanup = todosAfterCleanup.map(dbTodoToDisplayTodo);
+      
       let tasksCreated = 0;
       let tasksSkipped = 0;
       
@@ -1594,8 +1710,9 @@ export function TodoApp() {
         const targetListId = dailyTask.listId !== undefined && dailyTask.listId !== null ? dailyTask.listId : 0;
         
         // Check if a task already exists for today from this daily task template
-        const existingTask = todosToCheck.find(todo => {
-          if (todo.completed) return false;
+        // Include completed tasks in the check - if a task was already created for today (even if completed),
+        // we shouldn't create a new one
+        const existingTask = todosToCheckAfterCleanup.find(todo => {
           // Check if this task was created from the same daily task template
           if (todo.dailyTaskId === dailyTask.id) {
             // Check if it has today's date as deadline (for tasks with deadlines)
@@ -1615,7 +1732,7 @@ export function TodoApp() {
         });
         
         // Find all matching tasks to check for duplicates
-        const matchingTasks = todosToCheck.filter(todo => {
+        const matchingTasks = todosToCheckAfterCleanup.filter(todo => {
           if (todo.completed) return false;
           if (todo.dailyTaskId === dailyTask.id) {
             if (todo.deadline) {
@@ -2564,6 +2681,10 @@ export function TodoApp() {
   const missedDeadlines = todos.filter(todo => {
     // Exclude subtasks
     if (todo.parentTaskId) return false;
+    // Exclude daily tasks - they should be deleted and replaced, not shown as overdue
+    if (todo.dailyTaskId !== undefined && todo.dailyTaskId !== null) return false;
+    // Exclude reminders - they should not show as overdue
+    if (todo.type === 'reminder') return false;
     if (!todo.deadline || todo.completed) return false;
     
     const now = currentTime; // Use state instead of new Date() to trigger re-renders
@@ -2826,30 +2947,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Tasks</p>
                   <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">{getFormattedDate()}</p>
                 </div>
-                {/* Filter Icon and Sync Button - Right aligned to Tasks title */}
+                {/* Filter Icon - Right aligned to Tasks title */}
                 <div className="basis-0 content-stretch flex grow items-center justify-end gap-2 min-h-px min-w-px overflow-clip p-[3px] relative shrink-0">
-                  {/* Sync Button */}
-                  <div 
-                    className="relative shrink-0 size-[32px] cursor-pointer"
-                    onClick={handleSync}
-                    title="Sync data"
-                  >
-                    <svg 
-                      className={`block size-full ${isSyncing ? 'animate-spin' : ''}`} 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      style={{ width: '32px', height: '32px' }}
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-                        stroke="#E1E6EE"
-                        strokeWidth="1.5"
-                      />
-                    </svg>
-                  </div>
                   {/* Filter Icon */}
                   <div 
                     className="relative shrink-0 size-[32px] cursor-pointer"
@@ -2867,6 +2966,29 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   </div>
                 </div>
               </div>
+
+              {/* Calendar Events Message Banner */}
+              {calendarPendingEventsCount > 0 && (
+                <div className="content-stretch flex items-center gap-[12px] relative shrink-0 w-full px-[20px]">
+                  <div 
+                    className="flex items-center gap-[12px] px-[16px] py-[12px] rounded-[8px] w-full cursor-pointer hover:opacity-90"
+                    style={{ backgroundColor: '#1f2022', border: '1px solid #2a252a' }}
+                    onClick={() => setCurrentPage("calendarSync")}
+                  >
+                    <div className="relative shrink-0 size-[20px]">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#8fe594" className="size-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                      </svg>
+                    </div>
+                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[16px] text-white flex-1">
+                      {calendarPendingEventsCount} calendar event{calendarPendingEventsCount !== 1 ? 's' : ''} ready to sync
+                    </p>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#8fe594" className="size-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </div>
+                </div>
+              )}
 
               {/* Inline style tag to force inactive tab color */}
               <style>{`
@@ -4374,6 +4496,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onBack={() => setCurrentPage("dashboard")}
           onAddTask={addNewTask}
           lists={lists}
+          onSync={syncCalendar}
+          isSyncing={isCalendarSyncing}
         />
       ) : currentPage === "commonTasks" ? (
         isSecondaryDataLoading ? (

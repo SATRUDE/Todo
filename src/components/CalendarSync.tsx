@@ -7,6 +7,8 @@ interface CalendarSyncProps {
   onBack: () => void;
   onAddTask?: (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number) => void;
   lists?: Array<{ id: number; name: string; color: string; count: number; isShared: boolean }>;
+  onSync?: () => Promise<void>;
+  isSyncing?: boolean;
 }
 
 interface Todo {
@@ -24,7 +26,7 @@ interface Todo {
   };
 }
 
-export function CalendarSync({ onBack, onAddTask, lists = [] }: CalendarSyncProps) {
+export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing = false }: CalendarSyncProps) {
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<{ text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string } | null>(null);
   const suggestionsRef = useRef<CalendarTaskSuggestionsRef>(null);
@@ -109,9 +111,27 @@ export function CalendarSync({ onBack, onAddTask, lists = [] }: CalendarSyncProp
                 </g>
               </svg>
             </div>
-            <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre">
+            <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative flex-1 min-w-0 text-nowrap whitespace-pre">
               <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Calendar sync</p>
             </div>
+            {/* Sync Button */}
+            {onSync && (
+              <div 
+                className={`relative shrink-0 size-[32px] cursor-pointer ${isSyncing ? 'opacity-50' : ''}`}
+                onClick={() => !isSyncing && onSync()}
+                title="Sync calendar"
+              >
+                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '32px', height: '32px' }}>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                    stroke="#E1E6EE"
+                    strokeWidth="1.5"
+                  />
+                </svg>
+              </div>
+            )}
           </div>
 
           {/* Calendar Task Suggestions */}
