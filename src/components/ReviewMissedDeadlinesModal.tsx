@@ -91,7 +91,11 @@ export function ReviewMissedDeadlinesModal({
       
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet" data-node-id="36:383">
+        <div 
+          className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet" 
+          data-node-id="36:383"
+          style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
+        >
           {/* Handle */}
           <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full" data-node-id="36:384">
             <div className="h-[20px] relative shrink-0 w-[100px]" data-node-id="36:385">
@@ -110,9 +114,19 @@ export function ReviewMissedDeadlinesModal({
             </p>
           </div>
 
-          {/* Tasks List */}
-          <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full" data-node-id="36:485">
-            <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full" data-node-id="36:495">
+          {/* Scrollable Content */}
+          <div 
+            className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full" 
+            data-node-id="36:485"
+            style={{ 
+              overflowY: 'auto', 
+              WebkitOverflowScrolling: 'touch', 
+              maxHeight: 'calc(90vh - 120px)', 
+              minHeight: 0, 
+              overflowX: 'hidden' 
+            }}
+          >
+            <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full pb-[40px]" data-node-id="36:495">
               {missedDeadlines.map((todo) => {
                 const list = getListById(todo.listId);
                 return (

@@ -165,7 +165,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[10002] pointer-events-none">
+    <div className="fixed inset-0 z-[10003] pointer-events-none" style={{ zIndex: 10003 }}>
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black bg-opacity-50 pointer-events-auto"
