@@ -3,12 +3,19 @@ import svgPaths from "../imports/svg-4ile2zv366";
 import completedSvgPaths from "../imports/svg-qfhtru23ul";
 import { AddListModal } from "./AddListModal";
 
+interface ListFolder {
+  id: number;
+  name: string;
+  sort_order: number;
+}
+
 interface ListItem {
   id: number;
   name: string;
   color: string;
   count: number;
   isShared: boolean;
+  folderId?: number | null;
 }
 
 interface Todo {
@@ -28,23 +35,27 @@ interface ListsProps {
   onSelectList: (list: ListItem) => void;
   todos: Todo[];
   lists: ListItem[];
-  onAddList: (listName: string, isShared: boolean, color: string) => void;
-  onUpdateList: (listId: number, listName: string, isShared: boolean, color: string) => void;
+  folders: ListFolder[];
+  onAddList: (listName: string, isShared: boolean, color: string, folderId?: number | null) => void;
+  onUpdateList: (listId: number, listName: string, isShared: boolean, color: string, folderId?: number | null) => void;
   onDeleteList: (listId: number) => void;
+  onAddFolder: (folderName: string) => void;
+  onUpdateFolder: (folderId: number, folderName: string) => void;
+  onDeleteFolder: (folderId: number) => void;
   onBack?: () => void;
 }
 
-export function Lists({ onSelectList, todos, lists, onAddList, onUpdateList, onDeleteList, onBack }: ListsProps) {
+export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdateList, onDeleteList, onAddFolder, onUpdateFolder, onDeleteFolder, onBack }: ListsProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingList, setEditingList] = useState<ListItem | null>(null);
 
-  const handleAddList = (listName: string, isShared: boolean, color: string) => {
-    onAddList(listName, isShared, color);
+  const handleAddList = (listName: string, isShared: boolean, color: string, folderId?: number | null) => {
+    onAddList(listName, isShared, color, folderId);
     setIsModalOpen(false);
   };
 
-  const handleUpdateList = (listId: number, listName: string, isShared: boolean, color: string) => {
-    onUpdateList(listId, listName, isShared, color);
+  const handleUpdateList = (listId: number, listName: string, isShared: boolean, color: string, folderId?: number | null) => {
+    onUpdateList(listId, listName, isShared, color, folderId);
     setEditingList(null);
     setIsModalOpen(false);
   };
@@ -92,6 +103,61 @@ export function Lists({ onSelectList, todos, lists, onAddList, onUpdateList, onD
     isShared: false,
   };
 
+  // User-created lists only (exclude virtual lists)
+  const userLists = lists.filter(l => l.id !== ALL_TASKS_LIST_ID && l.id !== COMPLETED_LIST_ID);
+  // Group by folder: first by folder order, then uncategorized
+  const listsByFolder = (() => {
+    const byFolder = new Map<number | null, ListItem[]>();
+    byFolder.set(null, []);
+    folders.forEach(f => byFolder.set(f.id, []));
+    userLists.forEach(list => {
+      const key = list.folderId ?? null;
+      const arr = byFolder.get(key) ?? [];
+      arr.push(list);
+      byFolder.set(key, arr);
+    });
+    return byFolder;
+  })();
+
+  const renderListRow = (list: ListItem) => {
+    const taskCount = getListCount(list.id);
+    return (
+      <div
+        key={list.id}
+        className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+        onClick={() => onSelectList(list)}
+      >
+        <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
+          <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
+            <div className="relative shrink-0 size-[24px]">
+              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                <g>
+                  <path d={svgPaths.p1c6a4380} stroke={list.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                </g>
+              </svg>
+            </div>
+            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">{list.name}</p>
+          </div>
+          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{taskCount}</p>
+        </div>
+        {list.isShared && (
+          <div className="content-stretch flex gap-[8px] items-start relative shrink-0">
+            <div className="box-border content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
+              <div className="relative shrink-0 size-[24px]">
+                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                  <g>
+                    <path d={svgPaths.pded7080} stroke="#5B5D62" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                  </g>
+                </svg>
+              </div>
+              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Shared</p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
     <div className="relative shrink-0 w-full">
@@ -134,51 +200,32 @@ export function Lists({ onSelectList, todos, lists, onAddList, onUpdateList, onD
             </div>
           </div>
 
-          {/* List Items */}
+          {/* List Items grouped by folder */}
           <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
-            {lists.map((list) => {
-              const taskCount = getListCount(list.id);
+            {folders.map((folder) => {
+              const folderLists = listsByFolder.get(folder.id) ?? [];
+              if (folderLists.length === 0) return null;
               return (
-                <div
-                  key={list.id}
-                  className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer"
-                  onClick={() => onSelectList(list)}
-                >
-                  {/* List Name Row */}
-                  <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                    <div 
-                      className="content-stretch flex gap-[8px] items-center relative shrink-0"
-                    >
-                      <div className="relative shrink-0 size-[24px]">
-                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                          <g>
-                            <path d={svgPaths.p1c6a4380} stroke={list.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                          </g>
-                        </svg>
-                      </div>
-                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">{list.name}</p>
-                    </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{taskCount}</p>
+                <div key={folder.id} className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
+                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic text-[#5b5d62] text-[14px] tracking-[-0.154px] uppercase">
+                    {folder.name}
+                  </p>
+                  <div className="content-stretch flex flex-col gap-[24px] items-start w-full pl-0">
+                    {folderLists.map((list) => renderListRow(list))}
                   </div>
-
-                  {/* Shared Label */}
-                  {list.isShared && (
-                    <div className="content-stretch flex gap-[8px] items-start relative shrink-0">
-                      <div className="box-border content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
-                        <div className="relative shrink-0 size-[24px]">
-                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                            <g>
-                              <path d={svgPaths.pded7080} stroke="#5B5D62" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                            </g>
-                          </svg>
-                        </div>
-                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Shared</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}
+            {((listsByFolder.get(null) ?? []).length > 0) && (
+              <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
+                <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic text-[#5b5d62] text-[14px] tracking-[-0.154px] uppercase">
+                  No folder
+                </p>
+                <div className="content-stretch flex flex-col gap-[24px] items-start w-full pl-0">
+                  {(listsByFolder.get(null) ?? []).map((list) => renderListRow(list))}
+                </div>
+              </div>
+            )}
 
             {/* All Tasks List */}
             <div
@@ -235,6 +282,10 @@ export function Lists({ onSelectList, todos, lists, onAddList, onUpdateList, onD
       onUpdateList={handleUpdateList}
       onDeleteList={handleDeleteList}
       editingList={editingList}
+      folders={folders}
+      onAddFolder={onAddFolder}
+      onUpdateFolder={onUpdateFolder}
+      onDeleteFolder={onDeleteFolder}
     />
     </>
   );

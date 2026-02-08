@@ -80,12 +80,21 @@ export interface Todo {
   updated_at?: string
 }
 
+export interface ListFolder {
+  id: number
+  name: string
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
 export interface ListItem {
   id: number
   name: string
   color: string
   count?: number // Computed, not stored
   is_shared: boolean
+  folder_id?: number | null
   created_at?: string
   updated_at?: string
 }
@@ -365,8 +374,103 @@ export function dbListToAppList(dbList: any): ListItem {
     name: dbList.name,
     color: dbList.color,
     is_shared: dbList.is_shared,
+    folder_id: dbList.folder_id ?? null,
     created_at: dbList.created_at,
     updated_at: dbList.updated_at,
+  }
+}
+
+// List folders
+export async function fetchListFolders(): Promise<ListFolder[]> {
+  const userId = await ensureAuthenticated()
+  const { data, error } = await (supabase as any)
+    .from('list_folders')
+    .select('*')
+    .eq('user_id', userId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching list folders:', error)
+    throw error
+  }
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    sort_order: row.sort_order ?? 0,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }))
+}
+
+export async function createListFolder(folder: { name: string; sort_order?: number }): Promise<ListFolder> {
+  const userId = await ensureAuthenticated()
+  // list_folders table may not be in generated Supabase types yet
+  const { data, error } = await (supabase as any)
+    .from('list_folders')
+    .insert({
+      user_id: userId,
+      name: folder.name,
+      sort_order: folder.sort_order ?? 0,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating list folder:', error)
+    throw error
+  }
+  return {
+    id: data.id,
+    name: data.name,
+    sort_order: data.sort_order ?? 0,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+  }
+}
+
+export async function updateListFolder(id: number, folder: { name: string; sort_order?: number }): Promise<ListFolder> {
+  const userId = await ensureAuthenticated()
+  const { data, error } = await (supabase as any)
+    .from('list_folders')
+    .update({
+      name: folder.name,
+      sort_order: folder.sort_order ?? 0,
+    })
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating list folder:', error)
+    throw error
+  }
+  return {
+    id: data.id,
+    name: data.name,
+    sort_order: data.sort_order ?? 0,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+  }
+}
+
+export async function deleteListFolder(id: number): Promise<void> {
+  const userId = await ensureAuthenticated()
+  // Set lists in this folder to folder_id = null (only current user's lists)
+  await supabase
+    .from('lists')
+    .update({ folder_id: null } as any)
+    .eq('user_id', userId)
+    .eq('folder_id', id)
+  const { error } = await (supabase as any)
+    .from('list_folders')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId)
+  if (error) {
+    console.error('Error deleting list folder:', error)
+    throw error
   }
 }
 
@@ -573,17 +677,20 @@ export async function fetchLists(): Promise<ListItem[]> {
   return data ? data.map(dbListToAppList) : []
 }
 
-export async function createList(list: { name: string; color: string; isShared: boolean }): Promise<ListItem> {
+export async function createList(list: { name: string; color: string; isShared: boolean; folderId?: number | null }): Promise<ListItem> {
   const userId = await ensureAuthenticated()
-  
+  const insert: Record<string, unknown> = {
+    user_id: userId,
+    name: list.name,
+    color: list.color,
+    is_shared: list.isShared,
+  }
+  if (list.folderId !== undefined && list.folderId !== null) {
+    insert.folder_id = list.folderId
+  }
   const { data, error } = await supabase
     .from('lists')
-    .insert({
-      user_id: userId,
-      name: list.name,
-      color: list.color,
-      is_shared: list.isShared,
-    })
+    .insert(insert as any)
     .select()
     .single()
 
@@ -595,16 +702,19 @@ export async function createList(list: { name: string; color: string; isShared: 
   return dbListToAppList(data)
 }
 
-export async function updateList(id: number, list: { name: string; color: string; isShared: boolean }): Promise<ListItem> {
+export async function updateList(id: number, list: { name: string; color: string; isShared: boolean; folderId?: number | null }): Promise<ListItem> {
   const userId = await ensureAuthenticated()
-  
+  const update: Record<string, unknown> = {
+    name: list.name,
+    color: list.color,
+    is_shared: list.isShared,
+  }
+  if (list.folderId !== undefined) {
+    update.folder_id = list.folderId
+  }
   const { data, error } = await supabase
     .from('lists')
-    .update({
-      name: list.name,
-      color: list.color,
-      is_shared: list.isShared,
-    })
+    .update(update as any)
     .eq('id', id)
     .eq('user_id', userId)
     .select()

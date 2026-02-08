@@ -22,12 +22,19 @@ interface Todo {
   type?: 'task' | 'reminder';
 }
 
+interface ListFolder {
+  id: number;
+  name: string;
+  sort_order: number;
+}
+
 interface ListItem {
   id: number;
   name: string;
   color: string;
   count: number;
   isShared: boolean;
+  folderId?: number | null;
 }
 
 interface MilestoneWithGoal {
@@ -42,11 +49,12 @@ interface ListDetailProps {
   listName: string;
   listColor: string;
   isShared: boolean;
+  listFolderId?: number | null;
   onBack: () => void;
   tasks: Todo[];
   onToggleTask: (id: number) => void;
   onAddTask: (taskText: string, description?: string, type?: 'task' | 'reminder') => void;
-  onUpdateList: (listId: number, listName: string, isShared: boolean, color: string) => void;
+  onUpdateList: (listId: number, listName: string, isShared: boolean, color: string, folderId?: number | null) => void;
   onDeleteList: (listId: number) => void;
   onTaskClick?: (task: Todo) => void;
   lists?: ListItem[];
@@ -54,9 +62,13 @@ interface ListDetailProps {
   dateFilter?: Date | null;
   timeRangeFilter?: "today" | "week" | "month" | null;
   onClearDateFilter?: () => void;
+  folders?: ListFolder[];
+  onAddFolder?: (folderName: string) => void | Promise<number | undefined>;
+  onUpdateFolder?: (folderId: number, folderName: string) => void;
+  onDeleteFolder?: (folderId: number) => void;
 }
 
-export function ListDetail({ listId, listName, listColor, isShared, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList, onTaskClick, lists = [], milestones = [], dateFilter, timeRangeFilter, onClearDateFilter }: ListDetailProps) {
+export function ListDetail({ listId, listName, listColor, isShared, listFolderId, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList, onTaskClick, lists = [], milestones = [], dateFilter, timeRangeFilter, onClearDateFilter, folders = [], onAddFolder, onUpdateFolder, onDeleteFolder }: ListDetailProps) {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
   const [isRemindersExpanded, setIsRemindersExpanded] = useState(true);
@@ -72,8 +84,8 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
     setIsAddTaskModalOpen(false);
   };
 
-  const handleUpdateList = (listIdParam: number, listNameParam: string, isSharedParam: boolean, color: string) => {
-    onUpdateList(listIdParam, listNameParam, isSharedParam, color);
+  const handleUpdateList = (listIdParam: number, listNameParam: string, isSharedParam: boolean, color: string, folderId?: number | null) => {
+    onUpdateList(listIdParam, listNameParam, isSharedParam, color, folderId);
     setIsEditListModalOpen(false);
   };
 
@@ -92,6 +104,7 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
     color: listColor,
     count: tasks.length,
     isShared: isShared,
+    folderId: listFolderId ?? null,
   };
 
   const getListById = (taskListId?: number) => {
@@ -620,6 +633,10 @@ export function ListDetail({ listId, listName, listColor, isShared, onBack, task
             onUpdateList={handleUpdateList}
             onDeleteList={handleDeleteList}
             editingList={currentList}
+            folders={folders}
+            onAddFolder={onAddFolder}
+            onUpdateFolder={onUpdateFolder}
+            onDeleteFolder={onDeleteFolder}
           />
         </>
       )}

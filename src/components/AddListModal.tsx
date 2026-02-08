@@ -4,27 +4,40 @@ import svgPaths from "../imports/svg-5oexr7g1cf";
 import checkIconPaths from "../imports/svg-230yvpiryj";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
 
+interface ListFolder {
+  id: number;
+  name: string;
+  sort_order: number;
+}
+
 interface ListItem {
   id: number;
   name: string;
   color: string;
   count: number;
   isShared: boolean;
+  folderId?: number | null;
 }
 
 interface AddListModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddList: (listName: string, isShared: boolean, color: string) => void;
-  onUpdateList?: (listId: number, listName: string, isShared: boolean, color: string) => void;
+  onAddList: (listName: string, isShared: boolean, color: string, folderId?: number | null) => void;
+  onUpdateList?: (listId: number, listName: string, isShared: boolean, color: string, folderId?: number | null) => void;
   onDeleteList?: (listId: number) => void;
   editingList?: ListItem | null;
+  folders?: ListFolder[];
+  onAddFolder?: (folderName: string) => void | Promise<number | undefined>;
+  onUpdateFolder?: (folderId: number, folderName: string) => void;
+  onDeleteFolder?: (folderId: number) => void;
 }
 
-export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDeleteList, editingList }: AddListModalProps) {
+export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDeleteList, editingList, folders = [], onAddFolder, onUpdateFolder, onDeleteFolder }: AddListModalProps) {
   const [listInput, setListInput] = useState("");
   const [isShared, setIsShared] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string>("#0B64F9");
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
+  const [newFolderName, setNewFolderName] = useState("");
 
   const colors = ["#0B64F9", "#00C853", "#EF4123", "#FFA305", "#FA8072"];
 
@@ -34,24 +47,37 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
       setListInput(editingList.name);
       setIsShared(editingList.isShared);
       setSelectedColor(editingList.color);
+      setSelectedFolderId(editingList.folderId ?? null);
     } else {
       setListInput("");
       setIsShared(false);
       setSelectedColor("#0B64F9");
+      setSelectedFolderId(null);
+      setNewFolderName("");
     }
   }, [editingList, isOpen]);
 
   const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && listInput.trim() !== "") {
       if (editingList && onUpdateList) {
-        onUpdateList(editingList.id, listInput, isShared, selectedColor);
+        onUpdateList(editingList.id, listInput, isShared, selectedColor, selectedFolderId ?? undefined);
       } else {
-        onAddList(listInput, isShared, selectedColor);
+        onAddList(listInput, isShared, selectedColor, selectedFolderId ?? undefined);
       }
       setListInput("");
       setIsShared(false);
       setSelectedColor("#0B64F9");
+      setSelectedFolderId(null);
       onClose();
+    }
+  };
+
+  const handleAddFolder = async () => {
+    const name = newFolderName.trim() || "New folder";
+    if (onAddFolder) {
+      const id = await onAddFolder(name);
+      if (id != null) setSelectedFolderId(id);
+      setNewFolderName("");
     }
   };
 
@@ -150,6 +176,60 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
                   )}
                 </div>
 
+                {/* Folder picker */}
+                {folders.length > 0 || onAddFolder ? (
+                  <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62] tracking-[-0.154px]">Folder</p>
+                    <div className="flex flex-wrap gap-[8px] items-center w-full">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFolderId(null)}
+                        className="px-[12px] py-[6px] rounded-[100px] text-[14px] border transition-colors"
+                        style={{
+                          backgroundColor: selectedFolderId === null ? 'rgba(11, 100, 249, 0.25)' : 'rgba(225, 230, 238, 0.1)',
+                          color: selectedFolderId === null ? '#4b93f8' : '#e1e6ee',
+                          border: 'none',
+                        }}
+                      >
+                        No folder
+                      </button>
+                      {folders.map((folder) => (
+                        <button
+                          key={folder.id}
+                          type="button"
+                          onClick={() => setSelectedFolderId(folder.id)}
+                          className="px-[12px] py-[6px] rounded-[100px] text-[14px] border transition-colors"
+                          style={{
+                            backgroundColor: selectedFolderId === folder.id ? 'rgba(11, 100, 249, 0.25)' : 'rgba(225, 230, 238, 0.1)',
+                            color: selectedFolderId === folder.id ? '#4b93f8' : '#e1e6ee',
+                            border: 'none',
+                          }}
+                        >
+                          {folder.name}
+                        </button>
+                      ))}
+                    </div>
+                    {onAddFolder && (
+                      <div className="flex gap-[8px] items-center w-full mt-2">
+                        <input
+                          type="text"
+                          value={newFolderName}
+                          onChange={(e) => setNewFolderName(e.target.value)}
+                          placeholder="New folder name"
+                          className="flex-1 min-w-0 px-[12px] py-[8px] rounded-[8px] text-[14px] bg-[rgba(225,230,238,0.1)] text-[#e1e6ee] border-none outline-none placeholder:text-[#5b5d62]"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddFolder}
+                          className="px-[12px] py-[8px] rounded-[8px] text-[14px] bg-[#0b64f9] text-white border-none cursor-pointer hover:opacity-90"
+                        >
+                          Add folder
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
                 {/* Color Picker */}
                 <div className="content-start flex flex-wrap gap-[16px] items-start relative shrink-0 w-full">
                   {colors.map((color) => (
@@ -182,13 +262,14 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
                     onClick={() => {
                       if (listInput.trim() !== "") {
                         if (editingList && onUpdateList) {
-                          onUpdateList(editingList.id, listInput, isShared, selectedColor);
+                          onUpdateList(editingList.id, listInput, isShared, selectedColor, selectedFolderId ?? undefined);
                         } else {
-                          onAddList(listInput, isShared, selectedColor);
+                          onAddList(listInput, isShared, selectedColor, selectedFolderId ?? undefined);
                         }
                         setListInput("");
                         setIsShared(false);
                         setSelectedColor("#0B64F9");
+                        setSelectedFolderId(null);
                         onClose();
                       }
                     }}

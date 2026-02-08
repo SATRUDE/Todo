@@ -32,10 +32,15 @@ import {
   updateTask as updateTaskDb, 
   deleteTask as deleteTaskDb,
   fetchLists,
+  fetchListFolders,
   createList,
+  createListFolder,
   updateList as updateListDb,
+  updateListFolder as updateListFolderDb,
   deleteList as deleteListDb,
+  deleteListFolder as deleteListFolderDb,
   dbTodoToDisplayTodo,
+  type ListFolder,
   fetchCommonTasks,
   createCommonTask,
   updateCommonTask,
@@ -111,6 +116,7 @@ interface ListItem {
   color: string;
   count: number;
   isShared: boolean;
+  folderId?: number | null;
 }
 
 type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop";
@@ -124,6 +130,7 @@ const listColors = ["#0B64F9", "#00C853", "#EF4123", "#FF6D00", "#FA8072"];
 export function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [lists, setLists] = useState<ListItem[]>([]);
+  const [listFolders, setListFolders] = useState<ListFolder[]>([]);
   const [commonTasks, setCommonTasks] = useState<CommonTask[]>([]);
   const [dailyTasks, setDailyTasks] = useState<DailyTask[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -355,15 +362,17 @@ export function TodoApp() {
     return { valid: true };
   };
 
-  // Stage 1: Critical data (tasks + lists) - loads immediately
+  // Stage 1: Critical data (tasks + lists + list folders) - loads immediately
   const loadCriticalData = async () => {
-    const [tasksData, listsData] = await Promise.allSettled([
+    const [tasksData, listsData, foldersData] = await Promise.allSettled([
       fetchTasks(),
-      fetchLists()
+      fetchLists(),
+      fetchListFolders()
     ]);
     
     const tasksResult = tasksData.status === 'fulfilled' ? tasksData.value : [];
     const listsResult = listsData.status === 'fulfilled' ? listsData.value : [];
+    const foldersResult = foldersData.status === 'fulfilled' ? foldersData.value : [];
     
     if (tasksData.status === 'rejected') {
       console.error('Error fetching tasks:', tasksData.reason);
@@ -371,19 +380,24 @@ export function TodoApp() {
     if (listsData.status === 'rejected') {
       console.error('Error fetching lists:', listsData.reason);
     }
+    if (foldersData.status === 'rejected') {
+      console.error('Error fetching list folders:', foldersData.reason);
+    }
     
     // Convert database format to app format
     const appTodos = tasksResult.map(dbTodoToDisplayTodo);
-    const appLists = listsResult.map(list => ({
+    const appLists = listsResult.map((list: { id: number; name: string; color: string; is_shared: boolean; folder_id?: number | null }) => ({
       id: list.id,
       name: list.name,
       color: list.color,
       count: 0, // Will be calculated
       isShared: list.is_shared,
+      folderId: list.folder_id ?? null,
     }));
     
     setTodos(appTodos);
     setLists(appLists);
+    setListFolders(foldersResult);
     setIsInitialLoad(true);
   };
 
@@ -1533,15 +1547,16 @@ export function TodoApp() {
     }
   };
 
-  const addNewList = async (listName: string, isShared: boolean, color: string) => {
+  const addNewList = async (listName: string, isShared: boolean, color: string, folderId?: number | null) => {
     try {
-      const createdList = await createList({ name: listName, color, isShared });
+      const createdList = await createList({ name: listName, color, isShared, folderId: folderId ?? undefined });
       const appList: ListItem = {
         id: createdList.id,
         name: createdList.name,
         color: createdList.color,
         count: 0,
         isShared: createdList.is_shared,
+        folderId: createdList.folder_id ?? null,
       };
       setLists([...lists, appList]);
     } catch (error) {
@@ -1549,9 +1564,9 @@ export function TodoApp() {
     }
   };
 
-  const updateList = async (listId: number, listName: string, isShared: boolean, color: string) => {
+  const updateList = async (listId: number, listName: string, isShared: boolean, color: string, folderId?: number | null) => {
     try {
-      const updatedList = await updateListDb(listId, { name: listName, color, isShared });
+      const updatedList = await updateListDb(listId, { name: listName, color, isShared, folderId: folderId ?? undefined });
       setLists(lists.map(list => {
         if (list.id === listId) {
           return {
@@ -1559,6 +1574,7 @@ export function TodoApp() {
             name: updatedList.name,
             isShared: updatedList.is_shared,
             color: updatedList.color,
+            folderId: updatedList.folder_id ?? null,
           };
         }
         return list;
@@ -1585,6 +1601,35 @@ export function TodoApp() {
       }));
     } catch (error) {
       console.error('Error deleting list:', error);
+    }
+  };
+
+  const addNewFolder = async (folderName: string) => {
+    try {
+      const created = await createListFolder({ name: folderName });
+      setListFolders([...listFolders, created]);
+      return created.id;
+    } catch (error) {
+      console.error('Error adding folder:', error);
+    }
+  };
+
+  const updateFolder = async (folderId: number, folderName: string) => {
+    try {
+      const updated = await updateListFolderDb(folderId, { name: folderName });
+      setListFolders(listFolders.map(f => f.id === folderId ? updated : f));
+    } catch (error) {
+      console.error('Error updating folder:', error);
+    }
+  };
+
+  const deleteFolder = async (folderId: number) => {
+    try {
+      await deleteListFolderDb(folderId);
+      setListFolders(listFolders.filter(f => f.id !== folderId));
+      setLists(lists.map(list => list.folderId === folderId ? { ...list, folderId: null } : list));
+    } catch (error) {
+      console.error('Error deleting folder:', error);
     }
   };
 
@@ -4504,9 +4549,13 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onSelectList={handleSelectList}
           todos={todos}
           lists={lists}
+          folders={listFolders}
           onAddList={addNewList}
           onUpdateList={updateList}
           onDeleteList={deleteList}
+          onAddFolder={addNewFolder}
+          onUpdateFolder={updateFolder}
+          onDeleteFolder={deleteFolder}
           onBack={() => setCurrentPage("today")}
         />
       ) : currentPage === "dashboard" ? (
@@ -4853,6 +4902,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               listName={selectedList.name}
               listColor={selectedList.color}
               isShared={selectedList.isShared}
+              listFolderId={selectedList.folderId}
               onBack={selectedList.id === COMPLETED_LIST_ID && (timeRangeFilter !== undefined) ? () => {
                 // If this is the completed list opened from today/week/month/allTime tab, go back to today page
                 setSelectedList(null);
@@ -4867,6 +4917,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               onDeleteList={selectedList.id === ALL_TASKS_LIST_ID ? () => {} : deleteList}
               onTaskClick={handleTaskClick}
               lists={lists}
+              folders={listFolders}
+              onAddFolder={addNewFolder}
+              onUpdateFolder={updateFolder}
+              onDeleteFolder={deleteFolder}
               milestones={allMilestonesWithGoals}
               dateFilter={dateFilter}
               timeRangeFilter={timeRangeFilter}
@@ -5112,6 +5166,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         isOpen={isFilterListsModalOpen}
         onClose={() => setIsFilterListsModalOpen(false)}
         lists={lists}
+        folders={listFolders}
         selectedListIds={selectedListFilterIds}
         onApplyFilter={(selectedIds) => {
           setSelectedListFilterIds(selectedIds);
@@ -5119,11 +5174,12 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         includeToday={true}
       />
 
-      {/* Filter Lists Modal */}
+      {/* Filter Lists Modal (duplicate for layout) */}
       <FilterListsModal
         isOpen={isFilterListsModalOpen}
         onClose={() => setIsFilterListsModalOpen(false)}
         lists={lists}
+        folders={listFolders}
         selectedListIds={selectedListFilterIds}
         onApplyFilter={(selectedIds) => {
           setSelectedListFilterIds(selectedIds);
