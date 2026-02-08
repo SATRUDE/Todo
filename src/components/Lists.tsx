@@ -2,6 +2,8 @@ import { useState } from "react";
 import svgPaths from "../imports/svg-4ile2zv366";
 import completedSvgPaths from "../imports/svg-qfhtru23ul";
 import { AddListModal } from "./AddListModal";
+import { AddListOrFolderModal } from "./AddListOrFolderModal";
+import { AddFolderModal } from "./AddFolderModal";
 
 interface ListFolder {
   id: number;
@@ -46,6 +48,8 @@ interface ListsProps {
 }
 
 export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdateList, onDeleteList, onAddFolder, onUpdateFolder, onDeleteFolder, onBack }: ListsProps) {
+  const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
+  const [isAddFolderModalOpen, setIsAddFolderModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingList, setEditingList] = useState<ListItem | null>(null);
 
@@ -75,6 +79,11 @@ export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdate
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingList(null);
+  };
+
+  const handleAddFolderFromModal = (folderName: string) => {
+    onAddFolder(folderName);
+    setIsAddFolderModalOpen(false);
   };
 
   // Calculate task counts for each list
@@ -190,7 +199,7 @@ export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdate
             </div>
             <div 
               className="relative shrink-0 size-[32px] cursor-pointer"
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => setIsChoiceModalOpen(true)}
             >
               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
                 <g>
@@ -275,6 +284,26 @@ export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdate
       </div>
     </div>
 
+    <AddListOrFolderModal
+      isOpen={isChoiceModalOpen}
+      onClose={() => setIsChoiceModalOpen(false)}
+      onAddList={() => {
+        setIsChoiceModalOpen(false);
+        setEditingList(null);
+        setIsModalOpen(true);
+      }}
+      onAddFolder={() => {
+        setIsChoiceModalOpen(false);
+        setIsAddFolderModalOpen(true);
+      }}
+    />
+
+    <AddFolderModal
+      isOpen={isAddFolderModalOpen}
+      onClose={() => setIsAddFolderModalOpen(false)}
+      onAddFolder={handleAddFolderFromModal}
+    />
+
     <AddListModal
       isOpen={isModalOpen}
       onClose={handleCloseModal}
@@ -283,7 +312,6 @@ export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdate
       onDeleteList={handleDeleteList}
       editingList={editingList}
       folders={folders}
-      onAddFolder={onAddFolder}
       onUpdateFolder={onUpdateFolder}
       onDeleteFolder={onDeleteFolder}
     />

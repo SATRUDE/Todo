@@ -634,7 +634,6 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
             onDeleteList={handleDeleteList}
             editingList={currentList}
             folders={folders}
-            onAddFolder={onAddFolder}
             onUpdateFolder={onUpdateFolder}
             onDeleteFolder={onDeleteFolder}
           />

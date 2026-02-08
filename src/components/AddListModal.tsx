@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent, useEffect } from "react";
+import { useState, KeyboardEvent, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import svgPaths from "../imports/svg-5oexr7g1cf";
 import checkIconPaths from "../imports/svg-230yvpiryj";
@@ -27,17 +27,17 @@ interface AddListModalProps {
   onDeleteList?: (listId: number) => void;
   editingList?: ListItem | null;
   folders?: ListFolder[];
-  onAddFolder?: (folderName: string) => void | Promise<number | undefined>;
   onUpdateFolder?: (folderId: number, folderName: string) => void;
   onDeleteFolder?: (folderId: number) => void;
 }
 
-export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDeleteList, editingList, folders = [], onAddFolder, onUpdateFolder, onDeleteFolder }: AddListModalProps) {
+export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDeleteList, editingList, folders = [], onUpdateFolder, onDeleteFolder }: AddListModalProps) {
   const [listInput, setListInput] = useState("");
   const [isShared, setIsShared] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string>("#0B64F9");
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
-  const [newFolderName, setNewFolderName] = useState("");
+  const folderChipsRowRef = useRef<HTMLDivElement>(null);
+  const firstChipRef = useRef<HTMLButtonElement>(null);
 
   const colors = ["#0B64F9", "#00C853", "#EF4123", "#FFA305", "#FA8072"];
 
@@ -53,7 +53,6 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
       setIsShared(false);
       setSelectedColor("#0B64F9");
       setSelectedFolderId(null);
-      setNewFolderName("");
     }
   }, [editingList, isOpen]);
 
@@ -69,15 +68,6 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
       setSelectedColor("#0B64F9");
       setSelectedFolderId(null);
       onClose();
-    }
-  };
-
-  const handleAddFolder = async () => {
-    const name = newFolderName.trim() || "New folder";
-    if (onAddFolder) {
-      const id = await onAddFolder(name);
-      if (id != null) setSelectedFolderId(id);
-      setNewFolderName("");
     }
   };
 
@@ -99,6 +89,23 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
       document.body.style.overflow = '';
     };
   }, [isOpen]);
+
+  // #region agent log
+  useEffect(() => {
+    if (!isOpen || folders.length === 0) return;
+    const t = setTimeout(() => {
+      const row = folderChipsRowRef.current;
+      const firstChip = firstChipRef.current;
+      const parent = row?.parentElement;
+      const pad = row ? window.getComputedStyle(row).paddingLeft : '';
+      const rect = row?.getBoundingClientRect();
+      const chipRect = firstChip?.getBoundingClientRect();
+      const parentRect = parent?.getBoundingClientRect();
+      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AddListModal.tsx:folder-chips',message:'Folder chips layout',data:{chipsRowPaddingLeft:pad,chipsRowLeft:rect?.left,firstChipLeft:chipRect?.left,parentLeft:parentRect?.left,isEdit:!!editingList,hypothesisId:'F'},timestamp:Date.now()})}).catch(()=>{});
+    }, 150);
+    return () => clearTimeout(t);
+  }, [isOpen, folders.length, editingList]);
+  // #endregion
 
   if (!isOpen) return null;
 
@@ -129,7 +136,7 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
           </div>
 
           {/* Content */}
-          <div className="relative shrink-0 w-full">
+          <div className="relative shrink-0 w-full flex flex-col gap-[32px]">
             <div className="size-full">
               <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
                 {/* Input Field */}
@@ -175,61 +182,51 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
 
-                {/* Folder picker */}
-                {folders.length > 0 || onAddFolder ? (
-                  <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62] tracking-[-0.154px]">Folder</p>
-                    <div className="flex flex-wrap gap-[8px] items-center w-full">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedFolderId(null)}
-                        className="px-[12px] py-[6px] rounded-[100px] text-[14px] border transition-colors"
-                        style={{
-                          backgroundColor: selectedFolderId === null ? 'rgba(11, 100, 249, 0.25)' : 'rgba(225, 230, 238, 0.1)',
-                          color: selectedFolderId === null ? '#4b93f8' : '#e1e6ee',
-                          border: 'none',
-                        }}
-                      >
-                        No folder
-                      </button>
-                      {folders.map((folder) => (
-                        <button
-                          key={folder.id}
-                          type="button"
-                          onClick={() => setSelectedFolderId(folder.id)}
-                          className="px-[12px] py-[6px] rounded-[100px] text-[14px] border transition-colors"
-                          style={{
-                            backgroundColor: selectedFolderId === folder.id ? 'rgba(11, 100, 249, 0.25)' : 'rgba(225, 230, 238, 0.1)',
-                            color: selectedFolderId === folder.id ? '#4b93f8' : '#e1e6ee',
-                            border: 'none',
-                          }}
-                        >
-                          {folder.name}
-                        </button>
-                      ))}
-                    </div>
-                    {onAddFolder && (
-                      <div className="flex gap-[8px] items-center w-full mt-2">
-                        <input
-                          type="text"
-                          value={newFolderName}
-                          onChange={(e) => setNewFolderName(e.target.value)}
-                          placeholder="New folder name"
-                          className="flex-1 min-w-0 px-[12px] py-[8px] rounded-[8px] text-[14px] bg-[rgba(225,230,238,0.1)] text-[#e1e6ee] border-none outline-none placeholder:text-[#5b5d62]"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddFolder}
-                          className="px-[12px] py-[8px] rounded-[8px] text-[14px] bg-[#0b64f9] text-white border-none cursor-pointer hover:opacity-90"
-                        >
-                          Add folder
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
+            {/* Folder picker - full-width block with 16px padding (no overflow clip) */}
+            {folders.length > 0 ? (
+              <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" style={{ paddingLeft: 16, paddingRight: 16 }}>
+                <div ref={folderChipsRowRef} className="flex flex-wrap items-center w-full" style={{ gap: 16 }}>
+                  <button
+                    ref={firstChipRef}
+                    type="button"
+                    onClick={() => setSelectedFolderId(null)}
+                    className="px-[12px] py-[6px] rounded-[100px] text-[14px] border transition-colors"
+                    style={{
+                      backgroundColor: selectedFolderId === null ? 'rgba(11, 100, 249, 0.25)' : 'rgba(225, 230, 238, 0.1)',
+                      color: selectedFolderId === null ? '#4b93f8' : '#e1e6ee',
+                      border: 'none',
+                      paddingLeft: 12,
+                      paddingRight: 12,
+                    }}
+                  >
+                    No folder
+                  </button>
+                  {folders.map((folder) => (
+                    <button
+                      key={folder.id}
+                      type="button"
+                      onClick={() => setSelectedFolderId(folder.id)}
+                      className="px-[12px] py-[6px] rounded-[100px] text-[14px] border transition-colors"
+                      style={{
+                        backgroundColor: selectedFolderId === folder.id ? 'rgba(11, 100, 249, 0.25)' : 'rgba(225, 230, 238, 0.1)',
+                        color: selectedFolderId === folder.id ? '#4b93f8' : '#e1e6ee',
+                        border: 'none',
+                        paddingLeft: 12,
+                        paddingRight: 12,
+                      }}
+                    >
+                      {folder.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
+            <div className="size-full">
+              <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
                 {/* Color Picker */}
                 <div className="content-start flex flex-wrap gap-[16px] items-start relative shrink-0 w-full">
                   {colors.map((color) => (
