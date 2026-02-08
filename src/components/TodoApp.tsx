@@ -79,7 +79,8 @@ import {
   fetchCalendarEvents, 
   getProcessedEventIds, 
   filterProcessedEvents,
-  getCalendarConnection
+  getCalendarConnection,
+  connectGoogleCalendar
 } from "../lib/calendar";
 
 interface Todo {
@@ -224,6 +225,7 @@ export function TodoApp() {
   const [isScheduledExpanded, setIsScheduledExpanded] = useState(true);
   const [calendarPendingEventsCount, setCalendarPendingEventsCount] = useState<number>(0);
   const [isCalendarSyncing, setIsCalendarSyncing] = useState(false);
+  const [isCalendarConnected, setIsCalendarConnected] = useState<boolean | null>(null);
   
   // Check if we're on the reset password route
   useEffect(() => {
@@ -893,6 +895,33 @@ export function TodoApp() {
     if (!isAuthenticated) return;
     checkCalendarEvents();
   }, [isAuthenticated, checkCalendarEvents]);
+
+  // Check calendar connection when on Today page (to show "connect calendar" message if not connected)
+  useEffect(() => {
+    if (currentPage !== "today" || !isAuthenticated) {
+      if (currentPage !== "today") setIsCalendarConnected(null);
+      return;
+    }
+    let cancelled = false;
+    getCalendarConnection()
+      .then((connection) => {
+        if (!cancelled) setIsCalendarConnected(!!connection);
+      })
+      .catch(() => {
+        if (!cancelled) setIsCalendarConnected(false);
+      });
+    return () => { cancelled = true; };
+  }, [currentPage, isAuthenticated]);
+
+  // Start Google Calendar OAuth flow (same as Settings "Connect Google Calendar" button)
+  const handleConnectCalendarFromBanner = async () => {
+    try {
+      const authUrl = await connectGoogleCalendar();
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error('Error connecting calendar:', error);
+    }
+  };
 
   // Auto-sync every minute (initial load is handled by the initialize effect above)
   useEffect(() => {
@@ -2937,6 +2966,31 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                   </div>
                 </div>
               </div>
+
+              {/* Calendar not connected - show on Today page when calendar is not linked */}
+              {isCalendarConnected === false && (
+                <div className="content-stretch flex items-center gap-[12px] relative shrink-0 w-full px-[20px]">
+                  <div 
+                    className="flex items-center gap-[12px] px-[16px] py-[12px] rounded-[8px] w-full cursor-pointer hover:opacity-90"
+                    style={{ backgroundColor: '#1f2022', border: '1px solid #2a252a' }}
+                    onClick={handleConnectCalendarFromBanner}
+                  >
+                    <div className="relative shrink-0 size-[20px]">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#5B5D62" className="size-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                      </svg>
+                    </div>
+                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[16px] text-[#e1e6ee] flex-1">
+                      Connect your calendar to sync events with your tasks
+                    </p>
+                    <div className="relative shrink-0 size-[20px]">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#5B5D62" className="block size-full">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Calendar Events Message Banner */}
               {calendarPendingEventsCount > 0 && (
