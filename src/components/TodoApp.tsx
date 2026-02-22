@@ -23,6 +23,8 @@ import { CalendarTaskSuggestions } from "./CalendarTaskSuggestions";
 import { SignIn } from "./SignIn";
 import { ResetPassword } from "./ResetPassword";
 import { Workshop } from "./Workshop";
+import { Notes } from "./Notes";
+import { TasksPage } from "./TasksPage";
 import { APP_VERSION } from "../lib/version";
 import { supabase } from "../lib/supabase";
 import { linkifyText } from "../lib/textUtils";
@@ -71,7 +73,12 @@ import {
   fetchGoalStatuses,
   upsertGoalStatuses,
   type GoalStatus,
-  type GoalStatusInfo
+  type GoalStatusInfo,
+  fetchNotes,
+  createNote,
+  updateNote,
+  deleteNote,
+  type Note
 } from "../lib/database";
 import { 
   requestNotificationPermission, 
@@ -105,7 +112,6 @@ interface Todo {
     time: string;
     recurring?: string;
   };
-  effort?: number; // Effort level out of 10 (0-10)
   type?: 'task' | 'reminder'; // Task type: 'task' or 'reminder'
   updatedAt?: string; // ISO timestamp string
 }
@@ -119,7 +125,7 @@ interface ListItem {
   folderId?: number | null;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop" | "notes";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -134,6 +140,8 @@ export function TodoApp() {
   const [commonTasks, setCommonTasks] = useState<CommonTask[]>([]);
   const [dailyTasks, setDailyTasks] = useState<DailyTask[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [notesPreselectedTaskId, setNotesPreselectedTaskId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [isReviewMissedDeadlinesOpen, setIsReviewMissedDeadlinesOpen] = useState(false);
@@ -406,16 +414,18 @@ export function TodoApp() {
     setIsSecondaryDataLoading(true);
     
     try {
-      const [commonTasksData, dailyTasksData, goalsData] = await Promise.allSettled([
+      const [commonTasksData, dailyTasksData, goalsData, notesData] = await Promise.allSettled([
         fetchCommonTasks(),
         fetchDailyTasks(),
-        fetchGoals()
+        fetchGoals(),
+        fetchNotes()
       ]);
       
       const commonTasksResult = commonTasksData.status === 'fulfilled' ? commonTasksData.value : [];
       const dailyTasksResult = dailyTasksData.status === 'fulfilled' ? dailyTasksData.value : [];
       const goalsResult = goalsData.status === 'fulfilled' ? goalsData.value : [];
-      
+      const notesResult = notesData.status === 'fulfilled' ? notesData.value : [];
+
       if (commonTasksData.status === 'rejected') {
         console.error('Error fetching common tasks:', commonTasksData.reason);
       }
@@ -425,7 +435,10 @@ export function TodoApp() {
       if (goalsData.status === 'rejected') {
         console.error('Error fetching goals:', goalsData.reason);
       }
-      
+      if (notesData.status === 'rejected') {
+        console.error('Error fetching notes:', notesData.reason);
+      }
+
       // Convert common tasks from database format to display format
       const displayCommonTasks = commonTasksResult.map(dbCommonTaskToDisplayCommonTask);
       setCommonTasks(displayCommonTasks);
@@ -435,7 +448,8 @@ export function TodoApp() {
       // Convert goals from database format to display format
       const displayGoals = goalsResult.map(dbGoalToDisplayGoal);
       setGoals(displayGoals);
-      
+      setNotes(notesResult);
+
       // Generate tasks from daily tasks for today (if not already generated)
       if (displayDailyTasks.length > 0) {
         // generateTasksFromDailyTasks will fetch fresh todos itself, so we don't need to pass existingTodos
@@ -1459,7 +1473,7 @@ export function TodoApp() {
     }
   };
 
-  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number, type?: 'task' | 'reminder', imageUrl?: string | null) => {
+  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder', imageUrl?: string | null) => {
     const newTodo: Todo = {
       id: Date.now(), // Temporary ID
       text: taskText,
@@ -1471,7 +1485,6 @@ export function TodoApp() {
       deadline: deadline,
       description: description ?? null,
       imageUrl: imageUrl ?? null,
-      effort: effort,
       type: type || 'task',
     };
     
@@ -1877,6 +1890,32 @@ export function TodoApp() {
     }
   };
 
+  // Notes handlers
+  const handleAddNote = async (content: string, taskId?: number | null) => {
+    const created = await createNote({ content, taskId });
+    setNotes((prev) => [created, ...prev]);
+  };
+
+  const handleUpdateNote = async (id: number, content: string, taskId?: number | null) => {
+    try {
+      const updated = await updateNote(id, { content, taskId });
+      setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
+    } catch (error) {
+      console.error('Error updating note:', error);
+      alert(`Failed to update note: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleDeleteNote = async (id: number) => {
+    try {
+      await deleteNote(id);
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      alert(`Failed to delete note: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   // Reset common tasks: remove all related tasks and regenerate them
   const resetCommonTasks = async (commonTasksToReset: any[]) => {
     try {
@@ -2181,7 +2220,7 @@ export function TodoApp() {
     setTodos(displayTasks);
   };
 
-  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder', imageUrl?: string | null) => {
+  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null) => {
     try {
       const todo = todos.find(t => t.id === taskId);
       if (!todo) return;
@@ -2195,7 +2234,6 @@ export function TodoApp() {
         milestoneId: milestoneId !== undefined ? milestoneId : todo.milestoneId,
         time: deadline?.time || todo.time || null,
         group: deadline ? undefined : (todo.group || null),
-        effort: effort !== undefined ? effort : todo.effort,
       };
       
       // Always include type - use the passed type if provided, otherwise use existing type, default to 'task'
@@ -2270,7 +2308,7 @@ export function TodoApp() {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleUpdateDeadline:beforeUpdate',message:'Calling updateTask',data:{taskId,todoText:todo.text},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
-      await updateTask(taskId, todo.text, todo.description, todo.listId, todo.milestoneId, deadline, todo.effort, todo.type);
+      await updateTask(taskId, todo.text, todo.description, todo.listId, todo.milestoneId, deadline, todo.type);
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleUpdateDeadline:afterUpdate',message:'UpdateTask completed successfully',data:{taskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
@@ -2659,68 +2697,6 @@ export function TodoApp() {
     return isNotReminder && isNotDaily && isNotDuplicateDailyText;
   });
   
-  // Calculate total effort for Today and Tomorrow (for tab labels)
-  const getTotalEffort = (timeRange: "today" | "tomorrow") => {
-    const tasks = todos.filter(todo => {
-      // Exclude subtasks
-      if (todo.parentTaskId) return false;
-      if (!todo.deadline || todo.completed) return false;
-      const taskDate = todo.deadline.date;
-      if (timeRange === "today") {
-        return isToday(taskDate);
-      } else {
-        return isTomorrow(taskDate);
-      }
-    });
-    return tasks.reduce((sum, task) => sum + (task.effort || 0), 0);
-  };
-  
-  const todayEffort = getTotalEffort("today");
-  const tomorrowEffort = getTotalEffort("tomorrow");
-
-  // Calculate total effort for the current time range (for status card)
-  const getEffortForTimeRange = () => {
-    const tasks = todos.filter(todo => {
-      if (!todo.deadline) return false;
-      const taskDate = todo.deadline.date;
-      const today = new Date();
-      
-      switch (selectedTimeRange) {
-        case "today":
-          return isToday(taskDate);
-        case "tomorrow":
-          return isTomorrow(taskDate);
-        case "week":
-          // Get tasks for this week (Monday to Sunday)
-          const dayOfWeek = today.getDay();
-          const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-          const weekStart = new Date(today);
-          weekStart.setDate(today.getDate() + daysToMonday);
-          weekStart.setHours(0, 0, 0, 0);
-          const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-          const weekEnd = new Date(today);
-          weekEnd.setDate(today.getDate() + daysUntilSunday);
-          weekEnd.setHours(23, 59, 59, 999);
-          return taskDate >= weekStart && taskDate <= weekEnd;
-        case "month":
-          // Get tasks for this month
-          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-          monthStart.setHours(0, 0, 0, 0);
-          const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-          monthEnd.setHours(23, 59, 59, 999);
-          return taskDate >= monthStart && taskDate <= monthEnd;
-        case "allTime":
-          return true; // All tasks with deadlines
-        default:
-          return false;
-      }
-    });
-    const totalEffort = tasks.reduce((sum, task) => sum + (task.effort || 0), 0);
-    return { total: totalEffort, max: 10 };
-  };
-  
-  const effortForTimeRange = getEffortForTimeRange();
-
   // Calculate missed deadlines (tasks with deadlines that have passed and are not completed)
   // Use currentTime state to trigger re-renders when time passes
   const missedDeadlines = todos.filter(todo => {
@@ -2979,1572 +2955,68 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
   }
 
   return (
-    <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-start pt-[60px] pb-[100px] px-0 relative w-full min-h-screen overflow-x-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
+    <div className="bg-background box-border content-stretch flex flex-col items-center justify-start pt-[60px] pb-[100px] px-0 relative w-full min-h-screen overflow-x-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
       {/* Main Content Container - 700px max-width on desktop, centered */}
       <div className="w-full desktop-container">
         {currentPage === "today" ? (
-        <div className="relative shrink-0 w-full">
-          <div className="w-full">
-            <div className="box-border content-stretch flex flex-col gap-[32px] items-start pt-0 relative w-full h-fit overflow-x-hidden" style={{ paddingBottom: '150px' }}>
-              {/* Header with Tasks and Date */}
-              <div className="content-stretch flex gap-[32px] items-start relative shrink-0 w-full px-[20px]">
-                <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative flex-1 min-w-0 text-nowrap whitespace-pre">
-                  <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Tasks</p>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">{getFormattedDate()}</p>
-                </div>
-                {/* Filter Icon - Right aligned to Tasks title */}
-                <div className="basis-0 content-stretch flex grow items-center justify-end gap-2 min-h-px min-w-px overflow-clip p-[3px] relative shrink-0">
-                  {/* Filter Icon */}
-                  <div 
-                    className="relative shrink-0 size-[32px] cursor-pointer"
-                    onClick={() => setIsFilterListsModalOpen(true)}
-                  >
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '32px', height: '32px' }}>
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"
-                        stroke="#E1E6EE"
-                        strokeWidth="1.5"
-                      />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Calendar not connected - show on Today page when calendar is not linked */}
-              {isCalendarConnected === false && (
-                <div className="content-stretch flex items-center gap-[12px] relative shrink-0 w-full px-[20px]">
-                  <div 
-                    className="flex items-center gap-[12px] px-[16px] py-[12px] rounded-[8px] w-full cursor-pointer hover:opacity-90"
-                    style={{ backgroundColor: '#1f2022', border: '1px solid #2a252a' }}
-                    onClick={handleConnectCalendarFromBanner}
-                  >
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#5B5D62" className="size-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                      </svg>
-                    </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[16px] text-[#e1e6ee] flex-1">
-                      Connect your calendar to sync events with your tasks
-                    </p>
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#5B5D62" className="block size-full">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Calendar Events Message Banner */}
-              {calendarPendingEventsCount > 0 && (
-                <div className="content-stretch flex items-center gap-[12px] relative shrink-0 w-full px-[20px]">
-                  <div 
-                    className="flex items-center gap-[12px] px-[16px] py-[12px] rounded-[8px] w-full cursor-pointer hover:opacity-90"
-                    style={{ backgroundColor: '#1f2022', border: '1px solid #2a252a' }}
-                    onClick={() => setCurrentPage("calendarSync")}
-                  >
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#8fe594" className="size-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                      </svg>
-                    </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[16px] text-white flex-1">
-                      {calendarPendingEventsCount} calendar event{calendarPendingEventsCount !== 1 ? 's' : ''} ready to sync
-                    </p>
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#8fe594" className="block size-full">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Inline style tag to force inactive tab color */}
-              <style>{`
-                .tab-inactive-force {
-                  color: #5B5D62 !important;
-                }
-                button.tab-button-inactive-force > * {
-                  color: #5B5D62 !important;
-                }
-                [data-inactive-tab="true"] {
-                  color: #5B5D62 !important;
-                }
-                .tab-inactive-text-v5 {
-                  color: #5B5D62 !important;
-                }
-                .tab-inactive-text-v6 {
-                  color: #5B5D62 !important;
-                }
-                #tab-inactive-text-v8 {
-                  color: #5B5D62 !important;
-                }
-                .tab-inactive-text-v9 {
-                  color: #5B5D62 !important;
-                }
-                .tab-inactive-text-v10 {
-                  color: #5B5D62 !important;
-                }
-              `}</style>
-              
-              {/* Tabs for Today/Tomorrow/This Week/This Month - Horizontally scrollable */}
-              <div 
-                className="tabs-scroll-container"
-                style={{ 
-                  width: '100%',
-                  overflowX: 'auto',
-                  overflowY: 'hidden',
-                  scrollbarWidth: 'none', // Firefox
-                  msOverflowStyle: 'none', // IE/Edge
-                  WebkitOverflowScrolling: 'touch' // Smooth scrolling on iOS
-                }}
-              >
-                <style>{`
-                  .tabs-scroll-container::-webkit-scrollbar {
-                    display: none; /* Chrome, Safari, Opera */
-                  }
-                `}</style>
-                <div 
-                  className="flex items-center gap-[8px] rounded-[100px] ml-5"
-                  style={{ 
-                    backgroundColor: '#1f2022',
-                    width: 'max-content',
-                    minWidth: 'max-content',
-                    display: 'inline-flex',
-                    marginLeft: '20px'
-                  }}
-                >
-                {/* Today tab */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedTimeRange("today")}
-                  className="content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none"
-                  style={{
-                    padding: "6px 16px",
-                    backgroundColor: selectedTimeRange === "today" ? "#f5f5f5" : "transparent",
-                    border: selectedTimeRange === "today" ? "1px solid #e1e6ee" : "1px solid transparent"
-                  }}
-                >
-                  <span 
-                    className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] ${selectedTimeRange !== "today" ? "tab-inactive-force" : ""}`}
-                    style={{
-                      color: selectedTimeRange === "today" ? "#110c10" : "#5B5D62"
-                    }}
-                  >
-                    Today
-                  </span>
-                </button>
-                
-                {/* Tomorrow tab */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedTimeRange("tomorrow")}
-                  className="content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none"
-                  data-inactive-tab={selectedTimeRange !== "tomorrow" ? "true" : undefined}
-                  style={{
-                    padding: "6px 16px",
-                    backgroundColor: selectedTimeRange === "tomorrow" ? "#f5f5f5" : "transparent",
-                    border: selectedTimeRange === "tomorrow" ? "1px solid #e1e6ee" : "1px solid transparent"
-                  }}
-                >
-                  <span 
-                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]"
-                    style={{
-                      color: selectedTimeRange === "tomorrow" ? "#110c10" : "#5B5D62"
-                    }}
-                  >
-                    Tomorrow
-                  </span>
-                </button>
-                
-                {/* Week tab */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedTimeRange("week")}
-                  className={`content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none ${selectedTimeRange !== "week" ? "tab-button-inactive-force" : ""}`}
-                  style={{
-                    padding: "6px 16px",
-                    backgroundColor: selectedTimeRange === "week" ? "#f5f5f5" : "transparent",
-                    border: selectedTimeRange === "week" ? "1px solid #e1e6ee" : "1px solid transparent"
-                  }}
-                >
-                  <span 
-                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]"
-                    style={{
-                      color: selectedTimeRange === "week" ? "#110c10" : "#5B5D62"
-                    }}
-                  >
-                    Week
-                  </span>
-                </button>
-                
-                {/* Month tab */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedTimeRange("month")}
-                  className={`content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none ${selectedTimeRange !== "month" ? "tab-button-inactive-force" : ""}`}
-                  style={{
-                    padding: "6px 16px",
-                    backgroundColor: selectedTimeRange === "month" ? "#f5f5f5" : "transparent",
-                    border: selectedTimeRange === "month" ? "1px solid #e1e6ee" : "1px solid transparent"
-                  }}
-                >
-                  <span 
-                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]"
-                    style={{
-                      color: selectedTimeRange === "month" ? "#110c10" : "#5B5D62"
-                    }}
-                  >
-                    Month
-                  </span>
-                </button>
-                
-                {/* All time tab */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedTimeRange("allTime")}
-                  className={`content-stretch flex items-center justify-center relative rounded-[100px] shrink-0 cursor-pointer border-none outline-none ${selectedTimeRange !== "allTime" ? "tab-button-inactive-force" : ""}`}
-                  style={{
-                    padding: "6px 16px",
-                    backgroundColor: selectedTimeRange === "allTime" ? "#f5f5f5" : "transparent",
-                    border: selectedTimeRange === "allTime" ? "1px solid #e1e6ee" : "1px solid transparent"
-                  }}
-                >
-                  <span 
-                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]"
-                    style={{
-                      color: selectedTimeRange === "allTime" ? "#110c10" : "#5B5D62"
-                    }}
-                  >
-                    All time
-                  </span>
-                </button>
-                </div>
-              </div>
-              
-                
-
-              {/* Status Cards */}
-              <div 
-                className="content-stretch flex items-start relative shrink-0 w-full px-[20px]"
-                style={{ gap: '16px' }}
-              >
-                {/* Effort Card - Only show on Today and Tomorrow */}
-                {(selectedTimeRange === "today" || selectedTimeRange === "tomorrow") && (
-                  <div 
-                    className="content-stretch flex items-end justify-between relative rounded-[8px]"
-                    style={{ 
-                      backgroundColor: '#1f2022', 
-                      borderRadius: '8px',
-                      padding: '12px',
-                      flex: 1
-                    }}
-                  >
-                  <div className="flex flex-col gap-[10px] w-full">
-                    <div className="flex items-start justify-between w-full" style={{ width: '100%' }}>
-                      <div className="relative shrink-0 size-[24px]">
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          strokeWidth="1.5" 
-                          stroke="#e1e6ee" 
-                          className="size-6"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z" />
-                        </svg>
-                      </div>
-                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]" style={{ textAlign: 'right' }}>
-                        {effortForTimeRange.total}/{effortForTimeRange.max}
-                      </p>
-                    </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px]">
-                      Effort
-                    </p>
-                  </div>
-                </div>
-                )}
-
-                {/* Done Card */}
-                <div 
-                  className={`content-stretch flex items-end justify-between relative rounded-[8px] ${tasksCompletedForTimeRange.length > 0 ? 'cursor-pointer hover:opacity-90' : ''}`}
-                  style={{ 
-                    backgroundColor: '#1f2022', 
-                    borderRadius: '8px',
-                    padding: '12px',
-                    flex: 1,
-                    opacity: tasksCompletedForTimeRange.length === 0 ? 0.25 : 1
-                  }}
-                  onClick={() => {
-                    if (tasksCompletedForTimeRange.length > 0) {
-                      const completedList: ListItem = {
-                        id: COMPLETED_LIST_ID,
-                        name: "Completed list",
-                        color: "#00C853",
-                        count: tasksCompletedForTimeRange.length,
-                        isShared: false,
-                      };
-                      // Set the time range filter based on the selected tab
-                      // For "allTime", set to null to show all completed tasks without filtering
-                      const newTimeRangeFilter = selectedTimeRange === "today" ? "today" : selectedTimeRange === "week" ? "week" : selectedTimeRange === "month" ? "month" : selectedTimeRange === "allTime" ? null : null;
-                      setTimeRangeFilter(newTimeRangeFilter);
-                      setDateFilter(null); // Clear date filter when using time range filter
-                      handleSelectList(completedList, null);
-                    }
-                  }}
-                >
-                  <div className="flex flex-col gap-[10px] w-full">
-                    <div className="flex items-start justify-between w-full" style={{ width: '100%' }}>
-                      <div className="relative shrink-0 size-[24px]">
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          strokeWidth="1.5" 
-                          stroke="#00c853"
-                          className="size-6"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" 
-                          />
-                        </svg>
-                      </div>
-                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]" style={{ textAlign: 'right' }}>
-                        {tasksCompletedForTimeRange.length}
-                      </p>
-                    </div>
-                    <p 
-                      className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]" 
-                      style={{ color: '#00c853' }}
-                    >
-                      Done
-                    </p>
-                  </div>
-                </div>
-
-                {/* Overdue Card */}
-                <div 
-                  className={`content-stretch flex items-end justify-between relative rounded-[8px] ${missedDeadlines.length > 0 ? 'cursor-pointer hover:opacity-90' : ''}`}
-                  style={{ 
-                    backgroundColor: '#1f2022', 
-                    borderRadius: '8px',
-                    padding: '12px',
-                    flex: 1,
-                    opacity: missedDeadlines.length === 0 ? 0.25 : 1
-                  }}
-                  onClick={() => {
-                    if (missedDeadlines.length > 0) {
-                      setIsReviewMissedDeadlinesOpen(true);
-                    }
-                  }}
-                >
-                  <div className="flex flex-col gap-[10px] w-full">
-                    <div className="flex items-start justify-between w-full" style={{ width: '100%' }}>
-                      <div className="relative shrink-0 size-[24px]">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth="1.5"
-                          stroke="#ef4123"
-                          className="size-6"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3"
-                          />
-                        </svg>
-                      </div>
-                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]" style={{ textAlign: 'right' }}>
-                        {missedDeadlines.length}
-                      </p>
-                    </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]" style={{ color: '#ef4123' }}>
-                      Overdue
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Filter Tags - Show active list filters */}
-              {selectedListFilterIds.size > 0 && (
-                <div 
-                  className="content-stretch flex items-start relative shrink-0 w-full px-[20px]"
-                  style={{ gap: '8px', flexWrap: 'wrap' }}
-                >
-                  {Array.from(selectedListFilterIds).map((listId) => {
-                    // Get list name - handle "Today" (id 0) specially
-                    let listName = "Today";
-                    let listColor = "#E1E6EE";
-                    
-                    if (listId !== 0) {
-                      const list = lists.find(l => l.id === listId);
-                      if (list) {
-                        listName = list.name;
-                        listColor = list.color;
-                      } else {
-                        return null; // Skip if list not found
-                      }
-                    }
-                    
-                    return (
-                      <div
-                        key={listId}
-                        className="bg-[rgba(225,230,238,0.1)] box-border flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer w-fit hover:opacity-90"
-                        onClick={() => {
-                          const newSelected = new Set(selectedListFilterIds);
-                          newSelected.delete(listId);
-                          setSelectedListFilterIds(newSelected);
-                        }}
-                      >
-                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                          {listName}
-                        </p>
-                        {/* X Icon */}
-                        <div className="relative shrink-0 size-[20px]">
-                          <svg 
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none" 
-                            viewBox="0 0 24 24" 
-                            strokeWidth="1.5" 
-                            stroke="currentColor" 
-                            className="size-6"
-                            style={{ width: '20px', height: '20px', color: '#e1e6ee' }}
-                          >
-                            <path 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
-                              d="M6 18 18 6M6 6l12 12" 
-                            />
-                          </svg>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-            
-            {/* SCHEDULED Section - Reminders, Daily Tasks, and At-Risk Goals side by side */}
-            {((reminders.length > 0 || dailyTaskItems.length > 0 || activeGoals.length > 0) && (selectedTimeRange === "today" || selectedTimeRange === "tomorrow")) && (
-              <div className="content-stretch flex flex-col gap-[16px] items-start mb-[24px]" style={{ width: '100%' }}>
-                {/* SCHEDULED Header */}
-                <div className="content-stretch flex items-center justify-between gap-[8px] relative shrink-0 w-full" style={{ marginLeft: '20px', width: 'calc(100% - 20px)' }}>
-                  <p 
-                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
-                    style={{ fontSize: '12px' }}
-                  >
-                    NOTICE BOARD
-                  </p>
-                  <div 
-                    className="relative shrink-0 cursor-pointer"
-                    onClick={() => setIsScheduledExpanded(!isScheduledExpanded)}
-                  >
-                    <svg 
-                      className={`block transition-transform ${isScheduledExpanded ? 'rotate-180' : ''}`} 
-                      width="20" 
-                      height="20" 
-                      fill="none" 
-                      preserveAspectRatio="none" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        d="M6 9L12 15L18 9"
-                        stroke="#E1E6EE"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                      />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Side-by-side container - Horizontally scrollable */}
-                {isScheduledExpanded && (
-                <div
-                  className="scheduled-cards-scroll-container"
-                  style={{ 
-                    width: '100%',
-                    overflowX: 'auto',
-                    overflowY: 'hidden',
-                    scrollbarWidth: 'none', // Firefox
-                    msOverflowStyle: 'none', // IE/Edge
-                    WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
-                    contain: 'layout style paint'
-                  }}
-                >
-                  <style>{`
-                    .scheduled-cards-scroll-container::-webkit-scrollbar {
-                      display: none; /* Chrome, Safari, Opera */
-                    }
-                  `}</style>
-                  <div 
-                    className="flex gap-[12px] items-stretch"
-                    style={{ 
-                      width: 'max-content',
-                      minWidth: 'max-content',
-                      display: 'inline-flex',
-                      marginLeft: '20px',
-                      paddingRight: '20px'
-                    }}
-                  >
-                  {/* Daily Tasks Box */}
-                  {dailyTaskItems.length > 0 && (
-                    <div 
-                      className="flex flex-col gap-[10px] items-start px-[16px] relative"
-                      style={{ 
-                        backgroundColor: '#1f2022',
-                        paddingTop: '16px',
-                        paddingBottom: '16px',
-                        borderRadius: '8px',
-                        minWidth: '300px',
-                        width: '300px'
-                      }}
-                    >
-                      {/* Header */}
-                      <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
-                        <div className="content-stretch flex items-center relative shrink-0">
-                          <p 
-                            className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
-                            style={{ fontSize: '12px' }}
-                          >
-                            DAILY
-                          </p>
-                        </div>
-                        <div className="content-stretch flex items-center relative shrink-0">
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
-                            {dailyTaskItems.length}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Daily Tasks List */}
-                      <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                          {dailyTaskItems.map((todo) => (
-                            <div
-                              key={todo.id}
-                              className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
-                              onClick={() => handleTaskClick(todo)}
-                            >
-                              {/* Daily Task Row */}
-                              <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
-                                {/* Checkbox */}
-                                <div
-                                  className="relative shrink-0 size-[24px] cursor-pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleTodo(todo.id);
-                                  }}
-                                >
-                                  <svg
-                                    className="block size-full"
-                                    fill="none"
-                                    preserveAspectRatio="none"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <circle
-                                      cx="12"
-                                      cy="12"
-                                      r="11.25"
-                                      stroke="#E1E6EE"
-                                      strokeWidth="1.5"
-                                      fill={todo.completed ? "#E1E6EE" : "none"}
-                                    />
-                                    {todo.completed && (
-                                      <path
-                                        d="M7 12L10 15L17 8"
-                                        stroke="#110c10"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    )}
-                                  </svg>
-                                </div>
-                                <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                                  <div className="content-stretch flex items-center relative shrink-0 w-full">
-                                    <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] ${
-                                      todo.completed ? "text-[#5b5d62] line-through" : "text-white"
-                                    }`}>
-                                      {todo.text}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {/* Time */}
-                              {(todo.deadline?.time || todo.time) && (
-                                <div className="content-stretch flex items-start relative shrink-0">
-                                  <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
-                                    <div className="relative shrink-0 size-[20px]">
-                                      <svg
-                                        className="block size-full"
-                                        fill="none"
-                                        preserveAspectRatio="none"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <g>
-                                          <path
-                                            d={svgPathsToday.p19fddb00}
-                                            stroke="#5B5D62"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth="1.5"
-                                          />
-                                        </g>
-                                      </svg>
-                                    </div>
-                                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
-                                      {todo.deadline?.time || todo.time}
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {/* Description */}
-                              {todo.description && todo.description.trim() && (
-                                <div 
-                                  className="w-full pl-[32px] overflow-hidden"
-                                  style={{ maxWidth: '100%', boxSizing: 'border-box' }}
-                                >
-                                  <p 
-                                    className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
-                                    style={{ 
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap',
-                                      maxWidth: '100%',
-                                      width: '100%'
-                                    }}
-                                  >
-                                    {linkifyText(todo.description)}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Reminders Box */}
-                  {reminders.length > 0 && (
-                    <div 
-                      className="flex flex-col gap-[10px] items-start px-[16px] relative"
-                      style={{ 
-                        backgroundColor: '#1f2022',
-                        paddingTop: '16px',
-                        paddingBottom: '16px',
-                        borderRadius: '8px',
-                        minWidth: '300px',
-                        width: '300px'
-                      }}
-                      ref={(el) => {
-                        // #region agent log
-                        if (el) {
-                          const computedStyle = window.getComputedStyle(el);
-                          const parentStyle = el.parentElement ? window.getComputedStyle(el.parentElement) : null;
-                          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:RemindersBox:render',message:'Reminders box rendered at top',data:{remindersCount:reminders.length,selectedTimeRange,className:el.className,inlineStyle:el.getAttribute('style'),paddingTop:computedStyle.paddingTop,paddingBottom:computedStyle.paddingBottom,paddingLeft:computedStyle.paddingLeft,paddingRight:computedStyle.paddingRight,backgroundColor:computedStyle.backgroundColor,marginLeft:computedStyle.marginLeft,marginRight:computedStyle.marginRight,borderRadius:computedStyle.borderRadius,width:computedStyle.width,parentPaddingLeft:parentStyle?.paddingLeft,parentPaddingRight:parentStyle?.paddingRight},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'E'})}).catch(()=>{});
-                        }
-                        // #endregion
-                      }}
-                    >
-                      {/* Header */}
-                      <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
-                        <div className="content-stretch flex items-center relative shrink-0">
-                          <p 
-                            className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
-                            style={{ fontSize: '12px' }}
-                            ref={(el) => {
-                              // #region agent log
-                              if (el) {
-                                const computedStyle = window.getComputedStyle(el);
-                                fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:RemindersTitle:render',message:'Reminders title rendered',data:{className:el.className,inlineStyle:el.getAttribute('style'),fontSize:computedStyle.fontSize,textContent:el.textContent},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'E'})}).catch(()=>{});
-                              }
-                              // #endregion
-                            }}
-                          >
-                            REMINDERS
-                          </p>
-                        </div>
-                        <div className="content-stretch flex items-center relative shrink-0">
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
-                            {reminders.length}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Reminders List */}
-                      <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                          {reminders.map((todo) => (
-                            <div
-                              key={todo.id}
-                              className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
-                              onClick={() => handleTaskClick(todo)}
-                            >
-                              {/* Reminder Row */}
-                              <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
-                                {/* Bell Icon */}
-                                <div className="relative shrink-0 size-[24px]">
-                                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                                  </svg>
-                                </div>
-                                <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                                  <div className="content-stretch flex items-center relative shrink-0 w-full">
-                                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px]">
-                                      {todo.text}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {/* Time */}
-                              {(todo.deadline?.time || todo.time) && (
-                                <div className="content-stretch flex items-start relative shrink-0">
-                                  <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
-                                    <div className="relative shrink-0 size-[20px]">
-                                      <svg
-                                        className="block size-full"
-                                        fill="none"
-                                        preserveAspectRatio="none"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <g>
-                                          <path
-                                            d={svgPathsToday.p19fddb00}
-                                            stroke="#5B5D62"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth="1.5"
-                                          />
-                                        </g>
-                                      </svg>
-                                    </div>
-                                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
-                                      {todo.deadline?.time || todo.time}
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {/* Description */}
-                              {todo.description && todo.description.trim() && (
-                                <div 
-                                  className="w-full pl-[32px] overflow-hidden"
-                                  style={{ maxWidth: '100%', boxSizing: 'border-box' }}
-                                >
-                                  <p 
-                                    className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
-                                    style={{ 
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap',
-                                      maxWidth: '100%',
-                                      width: '100%'
-                                    }}
-                                  >
-                                    {linkifyText(todo.description)}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* At-Risk/Failing Goals Box */}
-                  {activeGoals.length > 0 && (
-                    <div 
-                      className="flex flex-col gap-[10px] items-start px-[16px] relative"
-                      style={{ 
-                        backgroundColor: '#1f2022',
-                        paddingTop: '16px',
-                        paddingBottom: '16px',
-                        borderRadius: '8px',
-                        minWidth: '300px',
-                        width: '300px'
-                      }}
-                    >
-                      {/* Header */}
-                      <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
-                        <div 
-                          className="content-stretch flex items-center relative shrink-0 cursor-pointer"
-                          onClick={() => setCurrentPage("goals")}
-                        >
-                          <p 
-                            className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
-                            style={{ fontSize: '12px' }}
-                          >
-                            GOALS
-                          </p>
-                        </div>
-                        <div className="content-stretch flex items-center relative shrink-0">
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
-                            {activeGoals.length}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Goals List */}
-                      <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                          {activeGoals.map((goal) => {
-                            const status = getGoalStatus(goal);
-                            return (
-                              <div
-                                key={goal.id}
-                                className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer rounded-[10px]"
-                                style={{ padding: '12px 14px', backgroundColor: '#252628' }}
-                                onClick={() => {
-                                  setSelectedGoal(goal);
-                                  setCurrentPage("goalDetail");
-                                }}
-                              >
-                                {/* Goal Row */}
-                                <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
-                                  {/* Trophy Icon */}
-                                  <div className="relative shrink-0 size-[24px]">
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      strokeWidth="1.5"
-                                      stroke="#E1E6EE"
-                                      className="block size-full"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0"
-                                      />
-                                    </svg>
-                                  </div>
-                                  <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                                    <div className="content-stretch flex items-center relative shrink-0 w-full">
-                                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] truncate">
-                                        {goal.text}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                                {/* Status badge — line below */}
-                                {status && (
-                                  <div className="content-stretch flex items-center pl-[32px] relative shrink-0 w-full">
-                                    <span
-                                      className="font-['Inter:Medium',sans-serif] font-medium text-[13px] tracking-[-0.1px]"
-                                      style={{
-                                        padding: '4px 10px',
-                                        borderRadius: '6px',
-                                        backgroundColor:
-                                          status === 'On track'
-                                            ? 'rgba(76, 175, 80, 0.2)'
-                                            : status === 'At risk'
-                                              ? 'rgba(255, 193, 7, 0.2)'
-                                              : 'rgba(244, 67, 54, 0.2)',
-                                        color:
-                                          status === 'On track'
-                                            ? '#81c784'
-                                            : status === 'At risk'
-                                              ? '#ffca28'
-                                              : '#e57373',
-                                      }}
-                                    >
-                                      {status}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  )}
-                  </div>
-                </div>
-                )}
-              </div>
-            )}
-
-            {/* Todo List */}
-            <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full px-[20px]">
-              {(() => {
-                // For week, month, and allTime tabs, group tasks by date
-                if (selectedTimeRange === "week" || selectedTimeRange === "month" || selectedTimeRange === "allTime") {
-                  const groupedTasks = groupTasksByDate(regularTasks);
-                  const groupedReminders = groupTasksByDate(reminders);
-                  const groupedDailyTasks = groupTasksByDate(dailyTaskItems);
-                  
-                  // Create maps for easy lookup
-                  const tasksByDate = new Map<string, Todo[]>();
-                  const remindersByDate = new Map<string, Todo[]>();
-                  const dailyTasksByDate = new Map<string, Todo[]>();
-                  const allDatesMap = new Map<string, Date>();
-                  
-                  groupedTasks.forEach(({ date, dateKey, tasks }) => {
-                    tasksByDate.set(dateKey, tasks);
-                    allDatesMap.set(dateKey, date);
-                  });
-                  
-                  groupedReminders.forEach(({ date, dateKey, tasks: reminderTasks }) => {
-                    remindersByDate.set(dateKey, reminderTasks);
-                    if (!allDatesMap.has(dateKey)) {
-                      allDatesMap.set(dateKey, date);
-                    }
-                  });
-                  
-                  groupedDailyTasks.forEach(({ date, dateKey, tasks: dailyTaskTasks }) => {
-                    dailyTasksByDate.set(dateKey, dailyTaskTasks);
-                    if (!allDatesMap.has(dateKey)) {
-                      allDatesMap.set(dateKey, date);
-                    }
-                  });
-                  
-                  // Combine all dates and sort
-                  const allDates = Array.from(allDatesMap.entries())
-                    .map(([dateKey, date]) => ({ date, dateKey }))
-                    .sort((a, b) => a.date.getTime() - b.date.getTime());
-                  
-                  return allDates.map(({ date, dateKey }) => {
-                    const dateTasks = tasksByDate.get(dateKey) || [];
-                    const dateReminders = remindersByDate.get(dateKey) || [];
-                    const dateDailyTasks = dailyTasksByDate.get(dateKey) || [];
-                    
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:DateGroup:render',message:'Date group rendered',data:{date:date.toISOString(),dateKey,regularTasksCount:dateTasks.length,remindersCount:dateReminders.length,selectedTimeRange},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
-                    // #endregion
-                    
-                    return (
-                      <div key={date.toISOString()} className="w-full flex flex-col gap-[24px]">
-                        {/* Date Subheading */}
-                        <p 
-                          className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px] uppercase"
-                          style={{ fontSize: '12px' }}
-                        >
-                          {formatDateHeading(date)}
-                        </p>
-                        
-                        {/* Daily Tasks Box for this date */}
-                        {dateDailyTasks.length > 0 && (
-                          <div 
-                            className="content-stretch flex flex-col gap-[10px] items-start px-[16px] relative mb-[0px]"
-                            style={{ 
-                              backgroundColor: '#1f2022',
-                              paddingTop: '16px',
-                              paddingBottom: '16px',
-                              borderRadius: '8px',
-                              marginLeft: '0px',
-                              marginRight: '0px',
-                              width: '100%'
-                            }}
-                          >
-                            {/* Header */}
-                            <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
-                              <div className="content-stretch flex items-center relative shrink-0">
-                                <p 
-                                  className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
-                                  style={{ fontSize: '12px' }}
-                                >
-                                  DAILY
-                                </p>
-                              </div>
-                              <div className="content-stretch flex items-center relative shrink-0">
-                                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
-                                  {dateDailyTasks.length}
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Daily Tasks List */}
-                            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                              {dateDailyTasks.map((todo) => (
-                                <div
-                                  key={todo.id}
-                                  className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
-                                  onClick={() => handleTaskClick(todo)}
-                                >
-                                  {/* Daily Task Row */}
-                                  <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
-                                    {/* Checkbox */}
-                                    <div
-                                      className="relative shrink-0 size-[24px] cursor-pointer"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleTodo(todo.id);
-                                      }}
-                                    >
-                                      <svg
-                                        className="block size-full"
-                                        fill="none"
-                                        preserveAspectRatio="none"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <circle
-                                          cx="12"
-                                          cy="12"
-                                          r="11.25"
-                                          stroke="#E1E6EE"
-                                          strokeWidth="1.5"
-                                          fill={todo.completed ? "#E1E6EE" : "none"}
-                                        />
-                                        {todo.completed && (
-                                          <path
-                                            d="M7 12L10 15L17 8"
-                                            stroke="#110c10"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                          />
-                                        )}
-                                      </svg>
-                                    </div>
-                                    <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                                      <div className="content-stretch flex items-center relative shrink-0 w-full">
-                                        <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] ${
-                                          todo.completed ? "text-[#5b5d62] line-through" : "text-white"
-                                        }`}>
-                                          {todo.text}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Time */}
-                                  {(todo.deadline?.time || todo.time) && (
-                                    <div className="content-stretch flex items-start relative shrink-0">
-                                      <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
-                                        <div className="relative shrink-0 size-[20px]">
-                                          <svg
-                                            className="block size-full"
-                                            fill="none"
-                                            preserveAspectRatio="none"
-                                            viewBox="0 0 24 24"
-                                          >
-                                            <g>
-                                              <path
-                                                d={svgPathsToday.p19fddb00}
-                                                stroke="#5B5D62"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth="1.5"
-                                              />
-                                            </g>
-                                          </svg>
-                                        </div>
-                                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
-                                          {todo.deadline?.time || todo.time}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )}
-                                  
-                                  {/* Description */}
-                                  {todo.description && todo.description.trim() && (
-                                    <div 
-                                      className="w-full pl-[32px] overflow-hidden"
-                                      style={{ maxWidth: '100%', boxSizing: 'border-box' }}
-                                    >
-                                      <p 
-                                        className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
-                                        style={{ 
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          whiteSpace: 'nowrap',
-                                          maxWidth: '100%',
-                                          width: '100%'
-                                        }}
-                                      >
-                                        {linkifyText(todo.description)}
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Reminders Box for this date */}
-                        {dateReminders.length > 0 && (
-                          <div 
-                            className="content-stretch flex flex-col gap-[10px] items-start px-[16px] relative mb-[0px]"
-                            style={{ 
-                              backgroundColor: '#1f2022',
-                              paddingTop: '16px',
-                              paddingBottom: '16px',
-                              borderRadius: '8px',
-                              marginLeft: '0px',
-                              marginRight: '0px',
-                              width: '100%'
-                            }}
-                            ref={(el) => {
-                              // #region agent log
-                              if (el) {
-                                const computedStyle = window.getComputedStyle(el);
-                                fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:DateRemindersBox:render',message:'Date reminders box rendered',data:{date:date.toISOString(),dateKey,remindersCount:dateReminders.length,selectedTimeRange},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
-                              }
-                              // #endregion
-                            }}
-                          >
-                            {/* Header */}
-                            <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
-                              <div className="content-stretch flex items-center relative shrink-0">
-                                <p 
-                                  className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
-                                  style={{ fontSize: '12px' }}
-                                >
-                                  REMINDERS
-                                </p>
-                              </div>
-                              <div className="content-stretch flex gap-[16px] items-start justify-end relative shrink-0">
-                                <div className="content-stretch flex items-center relative shrink-0">
-                                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
-                                    {dateReminders.length}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Reminders List */}
-                            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                              {dateReminders.map((todo) => (
-                                <div
-                                  key={todo.id}
-                                  className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
-                                  onClick={() => handleTaskClick(todo)}
-                                >
-                                  {/* Reminder Row */}
-                                  <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
-                                    {/* Bell Icon */}
-                                    <div className="relative shrink-0 size-[24px]">
-                                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                                      </svg>
-                                    </div>
-                                    <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                                      <div className="content-stretch flex items-center relative shrink-0 w-full">
-                                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px]">
-                                          {todo.text}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Time */}
-                                  {(todo.deadline?.time || todo.time) && (
-                                    <div className="content-stretch flex items-start relative shrink-0">
-                                      <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
-                                        <div className="relative shrink-0 size-[20px]">
-                                          <svg
-                                            className="block size-full"
-                                            fill="none"
-                                            preserveAspectRatio="none"
-                                            viewBox="0 0 24 24"
-                                          >
-                                            <g>
-                                              <path
-                                                d={svgPathsToday.p19fddb00}
-                                                stroke="#5B5D62"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth="1.5"
-                                              />
-                                            </g>
-                                          </svg>
-                                        </div>
-                                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
-                                          {todo.deadline?.time || todo.time}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )}
-                                  
-                                  {/* Description */}
-                                  {todo.description && todo.description.trim() && (
-                                    <div 
-                                      className="w-full pl-[32px] overflow-hidden"
-                                      style={{ maxWidth: '100%', boxSizing: 'border-box' }}
-                                    >
-                                      <p 
-                                        className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
-                                        style={{ 
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          whiteSpace: 'nowrap',
-                                          maxWidth: '100%',
-                                          width: '100%'
-                                        }}
-                                      >
-                                        {linkifyText(todo.description)}
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      
-                        {/* Tasks for this date */}
-                        {dateTasks.map((todo) => {
-                          const isRecentlyCompleted = recentlyCompleted.has(todo.id);
-                          return (
-                            <div
-                              key={todo.id}
-                              className={`content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer transition-opacity duration-1000 ${
-                                isRecentlyCompleted ? 'opacity-100' : 'opacity-100'
-                              }`}
-                              onClick={() => handleTaskClick(todo)}
-                            >
-                  {/* Task Name Row */}
-                  <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
-                    {/* Checkbox - Only show for tasks, not reminders */}
-                    {todo.type !== 'reminder' && (
-                      <div
-                        className="relative shrink-0 size-[24px] cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleTodo(todo.id);
-                        }}
-                      >
-                        <svg
-                          className="block size-full"
-                          fill="none"
-                          preserveAspectRatio="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            cx="12"
-                            cy="12"
-                            r="11.25"
-                            stroke="#E1E6EE"
-                            strokeWidth="1.5"
-                            fill={todo.completed ? "#E1E6EE" : "none"}
-                          />
-                          {todo.completed && (
-                            <path
-                              d="M7 12L10.5 15.5L17 9"
-                              stroke="#110c10"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          )}
-                        </svg>
-                      </div>
-                    )}
-                    <p
-                      className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] truncate tracking-[-0.198px] ${
-                        todo.completed ? "line-through text-[#5b5d62]" : "text-white"
-                      }`}
-                    >
-                      {todo.text}
-                    </p>
-                  </div>
-
-                  {/* Description */}
-                  {todo.description && todo.description.trim() && (
-                    <div 
-                      className="w-full pl-[32px] overflow-hidden"
-                      style={{ maxWidth: '100%', boxSizing: 'border-box' }}
-                    >
-                      <p 
-                        className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
-                        style={{ 
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          maxWidth: '100%',
-                          width: '100%'
-                        }}
-                      >
-                        {linkifyText(todo.description)}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Metadata Row */}
-                  <div className="content-stretch flex gap-[8px] items-start relative shrink-0 pl-[32px]">
-                    {/* Time */}
-                    {todo.time && (
-                      <div className="box-border content-stretch flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">
-                        <div className="relative shrink-0 size-[20px]">
-                          <svg
-                            className="block size-full"
-                            fill="none"
-                            preserveAspectRatio="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <g>
-                              <path
-                                d={svgPathsToday.p19fddb00}
-                                stroke="#5B5D62"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="1.5"
-                              />
-                            </g>
-                          </svg>
-                        </div>
-                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                          {todo.time}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* List */}
-                    {(() => {
-                      const list = getListById(todo.listId);
-                      return list ? (
-                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
-                          <div className="relative shrink-0 size-[20px]">
-                            <svg
-                              className="block size-full"
-                              fill="none"
-                              preserveAspectRatio="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <g>
-                                <path
-                                  d={svgPathsToday.p1c6a4380}
-                                  stroke={list.color}
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="1.5"
-                                />
-                              </g>
-                            </svg>
-                          </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                            {list.name}
-                          </p>
-                        </div>
-                      ) : null;
-                    })()}
-
-                    {/* Subtasks */}
-                    {(() => {
-                      const subtaskCount = getSubtaskCount(todo.id);
-                      return subtaskCount > 0 ? (
-                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
-                          <div className="relative shrink-0 size-[20px]">
-                            <svg
-                              className="block size-full"
-                              fill="none"
-                              preserveAspectRatio="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <g>
-                                <path
-                                  d="M6 6.878V6a2.25 2.25 0 0 1 2.25-2.25h7.5A2.25 2.25 0 0 1 18 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 0 0 4.5 9v.878m13.5-3A2.25 2.25 0 0 1 19.5 9v.878m0 0a2.246 2.246 0 0 0-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0 1 21 12v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6c0-.98.626-1.813 1.5-2.122"
-                                  stroke="#5B5D62"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="1.5"
-                                />
-                              </g>
-                            </svg>
-                          </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                            {subtaskCount}
-                          </p>
-                        </div>
-                      ) : null;
-                    })()}
-                  </div>
-                </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  });
-                } else {
-                  // For today and tomorrow tabs, render tasks normally without date grouping
-                  return regularTasks.map((todo) => {
-                    const isRecentlyCompleted = recentlyCompleted.has(todo.id);
-                    return (
-                      <div
-                        key={todo.id}
-                        className={`content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer transition-opacity duration-1000 ${
-                          isRecentlyCompleted ? 'opacity-100' : 'opacity-100'
-                        }`}
-                        onClick={() => handleTaskClick(todo)}
-                      >
-                        {/* Task Name Row */}
-                        <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
-                          {/* Checkbox - Only show for tasks, not reminders */}
-                          {todo.type !== 'reminder' && (
-                            <div
-                              className="relative shrink-0 size-[24px] cursor-pointer"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleTodo(todo.id);
-                              }}
-                            >
-                            <svg
-                              className="block size-full"
-                              fill="none"
-                              preserveAspectRatio="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                cx="12"
-                                cy="12"
-                                r="11.25"
-                                stroke="#E1E6EE"
-                                strokeWidth="1.5"
-                                fill={todo.completed ? "#E1E6EE" : "none"}
-                              />
-                              {todo.completed && (
-                                <path
-                                  d="M7 12L10.5 15.5L17 9"
-                                  stroke="#110c10"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              )}
-                            </svg>
-                            </div>
-                          )}
-                          <p
-                            className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] truncate tracking-[-0.198px] ${
-                              todo.completed ? "line-through text-[#5b5d62]" : "text-white"
-                            }`}
-                          >
-                            {todo.text}
-                          </p>
-                        </div>
-
-                        {/* Description */}
-                        {todo.description && todo.description.trim() && (
-                          <div 
-                            className="w-full pl-[32px] overflow-hidden"
-                            style={{ maxWidth: '100%', boxSizing: 'border-box' }}
-                          >
-                            <p 
-                              className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
-                              style={{ 
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                maxWidth: '100%',
-                                width: '100%'
-                              }}
-                            >
-                              {todo.description}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Metadata Row */}
-                        <div className="content-stretch flex gap-[8px] items-start relative shrink-0 pl-[32px]">
-                          {/* Time */}
-                          {todo.time && (
-                            <div className="box-border content-stretch flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">
-                              <div className="relative shrink-0 size-[20px]">
-                                <svg
-                                  className="block size-full"
-                                  fill="none"
-                                  preserveAspectRatio="none"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <g>
-                                    <path
-                                      d={svgPathsToday.p19fddb00}
-                                      stroke="#5B5D62"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="1.5"
-                                    />
-                                  </g>
-                                </svg>
-                              </div>
-                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                                {todo.time}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* List */}
-                          {(() => {
-                            const list = getListById(todo.listId);
-                            return list ? (
-                              <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
-                                <div className="relative shrink-0 size-[20px]">
-                                  <svg
-                                    className="block size-full"
-                                    fill="none"
-                                    preserveAspectRatio="none"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <g>
-                                      <path
-                                        d={svgPathsToday.p1c6a4380}
-                                        stroke={list.color}
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="1.5"
-                                      />
-                                    </g>
-                                  </svg>
-                                </div>
-                                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                                  {list.name}
-                                </p>
-                              </div>
-                            ) : null;
-                          })()}
-
-                          {/* Subtasks */}
-                          {(() => {
-                            const subtaskCount = getSubtaskCount(todo.id);
-                            return subtaskCount > 0 ? (
-                              <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
-                                <div className="relative shrink-0 size-[20px]">
-                                  <svg
-                                    className="block size-full"
-                                    fill="none"
-                                    preserveAspectRatio="none"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <g>
-                                      <path
-                                        d="M6 6.878V6a2.25 2.25 0 0 1 2.25-2.25h7.5A2.25 2.25 0 0 1 18 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 0 0 4.5 9v.878m13.5-3A2.25 2.25 0 0 1 19.5 9v.878m0 0a2.246 2.246 0 0 0-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0 1 21 12v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6c0-.98.626-1.813 1.5-2.122"
-                                        stroke="#5B5D62"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="1.5"
-                                      />
-                                    </g>
-                                  </svg>
-                                </div>
-                                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                                  {subtaskCount}
-                                </p>
-                              </div>
-                            ) : null;
-                          })()}
-                        </div>
-                      </div>
-                    );
-                  });
-                }
-              })()}
-            </div>
-            {/* Spacer to prevent bottom nav from covering content */}
-            <div className="w-full" style={{ height: '20px' }} />
-          </div>
-        </div>
-      </div>
-      ) : currentPage === "lists" ? (
+          <TasksPage
+            formattedDate={getFormattedDate()}
+            onOpenFilter={() => setIsFilterListsModalOpen(true)}
+            selectedTimeRange={selectedTimeRange}
+            onTimeRangeChange={setSelectedTimeRange}
+            tasksCompletedCount={tasksCompletedForTimeRange.length}
+            missedDeadlinesCount={missedDeadlines.length}
+            onDoneCardClick={() => {
+              if (tasksCompletedForTimeRange.length > 0) {
+                const completedList = {
+                  id: COMPLETED_LIST_ID,
+                  name: 'Completed list',
+                  color: '#00C853',
+                  count: tasksCompletedForTimeRange.length,
+                  isShared: false,
+                };
+                const newTimeRangeFilter = selectedTimeRange === 'today' ? 'today' : selectedTimeRange === 'week' ? 'week' : selectedTimeRange === 'month' ? 'month' : null;
+                setTimeRangeFilter(newTimeRangeFilter);
+                setDateFilter(null);
+                handleSelectList(completedList, null);
+              }
+            }}
+            onOverdueCardClick={() => {
+              if (missedDeadlines.length > 0) {
+                setIsReviewMissedDeadlinesOpen(true);
+              }
+            }}
+            selectedListFilterIds={selectedListFilterIds}
+            lists={lists}
+            onRemoveListFilter={(listId) => {
+              const next = new Set(selectedListFilterIds);
+              next.delete(listId);
+              setSelectedListFilterIds(next);
+            }}
+            reminders={reminders}
+            dailyTaskItems={dailyTaskItems}
+            activeGoals={activeGoals}
+            isScheduledExpanded={isScheduledExpanded}
+            onToggleScheduled={() => setIsScheduledExpanded(!isScheduledExpanded)}
+            getGoalStatus={getGoalStatus}
+            onGoalClick={(goal) => { setSelectedGoal(goal); setCurrentPage('goalDetail'); }}
+            onNavigateToGoals={() => setCurrentPage('goals')}
+            regularTasks={regularTasks}
+            recentlyCompleted={recentlyCompleted}
+            groupTasksByDate={groupTasksByDate}
+            formatDateHeading={formatDateHeading}
+            showNoticeBoard={selectedTimeRange === 'today' || selectedTimeRange === 'tomorrow'}
+            onTaskClick={handleTaskClick}
+            onToggleTask={toggleTodo}
+            getListById={getListById}
+            getSubtaskCount={getSubtaskCount}
+            linkifyText={linkifyText}
+            isCalendarConnected={isCalendarConnected}
+            onConnectCalendar={handleConnectCalendarFromBanner}
+            calendarPendingEventsCount={calendarPendingEventsCount}
+            onCalendarSyncClick={() => setCurrentPage('calendarSync')}
+          />
+            ) : currentPage === "lists" ? (
         <Lists 
           onSelectList={handleSelectList}
           todos={todos}
@@ -4565,7 +3037,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onNavigateToCommonTasks={() => setCurrentPage("commonTasks")}
           onNavigateToDailyTasks={() => setCurrentPage("dailyTasks")}
           onNavigateToGoals={() => setCurrentPage("goals")}
-          onNavigateToWorkshop={() => setCurrentPage("workshop")}
+          onNavigateToNotes={(taskId) => {
+            setNotesPreselectedTaskId(taskId ?? null);
+            setCurrentPage("notes");
+          }}
         />
       ) : currentPage === "calendarSync" ? (
         <CalendarSync 
@@ -4575,6 +3050,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onSync={syncCalendar}
           isSyncing={isCalendarSyncing}
           onEventProcessed={checkCalendarEvents}
+          onNavigateToDailyTasks={() => setCurrentPage("dailyTasks")}
+          onNavigateToCommonTasks={() => setCurrentPage("commonTasks")}
         />
       ) : currentPage === "commonTasks" ? (
         isSecondaryDataLoading ? (
@@ -4647,6 +3124,25 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onBack={() => setCurrentPage("dashboard")} 
           tasks={todos}
         />
+      ) : currentPage === "notes" ? (
+        isSecondaryDataLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-[#e1e6ee]">Loading notes...</div>
+          </div>
+        ) : (
+          <Notes
+            onBack={() => {
+              setCurrentPage("dashboard");
+              setNotesPreselectedTaskId(null);
+            }}
+            notes={notes}
+            todos={todos.map((t) => ({ id: t.id, text: t.text, completed: t.completed }))}
+            onAddNote={handleAddNote}
+            onUpdateNote={handleUpdateNote}
+            onDeleteNote={handleDeleteNote}
+            preselectedTaskId={notesPreselectedTaskId}
+          />
+        )
       ) : currentPage === "goals" ? (
         isSecondaryDataLoading ? (
           <div className="flex items-center justify-center h-full">
@@ -4877,6 +3373,14 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onFetchMilestones={async (goalId) => {
             return await fetchMilestones(goalId);
           }}
+          onNavigateToDailyTasks={() => {
+            setSelectedMilestone(null);
+            setCurrentPage("dailyTasks");
+          }}
+          onNavigateToCommonTasks={() => {
+            setSelectedMilestone(null);
+            setCurrentPage("commonTasks");
+          }}
         />
       ) : currentPage === "resetPassword" ? (
         <ResetPassword 
@@ -4921,6 +3425,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               onAddFolder={addNewFolder}
               onUpdateFolder={updateFolder}
               onDeleteFolder={deleteFolder}
+              onNavigateToDailyTasks={() => { setSelectedList(null); setCurrentPage("dailyTasks"); }}
+              onNavigateToCommonTasks={() => { setSelectedList(null); setCurrentPage("commonTasks"); }}
               milestones={allMilestonesWithGoals}
               dateFilter={dateFilter}
               timeRangeFilter={timeRangeFilter}
@@ -4972,145 +3478,135 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
 
       {/* Bottom Navigation */}
       {currentPage !== "workshop" && (
-      <div className="box-border content-stretch flex gap-[40px] items-center justify-center pb-[60px] pt-[20px] px-0 fixed bottom-0 left-0 right-0 w-full bg-[#110c10] z-[1000]">
+      <nav className="flex gap-10 items-center justify-center py-5 pb-[60px] fixed bottom-0 left-0 right-0 w-full bg-background z-[1000]" aria-label="Main navigation">
         <div
           aria-hidden="true"
-          className="absolute border-[1px_0px_0px] border-[rgba(225,230,238,0.1)] border-solid inset-0 pointer-events-none"
+          className="absolute border-t border-border inset-0 pointer-events-none"
         />
         
         {/* Calendar Icon */}
-        <div 
-          className="relative shrink-0 size-[32px] cursor-pointer"
+        <button
+          type="button"
+          className="relative shrink-0 size-8 cursor-pointer p-0 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
           onClick={() => {
             setCurrentPage("today");
             setSelectedList(null);
           }}
+          aria-label="Tasks"
         >
           <svg
-            className="block size-full"
+            className={`block size-full ${currentPage === "today" ? "stroke-foreground" : "stroke-muted-foreground"}`}
             fill="none"
-            preserveAspectRatio="none"
             viewBox="0 0 32 32"
           >
-            <g>
-              <path
-                d={svgPaths.p1378b200}
-                stroke={currentPage === "today" ? "#E1E6EE" : "#5B5D62"}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
-            </g>
+            <path
+              d={svgPaths.p1378b200}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+            />
           </svg>
-        </div>
+        </button>
 
         {/* Dashboard Icon */}
-        <div 
-          className="relative shrink-0 size-[32px] cursor-pointer"
+        <button
+          type="button"
+          className="relative shrink-0 size-8 cursor-pointer p-0 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
           onClick={() => {
             setCurrentPage("dashboard");
             setSelectedList(null);
           }}
+          aria-label="Dashboard"
         >
           <svg
-            className="block size-full"
+            className={`block size-full ${currentPage === "dashboard" ? "stroke-foreground" : "stroke-muted-foreground"}`}
             fill="none"
-            preserveAspectRatio="none"
             viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
           >
             <path
               d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"
-              stroke={currentPage === "dashboard" ? "#E1E6EE" : "#5B5D62"}
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth="1.5"
             />
           </svg>
-        </div>
+        </button>
 
         {/* Plus Icon */}
-        <div 
-          className="relative shrink-0 size-[32px] cursor-pointer"
+        <button
+          type="button"
+          className="relative shrink-0 size-8 cursor-pointer p-0 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
           onClick={() => setIsModalOpen(true)}
+          aria-label="Add task"
         >
           <svg
-            className="block size-full"
+            className="block size-full stroke-muted-foreground"
             fill="none"
-            preserveAspectRatio="none"
             viewBox="0 0 32 32"
           >
-            <g>
-              <path
-                d="M16 6V26M26 16H6"
-                stroke="#5B5D62"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
-            </g>
+            <path
+              d="M16 6V26M26 16H6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+            />
           </svg>
-        </div>
+        </button>
 
         {/* List Icon */}
-        <div 
-          className="relative shrink-0 size-[32px] cursor-pointer"
+        <button
+          type="button"
+          className="relative shrink-0 size-8 cursor-pointer p-0 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
           onClick={() => {
             setCurrentPage("lists");
             setSelectedList(null);
           }}
+          aria-label="Lists"
         >
           <svg
-            className="block size-full"
+            className={`block size-full ${currentPage === "lists" || currentPage === "listDetail" ? "stroke-foreground" : "stroke-muted-foreground"}`}
             fill="none"
-            preserveAspectRatio="none"
             viewBox="0 0 32 32"
           >
-            <g>
-              <path
-                d={svgPaths.p8560f0}
-                stroke={currentPage === "lists" || currentPage === "listDetail" ? "#E1E6EE" : "#5B5D62"}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
-            </g>
+            <path
+              d={svgPaths.p8560f0}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+            />
           </svg>
-        </div>
+        </button>
 
         {/* Settings Icon */}
-        <div 
-          className="relative shrink-0 size-[32px] cursor-pointer"
+        <button
+          type="button"
+          className="relative shrink-0 size-8 cursor-pointer p-0 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
           onClick={() => {
             setCurrentPage("settings");
             setSelectedList(null);
           }}
+          aria-label="Settings"
         >
           <svg
-            className="block size-full"
+            className={`block size-full ${currentPage === "settings" ? "stroke-foreground" : "stroke-muted-foreground"}`}
             fill="none"
-            preserveAspectRatio="none"
             viewBox="0 0 24 24"
           >
-            <g>
-              <path
-                d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.398.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z"
-                stroke={currentPage === "settings" ? "#E1E6EE" : "#5B5D62"}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.5"
-              />
-              <path
-                d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                stroke={currentPage === "settings" ? "#E1E6EE" : "#5B5D62"}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.5"
-              />
-            </g>
+            <path
+              d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.398.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.5"
+            />
           </svg>
-        </div>
-      </div>
+        </button>
+      </nav>
       )}
 
       {/* Add Task Modal */}
@@ -5121,6 +3617,14 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         lists={lists}
         milestones={allMilestonesWithGoals}
         defaultListId={currentPage === "listDetail" && selectedList && selectedList.id !== ALL_TASKS_LIST_ID ? selectedList.id : undefined}
+        onNavigateToDailyTasks={() => {
+          setIsModalOpen(false);
+          setCurrentPage("dailyTasks");
+        }}
+        onNavigateToCommonTasks={() => {
+          setIsModalOpen(false);
+          setCurrentPage("commonTasks");
+        }}
       />
 
       {/* Task Detail Modal */}
@@ -5141,6 +3645,20 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onUpdateSubtask={handleUpdateSubtask}
           onDeleteSubtask={handleDeleteSubtask}
           onToggleSubtask={handleToggleSubtask}
+          notesForTask={selectedTask ? notes.filter((n) => n.task_id === selectedTask.id) : []}
+          onAddNote={(taskId, content) => handleAddNote(content, taskId)}
+          onUpdateNote={(id, content) => handleUpdateNote(id, content, selectedTask?.id)}
+          onDeleteNote={handleDeleteNote}
+          onNavigateToDailyTasks={() => {
+            setIsTaskDetailOpen(false);
+            setSelectedTask(null);
+            setCurrentPage("dailyTasks");
+          }}
+          onNavigateToCommonTasks={() => {
+            setIsTaskDetailOpen(false);
+            setSelectedTask(null);
+            setCurrentPage("commonTasks");
+          }}
         />
       )}
 

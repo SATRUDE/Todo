@@ -50,6 +50,8 @@ interface MilestoneDetailProps {
   onToggleAchieved?: (id: number, achieved: boolean) => Promise<void>;
   onDeleteMilestone: (id: number) => Promise<void>;
   onFetchMilestones: (goalId: number) => Promise<Milestone[]>;
+  onNavigateToDailyTasks?: () => void;
+  onNavigateToCommonTasks?: () => void;
 }
 
 export function MilestoneDetail({ 
@@ -63,7 +65,9 @@ export function MilestoneDetail({
   onUpdateMilestone,
   onDeleteMilestone,
   onFetchMilestones,
-  onToggleAchieved
+  onToggleAchieved,
+  onNavigateToDailyTasks,
+  onNavigateToCommonTasks,
 }: MilestoneDetailProps) {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false);
@@ -669,6 +673,8 @@ export function MilestoneDetail({
         onClose={() => setIsAddTaskModalOpen(false)}
         onAddTask={handleAddTask}
         defaultMilestoneId={milestone.id}
+        onNavigateToDailyTasks={onNavigateToDailyTasks}
+        onNavigateToCommonTasks={onNavigateToCommonTasks}
       />
       <MilestoneModal
         isOpen={isMilestoneModalOpen}

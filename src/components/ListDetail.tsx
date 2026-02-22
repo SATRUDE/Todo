@@ -66,9 +66,11 @@ interface ListDetailProps {
   onAddFolder?: (folderName: string) => void | Promise<number | undefined>;
   onUpdateFolder?: (folderId: number, folderName: string) => void;
   onDeleteFolder?: (folderId: number) => void;
+  onNavigateToDailyTasks?: () => void;
+  onNavigateToCommonTasks?: () => void;
 }
 
-export function ListDetail({ listId, listName, listColor, isShared, listFolderId, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList, onTaskClick, lists = [], milestones = [], dateFilter, timeRangeFilter, onClearDateFilter, folders = [], onAddFolder, onUpdateFolder, onDeleteFolder }: ListDetailProps) {
+export function ListDetail({ listId, listName, listColor, isShared, listFolderId, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList, onTaskClick, lists = [], milestones = [], dateFilter, timeRangeFilter, onClearDateFilter, folders = [], onAddFolder, onUpdateFolder, onDeleteFolder, onNavigateToDailyTasks, onNavigateToCommonTasks }: ListDetailProps) {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
   const [isRemindersExpanded, setIsRemindersExpanded] = useState(true);
@@ -77,7 +79,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
   const reminders = tasks.filter(todo => todo.type === 'reminder');
   const regularTasks = tasks.filter(todo => todo.type !== 'reminder');
 
-  const handleAddTask = (taskText: string, description?: string, _listId?: number, _deadline?: { date: Date; time: string; recurring?: string }, _effort?: number, type?: 'task' | 'reminder') => {
+  const handleAddTask = (taskText: string, description?: string, _listId?: number, _deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder') => {
     // onAddTask from parent expects just taskText and already knows the listId
     // The listId from the modal will be the current list (via defaultListId)
     onAddTask(taskText, description, type);
@@ -625,6 +627,8 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
             onAddTask={handleAddTask}
             defaultListId={listId}
             lists={lists}
+            onNavigateToDailyTasks={onNavigateToDailyTasks}
+            onNavigateToCommonTasks={onNavigateToCommonTasks}
           />
           <AddListModal
             isOpen={isEditListModalOpen}

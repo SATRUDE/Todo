@@ -62,9 +62,6 @@ function formatTaskForAI(todo) {
     if (todo.description) {
       formatted += `\n  Description: ${todo.description}`;
     }
-    if (todo.effort !== undefined && todo.effort !== null) {
-      formatted += ` (Effort: ${todo.effort}/10)`;
-    }
     if (todo.listId !== undefined && todo.listId !== null && todo.listId !== 0 && todo.listId !== -1) {
       formatted += ` [List ID: ${todo.listId}]`;
     }

@@ -13,7 +13,6 @@ interface Todo {
     time: string;
     recurring?: string;
   };
-  effort?: number;
   type?: 'task' | 'reminder';
 }
 

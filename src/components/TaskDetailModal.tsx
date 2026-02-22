@@ -5,6 +5,8 @@ import deleteIconPaths from "../imports/svg-u66msu10qs";
 import { SelectListModal } from "./SelectListModal";
 import { SelectMilestoneModal } from "./SelectMilestoneModal";
 import { DeadlineModal } from "./DeadlineModal";
+import { TaskNoteModal } from "./TaskNoteModal";
+import { TaskTypeModal } from "./TaskTypeModal";
 import { linkifyText } from "../lib/textUtils";
 import { supabase } from "../lib/supabase";
 
@@ -39,7 +41,6 @@ interface Todo {
     time: string;
     recurring?: string;
   };
-  effort?: number;
   type?: 'task' | 'reminder';
 }
 
@@ -47,9 +48,9 @@ interface TaskDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   task: Todo;
-  onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder', imageUrl?: string | null) => void;
+  onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null) => void;
   onDeleteTask: (taskId: number) => void;
-  onCreateTask?: (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder', imageUrl?: string | null) => void;
+  onCreateTask?: (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null) => void;
   lists?: ListItem[];
   milestones?: MilestoneWithGoal[];
   onFetchSubtasks?: (parentTaskId: number) => Promise<Todo[]>;
@@ -57,6 +58,12 @@ interface TaskDetailModalProps {
   onUpdateSubtask?: (subtaskId: number, text: string, completed: boolean) => Promise<void>;
   onDeleteSubtask?: (subtaskId: number) => Promise<void>;
   onToggleSubtask?: (subtaskId: number) => Promise<void>;
+  notesForTask?: Array<{ id: number; content: string; task_id?: number | null }>;
+  onAddNote?: (taskId: number, content: string) => void | Promise<void>;
+  onUpdateNote?: (id: number, content: string) => void | Promise<void>;
+  onDeleteNote?: (id: number) => void | Promise<void>;
+  onNavigateToDailyTasks?: () => void;
+  onNavigateToCommonTasks?: () => void;
 }
 
 // Helper function to get all text nodes in an element
@@ -76,7 +83,7 @@ function getTextNodes(element: Node): Text[] {
   return textNodes;
 }
 
-export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask }: TaskDetailModalProps) {
+export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
   const [taskDescription, setTaskDescription] = useState(task.description || "");
   const [imageUrl, setImageUrl] = useState<string | null>(task.imageUrl || null);
@@ -87,13 +94,14 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   const [selectedListId, setSelectedListId] = useState<number | null>(task.listId !== undefined && task.listId !== 0 && task.listId !== -1 ? task.listId : null);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<number | null>(task.milestoneId || null);
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(task.deadline || null);
-  const [effort, setEffort] = useState<number>(task.effort || 0);
   const [taskType, setTaskType] = useState<'task' | 'reminder'>(task.type || 'task');
   const [subtasks, setSubtasks] = useState<Todo[]>([]);
   const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
   const [isAddSubtaskModalOpen, setIsAddSubtaskModalOpen] = useState(false);
   const [editingSubtaskId, setEditingSubtaskId] = useState<number | null>(null);
   const [subtaskInputText, setSubtaskInputText] = useState('');
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [isTaskTypeModalOpen, setIsTaskTypeModalOpen] = useState(false);
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
   const descriptionInputRef = useRef<HTMLDivElement>(null);
   const subtaskInputRef = useRef<HTMLTextAreaElement>(null);
@@ -104,6 +112,8 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
       setIsAddSubtaskModalOpen(false);
       setSubtaskInputText('');
       setEditingSubtaskId(null);
+      setIsNoteModalOpen(false);
+      setIsTaskTypeModalOpen(false);
       return;
     }
     setTaskInput(task.text);
@@ -112,7 +122,6 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     setSelectedListId(task.listId !== undefined && task.listId !== 0 && task.listId !== -1 ? task.listId : null);
     setSelectedMilestoneId(task.milestoneId || null);
     setDeadline(task.deadline || null);
-    setEffort(task.effort || 0);
     setTaskType(task.type || 'task');
     
     // Load subtasks when modal opens
@@ -162,9 +171,9 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     if (taskInput.trim() === "") return;
     // Check if this is a new task (temporary ID < 0) and we have onCreateTask
     if (task.id < 0 && onCreateTask) {
-      onCreateTask(taskInput, taskDescription || null, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, effort > 0 ? effort : undefined, taskType, imageUrl);
+      onCreateTask(taskInput, taskDescription || null, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, taskType, imageUrl);
     } else {
-      onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, effort > 0 ? effort : undefined, taskType, imageUrl);
+      onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, taskType, imageUrl);
     }
     onClose();
   };
@@ -391,6 +400,19 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     }
   };
 
+  const handleSelectTaskType = (type: "task" | "reminder" | "daily" | "common") => {
+    if (type === "task" || type === "reminder") {
+      setTaskType(type);
+      setIsTaskTypeModalOpen(false);
+    } else if (type === "daily" && onNavigateToDailyTasks) {
+      onClose();
+      onNavigateToDailyTasks();
+    } else if (type === "common" && onNavigateToCommonTasks) {
+      onClose();
+      onNavigateToCommonTasks();
+    }
+  };
+
   const getDeadlineText = () => {
     if (!deadline) return "Deadline";
     const today = new Date();
@@ -426,28 +448,6 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     return milestone ? milestone.name : "Milestone";
   };
 
-  const handleCopyTask = async () => {
-    // Copy just the task text, similar to AddTaskModal
-    const textToCopy = taskInput.trim();
-    if (!textToCopy) return;
-    
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(textToCopy);
-      } else {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = textToCopy;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-      }
-    } catch (error) {
-      console.error("Failed to copy task", error);
-    }
-  };
-
   // SubtaskItem component
   function SubtaskItem({ subtask, onToggle, onDelete, onEdit }: {
     subtask: Todo;
@@ -461,25 +461,25 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
         <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
           {/* Checkbox */}
           <div 
-            className="relative shrink-0 size-[24px] cursor-pointer"
+            className="relative shrink-0 size-6 cursor-pointer text-foreground"
             onClick={(e) => {
               e.stopPropagation();
               onToggle(subtask.id);
             }}
           >
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+            <svg className="block size-full" fill="none" viewBox="0 0 24 24">
               <circle 
                 cx="12" 
                 cy="12" 
                 r="11.625" 
-                stroke="#E1E6EE" 
+                stroke="currentColor" 
                 strokeWidth="0.75"
-                fill={subtask.completed ? "#E1E6EE" : "none"}
+                fill={subtask.completed ? "currentColor" : "none"}
               />
               {subtask.completed && (
                 <path
                   d="M7 12L10 15L17 8"
-                  stroke="#110c10"
+                  stroke="var(--card)"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -488,8 +488,8 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
             </svg>
           </div>
           <p 
-            className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] truncate tracking-[-0.198px] cursor-pointer ${
-              subtask.completed ? "text-[#5b5d62] line-through" : "text-white"
+            className={`font-normal leading-relaxed relative min-w-0 flex-1 truncate text-lg tracking-tight cursor-pointer ${
+              subtask.completed ? "text-muted-foreground line-through" : "text-foreground"
             }`}
             onClick={() => onEdit(subtask.id)}
           >
@@ -503,44 +503,31 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[10001] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10001 }}>
+    <div className="fixed inset-0 z-[10001] pointer-events-none">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
+        className="absolute inset-0 pointer-events-auto bg-black/75 backdrop-blur-sm transition-opacity duration-300"
         onClick={onClose}
-        style={{ 
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(4px)'
-        }}
       />
       
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
         <div 
-          className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet"
-          style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
+          className="bg-card box-border flex max-h-[90vh] flex-col gap-10 overflow-hidden rounded-t-xl pb-[60px] pt-5 w-full desktop-bottom-sheet"
         >
           {/* Handle */}
-          <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
-            <div className="h-[20px] relative shrink-0 w-[100px]">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
-                <g>
-                  <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
-                </g>
+          <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
+            <div className="h-5 w-24 shrink-0 text-muted-foreground">
+              <svg className="block size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
+                <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
               </svg>
             </div>
           </div>
 
           {/* Scrollable Content */}
           <div 
-            className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full"
-            style={{ 
-              overflowY: 'auto', 
-              WebkitOverflowScrolling: 'touch', 
-              maxHeight: 'calc(90vh - 120px)', 
-              minHeight: 0, 
-              overflowX: 'hidden' 
-            }}
+            className="flex min-h-0 shrink-0 w-full flex-col gap-8 overflow-x-hidden overflow-y-auto px-5 [-webkit-overflow-scrolling:touch]"
+            style={{ maxHeight: 'calc(90vh - 120px)' }}
           >
             {/* Title and Description Section */}
             <div className="content-stretch flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
@@ -558,8 +545,8 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                 }}
                 onKeyPress={handleKeyPress}
                 placeholder="Task name"
-                className={`font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[42px] ${
-                  taskInput.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                className={`font-medium text-2xl leading-relaxed tracking-tight bg-transparent border-none outline-none w-full resize-none min-h-[42px] placeholder:text-muted-foreground ${
+                  taskInput.trim() ? 'text-foreground' : 'text-muted-foreground'
                 }`}
                 autoFocus
                 rows={1}
@@ -760,8 +747,8 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                     return false;
                   }
                 }}
-                className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] tracking-[-0.198px] bg-transparent border-none outline-none w-full resize-none min-h-[28px] ${
-                  taskDescription.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                className={`font-normal text-lg leading-relaxed tracking-tight bg-transparent border-none outline-none w-full resize-none min-h-[28px] ${
+                  taskDescription.trim() ? 'text-foreground' : 'text-muted-foreground'
                 }`}
                 style={{ 
                   overflow: 'hidden',
@@ -773,24 +760,48 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
               <style>{`
                 [contenteditable][data-placeholder]:empty:before {
                   content: attr(data-placeholder);
-                  color: #5b5d62;
+                  color: var(--muted-foreground);
                   pointer-events: none;
                 }
                 [contenteditable] .description-link {
-                  color: #5b5d62 !important;
+                  color: var(--muted-foreground) !important;
                   text-decoration: underline !important;
                   cursor: pointer !important;
                 }
                 [contenteditable] .description-link:hover {
                   opacity: 0.8;
                 }
-                [contenteditable] a.description-link {
-                  color: #5b5d62 !important;
-                  text-decoration: underline !important;
-                  cursor: pointer !important;
-                }
               `}</style>
             </div>
+
+            {/* Notes Section - Below description, click opens notes bottom sheet */}
+            {onAddNote && (
+              <div
+                className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
+                onClick={() => setIsNoteModalOpen(true)}
+              >
+                {notesForTask.length > 0 ? (
+                  <div className="flex flex-col gap-1.5 w-full">
+                    {notesForTask.map((note) => (
+                      <div
+                        key={note.id}
+                        className="rounded-xl bg-secondary px-4 py-3 w-full text-left transition-colors hover:bg-accent"
+                      >
+                        <p className="text-sm leading-relaxed text-foreground line-clamp-2 whitespace-pre-wrap">
+                          {note.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border bg-secondary px-4 py-3 w-full">
+                    <p className="text-sm text-muted-foreground">
+                      No notes yet. Tap to add one.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Hidden file input for image upload */}
             <input
@@ -814,36 +825,16 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                   />
                 </div>
                 {/* Delete Image Button */}
-                <div 
-                  className="bg-[rgba(239,65,35,0.2)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(239,65,35,0.25)] transition-colors"
+                <button
+                  type="button"
+                  className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-destructive/20 px-4 py-1 text-lg font-normal text-destructive transition-colors hover:bg-destructive/25"
                   onClick={handleDeleteImage}
-                  style={{ backgroundColor: 'rgba(239,65,35,0.2)', borderRadius: '100px' }}
                 >
-                  <div className="relative shrink-0 size-[20px]">
-                    <svg
-                      className="block size-full"
-                      fill="none"
-                      preserveAspectRatio="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <g>
-                        <path
-                          d={deleteIconPaths.pf5e3c80}
-                          stroke="#ef4123"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="1.5"
-                        />
-                      </g>
-                    </svg>
-                  </div>
-                  <p 
-                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" 
-                    style={{ color: '#ef4123' }}
-                  >
-                    Delete Image
-                  </p>
-                </div>
+                  <svg className="size-5 shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden>
+                    <path d={deleteIconPaths.pf5e3c80} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                  </svg>
+                  Delete Image
+                </button>
               </div>
             )}
 
@@ -851,17 +842,17 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
             {subtasks.length > 0 && (
               <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full px-0 py-0">
                 <div className="flex items-center justify-between w-full">
-                  <label className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] text-[#e1e6ee] text-[18px] tracking-[-0.198px]">
+                  <label className="font-normal leading-relaxed text-foreground text-lg tracking-tight">
                     Subtasks
                   </label>
                   {onCreateSubtask && (
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAddSubtask();
                       }}
-                      className="text-[#0B64F9] text-[16px] font-medium cursor-pointer hover:opacity-80"
-                      style={{ color: '#0B64F9' }}
+                      className="text-base font-medium cursor-pointer text-blue-500 hover:opacity-80"
                     >
                       + Add Subtask
                     </button>
@@ -869,7 +860,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                 </div>
 
                 {isLoadingSubtasks ? (
-                  <div className="text-[#e1e6ee] text-[14px]">Loading subtasks...</div>
+                  <div className="text-sm text-foreground">Loading subtasks...</div>
                 ) : (
                   <div className="flex flex-col gap-[8px] w-full">
                     {subtasks.map(subtask => (
@@ -890,190 +881,132 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
             <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
               {/* Button Row */}
               <div className="content-center flex flex-wrap gap-[8px] items-center relative shrink-0 w-full">
-                {/* Task Type Toggle Button */}
-                <div 
-                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
-                  onClick={() => setTaskType(taskType === 'task' ? 'reminder' : 'task')}
+                {/* Task Type Button - opens modal to select type */}
+                <button
+                  type="button"
+                  className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
+                  onClick={() => setIsTaskTypeModalOpen(true)}
                 >
-                  <div className="relative shrink-0 size-[20px]">
-                    {taskType === 'task' ? (
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.242 5.992h12m-12 6.003H20.24m-12 5.999h12M4.117 7.495v-3.75H2.99m1.125 3.75H2.99m1.125 0H5.24m-1.92 2.577a1.125 1.125 0 1 1 1.591 1.59l-1.83 1.83h2.16M2.99 15.745h1.125a1.125 1.125 0 0 1 0 2.25H3.74m0-.002h.375a1.125 1.125 0 0 1 0 2.25H2.99" />
-                      </svg>
-                    ) : (
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                      </svg>
-                    )}
-                  </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                    {taskType === 'task' ? 'Task' : 'Reminder'}
-                  </p>
-                </div>
+                  {taskType === 'task' ? (
+                    <svg className="size-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.242 5.992h12m-12 6.003H20.24m-12 5.999h12M4.117 7.495v-3.75H2.99m1.125 3.75H2.99m1.125 0H5.24m-1.92 2.577a1.125 1.125 0 1 1 1.591 1.59l-1.83 1.83h2.16M2.99 15.745h1.125a1.125 1.125 0 0 1 0 2.25H3.74m0-.002h.375a1.125 1.125 0 0 1 0 2.25H2.99" />
+                    </svg>
+                  ) : (
+                    <svg className="size-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                    </svg>
+                  )}
+                  {taskType === 'task' ? 'Task' : 'Reminder'}
+                </button>
 
                 {/* Deadline Button */}
-                <div 
-                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                <button
+                  type="button"
+                  className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
                   onClick={() => setIsDeadlineOpen(true)}
                 >
-                  <div className="relative shrink-0 size-[20px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-                      <g>
-                        <path d={svgPaths.p186add80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
-                      </g>
-                    </svg>
-                  </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getDeadlineText()}</p>
-                </div>
+                  <svg className="size-5 shrink-0" fill="none" viewBox="0 0 20 20">
+                    <path d={svgPaths.p186add80} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+                  </svg>
+                  {getDeadlineText()}
+                </button>
 
                 {/* List Button */}
-                <div 
-                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                <button
+                  type="button"
+                  className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
                   onClick={() => setIsSelectListOpen(true)}
                 >
-                  <div className="relative shrink-0 size-[20px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-                      <g>
-                        <path d={svgPaths.p1dfd6800} stroke={getSelectedListColor()} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
-                      </g>
+                  <svg className="size-5 shrink-0" fill="none" viewBox="0 0 20 20" style={{ color: getSelectedListColor() }}>
+                    <path d={svgPaths.p1dfd6800} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+                  </svg>
+                  {getSelectedListName()}
+                </button>
+
+                {/* Note Button */}
+                {onAddNote && (
+                  <button
+                    type="button"
+                    className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
+                    onClick={() => setIsNoteModalOpen(true)}
+                  >
+                    <svg className="size-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
                     </svg>
-                  </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getSelectedListName()}</p>
-                </div>
+                    Note
+                  </button>
+                )}
 
                 {/* Add Image Button */}
-                <div 
-                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
-                  onClick={() => {
-                    if (!isUploadingImage && imageInputRef.current) {
-                      imageInputRef.current.click();
-                    }
-                  }}
+                <button
+                  type="button"
+                  className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
+                  onClick={() => !isUploadingImage && imageInputRef.current?.click()}
                 >
-                  <div className="relative shrink-0 size-[20px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                    </svg>
-                  </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Add Image</p>
-                </div>
+                  <svg className="size-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                  </svg>
+                  Add Image
+                </button>
 
                 {/* Add Subtask Button */}
                 {onCreateSubtask && (
-                  <div 
-                    className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                  <button
+                    type="button"
+                    className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
                     onClick={() => handleAddSubtask()}
                   >
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 6.878V6a2.25 2.25 0 0 1 2.25-2.25h7.5A2.25 2.25 0 0 1 18 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 0 0 4.5 9v.878m13.5-3A2.25 2.25 0 0 1 19.5 9v.878m0 0a2.246 2.246 0 0 0-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0 1 21 12v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6c0-.98.626-1.813 1.5-2.122" />
-                      </svg>
-                    </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Add Subtask</p>
-                  </div>
+                    <svg className="size-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6.878V6a2.25 2.25 0 0 1 2.25-2.25h7.5A2.25 2.25 0 0 1 18 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 0 0 4.5 9v.878m13.5-3A2.25 2.25 0 0 1 19.5 9v.878m0 0a2.246 2.246 0 0 0-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0 1 21 12v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6c0-.98.626-1.813 1.5-2.122" />
+                    </svg>
+                    Add Subtask
+                  </button>
                 )}
 
                 {/* Milestone Button */}
                 {milestones.length > 0 && (
-                  <div 
-                    className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                  <button
+                    type="button"
+                    className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
                     onClick={() => setIsSelectMilestoneOpen(true)}
                   >
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                        <g>
-                          <path d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0" stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                        </g>
-                      </svg>
-                    </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getSelectedMilestoneName()}</p>
-                  </div>
-                )}
-
-                {/* Effort Button */}
-                <div 
-                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
-                  onClick={() => {
-                    if (effort < 10) {
-                      setEffort(effort + 1);
-                    } else {
-                      setEffort(0);
-                    }
-                  }}
-                >
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                    Effort {effort}
-                  </p>
-                </div>
-
-                {/* Copy Button */}
-                <div 
-                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
-                  onClick={handleCopyTask}
-                >
-                  <div className="relative shrink-0 size-[20px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-                      <g>
-                        <path d="M13.3333 10.75V14.25C13.3333 15.2165 12.5498 16 11.5833 16H5.75C4.7835 16 4 15.2165 4 14.25V8.41667C4 7.45018 4.7835 6.66667 5.75 6.66667H9.25M13.3333 10.75H10.5833C9.61683 10.75 8.83333 9.9665 8.83333 9V6.25C8.83333 5.2835 9.61683 4.5 10.5833 4.5H14.25C15.2165 4.5 16 5.2835 16 6.25V9C16 9.9665 15.2165 10.75 14.25 10.75H13.3333Z" stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
-                      </g>
+                    <svg className="size-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                  </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Copy</p>
-                </div>
+                    {getSelectedMilestoneName()}
+                  </button>
+                )}
 
                 {/* Trash Icon - Only show for existing tasks */}
                 {task.id >= 0 && (
-                  <div 
-                    className="relative shrink-0 size-[24px] cursor-pointer hover:opacity-70"
+                  <button
+                    type="button"
+                    className="shrink-0 size-6 cursor-pointer text-foreground hover:opacity-70"
                     onClick={handleDelete}
+                    aria-label="Delete task"
                   >
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                      <g>
-                        <path d={deleteIconPaths.pf5e3c80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                      </g>
+                    <svg className="block size-full" fill="none" viewBox="0 0 24 24">
+                      <path d={deleteIconPaths.pf5e3c80} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
                     </svg>
-                  </div>
+                  </button>
                 )}
               </div>
 
               {/* Submit Button Row */}
-              <div className="flex gap-[10px] items-end justify-end w-full" style={{ justifyContent: 'flex-end', width: '100%' }}>
-                <div 
-                  className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
-                  style={{
-                    width: '35px',
-                    height: '35px',
-                    padding: '3px',
-                    flexShrink: 0,
-                    backgroundColor: taskInput.trim() ? '#0b64f9' : '#5b5d62'
-                  }}
+              <div className="flex w-full items-end justify-end gap-2.5">
+                <button
+                  type="button"
+                  className={`flex size-9 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-90 ${
+                    taskInput.trim() ? 'bg-blue-500 text-primary-foreground' : 'bg-muted text-muted-foreground'
+                  }`}
                   onClick={handleSave}
+                  aria-label="Save"
                 >
-                  <div className="relative" style={{ width: '24px', height: '24px' }}>
-                    <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '24px', height: '24px' }}>
-                      <g>
-                        <line
-                          x1="12"
-                          y1="6"
-                          x2="12"
-                          y2="18"
-                          stroke="#E1E6EE"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                        />
-                        <line
-                          x1="6"
-                          y1="12"
-                          x2="18"
-                          y2="12"
-                          stroke="#E1E6EE"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                        />
-                      </g>
-                    </svg>
-                  </div>
-                </div>
+                  <svg className="size-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <line x1="12" y1="6" x2="12" y2="18" strokeLinecap="round" />
+                    <line x1="6" y1="12" x2="18" y2="12" strokeLinecap="round" />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
@@ -1106,39 +1039,52 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
         currentDeadline={deadline}
       />
 
+      {onAddNote && (
+        <TaskNoteModal
+          isOpen={isNoteModalOpen}
+          onClose={() => setIsNoteModalOpen(false)}
+          taskId={task.id}
+          notesForTask={notesForTask}
+          onAddNote={onAddNote}
+          onUpdateNote={onUpdateNote}
+          onDeleteNote={onDeleteNote}
+        />
+      )}
+
+      <TaskTypeModal
+        isOpen={isTaskTypeModalOpen}
+        onClose={() => setIsTaskTypeModalOpen(false)}
+        currentType={taskType}
+        onSelectType={handleSelectTaskType}
+      />
+
       {/* Add Subtask Modal */}
       {isAddSubtaskModalOpen && (
-        <div className="fixed inset-0 z-[10003] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10003 }}>
+        <div className="fixed inset-0 z-[10003] pointer-events-none">
           {/* Backdrop */}
           <div 
-            className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
+            className="absolute inset-0 pointer-events-auto bg-black/75 backdrop-blur-sm transition-opacity duration-300"
             onClick={() => {
               setIsAddSubtaskModalOpen(false);
               setSubtaskInputText('');
               setEditingSubtaskId(null);
             }}
-            style={{ 
-              backgroundColor: 'rgba(0, 0, 0, 0.75)',
-              backdropFilter: 'blur(4px)'
-            }}
           />
           
           {/* Bottom Sheet */}
           <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-            <div className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
+            <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pb-[60px] pt-5 desktop-bottom-sheet">
               {/* Handle */}
-              <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
-                <div className="h-[20px] relative shrink-0 w-[100px]">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
-                    <g>
-                      <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
-                    </g>
+              <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
+                <div className="h-5 w-24 shrink-0 text-muted-foreground">
+                  <svg className="block size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
+                    <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
                   </svg>
                 </div>
               </div>
 
               {/* Content */}
-              <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full">
+              <div className="flex shrink-0 w-full flex-col gap-8 px-5">
                 {/* Title and Description Section */}
                 <div className="content-stretch flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
                   <textarea
@@ -1159,8 +1105,8 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                       }
                     }}
                     placeholder={editingSubtaskId !== null ? "Edit subtask" : "Add subtask"}
-                    className={`font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[42px] ${
-                      subtaskInputText.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                    className={`font-medium text-2xl leading-relaxed tracking-tight bg-transparent border-none outline-none w-full resize-none min-h-[42px] placeholder:text-muted-foreground ${
+                      subtaskInputText.trim() ? 'text-foreground' : 'text-muted-foreground'
                     }`}
                     autoFocus
                     rows={1}
@@ -1174,8 +1120,9 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                   <div className="flex gap-[10px] items-end justify-end w-full" style={{ justifyContent: 'flex-end', width: '100%' }}>
                     {/* Delete Button (only when editing) */}
                     {editingSubtaskId !== null && onDeleteSubtask && (
-                      <div 
-                        className="relative shrink-0 size-[24px] cursor-pointer hover:opacity-70"
+                      <button
+                        type="button"
+                        className="shrink-0 size-6 cursor-pointer text-foreground hover:opacity-70"
                         onClick={async () => {
                           if (onDeleteSubtask && editingSubtaskId !== null) {
                             try {
@@ -1193,51 +1140,27 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                             }
                           }
                         }}
+                        aria-label="Delete subtask"
                       >
-                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                          <g>
-                            <path d={deleteIconPaths.pf5e3c80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                          </g>
+                        <svg className="block size-full" fill="none" viewBox="0 0 24 24">
+                          <path d={deleteIconPaths.pf5e3c80} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
                         </svg>
-                      </div>
+                      </button>
                     )}
                     {/* Plus Button */}
-                    <div 
-                      className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
-                      style={{
-                        width: '35px',
-                        height: '35px',
-                        padding: '3px',
-                        flexShrink: 0,
-                        backgroundColor: subtaskInputText.trim() ? '#0b64f9' : '#5b5d62'
-                      }}
+                    <button
+                      type="button"
+                      className={`flex size-9 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-90 ${
+                        subtaskInputText.trim() ? 'bg-blue-500 text-primary-foreground' : 'bg-muted text-muted-foreground'
+                      }`}
                       onClick={handleConfirmAddSubtask}
+                      aria-label="Save subtask"
                     >
-                      <div className="relative" style={{ width: '24px', height: '24px' }}>
-                        <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '24px', height: '24px' }}>
-                          <g>
-                            <line
-                              x1="12"
-                              y1="6"
-                              x2="12"
-                              y2="18"
-                              stroke="#E1E6EE"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                            />
-                            <line
-                              x1="6"
-                              y1="12"
-                              x2="18"
-                              y2="12"
-                              stroke="#E1E6EE"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                            />
-                          </g>
-                        </svg>
-                      </div>
-                    </div>
+                      <svg className="size-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                        <line x1="12" y1="6" x2="12" y2="18" strokeLinecap="round" />
+                        <line x1="6" y1="12" x2="18" y2="12" strokeLinecap="round" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </div>

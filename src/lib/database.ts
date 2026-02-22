@@ -74,7 +74,6 @@ export interface Todo {
   deadline_date?: string // YYYY-MM-DD string
   deadline_time?: string
   deadline_recurring?: string
-  effort?: number // Effort level out of 10 (0-10)
   type?: 'task' | 'reminder' // Task type: 'task' or 'reminder'
   created_at?: string
   updated_at?: string
@@ -120,6 +119,15 @@ export interface DailyTask {
   deadline_date?: string | null // YYYY-MM-DD string
   deadline_time?: string | null // HH:MM string
   deadline_recurring?: string | null // 'daily', 'weekly', 'weekday', 'monthly'
+  created_at?: string
+  updated_at?: string
+}
+
+export interface Note {
+  id: number
+  user_id?: string
+  content: string
+  task_id?: number | null
   created_at?: string
   updated_at?: string
 }
@@ -172,7 +180,6 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     deadline_date: dbTodo.deadline_date,
     deadline_time: dbTodo.deadline_time,
     deadline_recurring: dbTodo.deadline_recurring,
-    effort: dbTodo.effort,
     type: dbTodo.type || 'task', // Default to 'task' if not set
     created_at: dbTodo.created_at,
     updated_at: dbTodo.updated_at,
@@ -297,11 +304,6 @@ export function appTodoToDbTodo(todo: any): any {
   // The deadline should only be stored as deadline_date, deadline_time, and deadline_recurring
   delete (dbTodo as any).deadline
   
-  // Handle effort
-  if (todo.effort !== undefined && todo.effort !== null) {
-    dbTodo.effort = Math.max(0, Math.min(10, Math.round(todo.effort))) // Clamp between 0-10
-  }
-  
   // Handle type - always include it, default to 'task' if not specified
   if (todo.type === 'task' || todo.type === 'reminder') {
     dbTodo.type = todo.type
@@ -361,7 +363,6 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     dailyTaskId: dbTodo.daily_task_id,
     parentTaskId: dbTodo.parent_task_id || undefined,
     deadline,
-    effort: dbTodo.effort,
     type: dbTodo.type || 'task', // Default to 'task' if not set
     updatedAt: dbTodo.updated_at,
   }
@@ -552,7 +553,7 @@ export async function createTask(todo: any): Promise<Todo> {
   const validFields = [
     'text', 'completed', 'time', 'group', 'list_id', 'milestone_id', 'daily_task_id', 'parent_task_id',
     'deadline_date', 'deadline_time', 'deadline_recurring',
-    'description', 'image_url', 'effort', 'type', 'user_id'
+    'description', 'image_url', 'type', 'user_id'
   ]
   const cleanedDbTodo: any = {}
   for (const field of validFields) {
@@ -652,6 +653,91 @@ export async function deleteTask(id: number): Promise<void> {
 
   if (error) {
     console.error('Error deleting task:', error)
+    throw error
+  }
+}
+
+// Notes
+export async function fetchNotes(): Promise<Note[]> {
+  const userId = await ensureAuthenticated()
+
+  const { data, error } = await supabase
+    .from('notes')
+    .select('*')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching notes:', error)
+    throw error
+  }
+
+  return data ?? []
+}
+
+export async function createNote(note: { content: string; taskId?: number | null }): Promise<Note> {
+  const userId = await ensureAuthenticated()
+
+  const insert: Record<string, unknown> = {
+    user_id: userId,
+    content: note.content.trim(),
+  }
+  if (note.taskId !== undefined && note.taskId !== null) {
+    insert.task_id = note.taskId
+  }
+
+  const { data, error } = await supabase
+    .from('notes')
+    .insert(insert)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating note:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function updateNote(id: number, note: { content?: string; taskId?: number | null }): Promise<Note> {
+  const userId = await ensureAuthenticated()
+
+  const update: Record<string, unknown> = {}
+  if (note.content !== undefined) {
+    update.content = note.content.trim()
+  }
+  if (note.taskId !== undefined) {
+    update.task_id = note.taskId
+  }
+
+  const { data, error } = await supabase
+    .from('notes')
+    .update(update)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating note:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function deleteNote(id: number): Promise<void> {
+  const userId = await ensureAuthenticated()
+
+  const { error } = await supabase
+    .from('notes')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Error deleting note:', error)
     throw error
   }
 }

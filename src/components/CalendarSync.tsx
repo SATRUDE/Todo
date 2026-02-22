@@ -5,11 +5,13 @@ import { markEventAsProcessed } from "../lib/calendar";
 
 interface CalendarSyncProps {
   onBack: () => void;
-  onAddTask?: (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, effort?: number) => void;
+  onAddTask?: (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }) => void;
   lists?: Array<{ id: number; name: string; color: string; count: number; isShared: boolean }>;
   onSync?: () => Promise<void>;
   isSyncing?: boolean;
   onEventProcessed?: () => void;
+  onNavigateToDailyTasks?: () => void;
+  onNavigateToCommonTasks?: () => void;
 }
 
 interface Todo {
@@ -27,7 +29,7 @@ interface Todo {
   };
 }
 
-export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing = false, onEventProcessed }: CalendarSyncProps) {
+export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing = false, onEventProcessed, onNavigateToDailyTasks, onNavigateToCommonTasks }: CalendarSyncProps) {
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<{ text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string } | null>(null);
   const suggestionsRef = useRef<CalendarTaskSuggestionsRef>(null);
@@ -53,7 +55,7 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
     }
   };
 
-  const handleCreateTask = async (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, effort?: number, type?: 'task' | 'reminder') => {
+  const handleCreateTask = async (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder') => {
     if (!onAddTask || !selectedSuggestion) return;
 
     const eventId = selectedSuggestion.eventId;
@@ -62,7 +64,7 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
       // Mark the event as processed
       await markEventAsProcessed(eventId);
       
-      // Add the task - note: onAddTask signature expects milestoneId and effort as separate parameters
+      // Add the task
       await onAddTask(
         text,
         description || undefined,
@@ -72,8 +74,7 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
           date: deadline.date,
           time: deadline.time,
           recurring: deadline.recurring
-        } : undefined,
-        effort
+        } : undefined
       );
 
       // Remove the suggestion from the list
@@ -204,6 +205,8 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
           onDeleteTask={() => {}} // Not used for new tasks
           onCreateTask={handleCreateTask}
           lists={lists}
+          onNavigateToDailyTasks={onNavigateToDailyTasks ? () => { setIsTaskDetailOpen(false); setSelectedSuggestion(null); onNavigateToDailyTasks(); } : undefined}
+          onNavigateToCommonTasks={onNavigateToCommonTasks ? () => { setIsTaskDetailOpen(false); setSelectedSuggestion(null); onNavigateToCommonTasks(); } : undefined}
         />
       )}
     </div>

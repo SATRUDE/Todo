@@ -8,3 +8,4 @@ build
 *.log
 .vercel
 .env.vercel
+.cursor/todo-ai-config.json

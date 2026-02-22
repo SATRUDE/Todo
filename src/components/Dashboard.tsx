@@ -4,10 +4,10 @@ interface DashboardProps {
   onNavigateToCommonTasks?: () => void;
   onNavigateToDailyTasks?: () => void;
   onNavigateToGoals?: () => void;
-  onNavigateToWorkshop?: () => void;
+  onNavigateToNotes?: (taskId?: number) => void;
 }
 
-export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCommonTasks, onNavigateToDailyTasks, onNavigateToGoals, onNavigateToWorkshop }: DashboardProps) {
+export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCommonTasks, onNavigateToDailyTasks, onNavigateToGoals, onNavigateToNotes }: DashboardProps) {
 
   return (
     <div className="relative shrink-0 w-full">
@@ -146,9 +146,9 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCom
               </div>
             </div>
 
-            {/* Third Row: Workshop */}
+            {/* Third Row: Notes */}
             <div className="flex gap-[16px] w-full">
-              {/* Workshop Card */}
+              {/* Notes Card */}
               <div 
                 className="flex flex-col items-start justify-end px-[16px] py-[12px] relative flex-1 cursor-pointer"
                 style={{ 
@@ -158,21 +158,21 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCom
                   boxSizing: 'border-box',
                   justifyContent: 'flex-end'
                 }}
-                onClick={onNavigateToWorkshop}
+                onClick={onNavigateToNotes}
               >
                 <div className="flex flex-col gap-[10px] items-start justify-center relative shrink-0">
                   <div className="relative shrink-0" style={{ width: '40px', height: '40px' }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#EF4123" style={{ width: '40px', height: '40px' }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23-.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#a78bfa" style={{ width: '40px', height: '40px' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
                     </svg>
                   </div>
                   <p 
                     className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px]"
                     style={{ 
-                      color: '#EF4123'
+                      color: '#a78bfa'
                     }}
                   >
-                    Workshop
+                    Notes
                   </p>
                 </div>
               </div>
