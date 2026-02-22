@@ -114,42 +114,41 @@ export function Notes({
   };
 
   return (
-    <div className="relative flex h-screen max-h-screen w-full shrink-0 flex-col bg-[#110c10]">
-      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#110c10]">
+    <div className="relative shrink-0 w-full">
+      <div className="flex flex-col gap-6 px-5 pt-0 pb-[150px] w-full">
         {/* Header */}
-        <header className="flex shrink-0 items-center gap-4 px-5 pt-5 pb-3">
+        <header className="flex shrink-0 items-center gap-4">
           <button
             type="button"
             onClick={onBack}
-            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[#E1E6EE] transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-[#110c10]"
+            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-background"
             aria-label="Back"
           >
-            <svg className="size-full" fill="none" viewBox="0 0 32 32" aria-hidden>
+            <svg className="size-5" fill="none" viewBox="0 0 32 32" aria-hidden>
               <path d="M20 8L12 16L20 24" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
             </svg>
           </button>
-          <h1 className="shrink-0 text-2xl font-medium tracking-tight text-white sm:text-[28px]">
+          <h1 className="shrink-0 text-2xl font-medium tracking-tight text-foreground sm:text-[28px]">
             Notes
           </h1>
         </header>
 
         {/* Content */}
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-5">
-          <div className="flex flex-1 flex-col gap-6 overflow-y-auto pb-5 [-webkit-overflow-scrolling:touch]">
+        <div className="flex flex-col gap-6">
             {/* Add note card */}
-            <div className="rounded-xl border border-[#2a2b2d]/50 bg-[#1f2022] p-4 shadow-sm transition-shadow hover:shadow-md">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
               <textarea
                 value={newContent}
                 onChange={(e) => setNewContent(e.target.value)}
                 placeholder="Write a note..."
                 rows={3}
-                className="min-h-[80px] w-full resize-none rounded-lg border border-[#3a3b3d] bg-[#2a2b2d] px-3 py-2.5 text-base text-[#E1E6EE] placeholder:text-[#5b5d62] transition-colors focus:border-[#4b4c4e] focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-[#1f2022]"
+                className="min-h-[80px] w-full resize-none rounded-lg border border-border bg-secondary px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-card"
               />
               {todos.length > 0 && (
                 <select
                   value={selectedTaskId ?? ""}
                   onChange={(e) => setSelectedTaskId(e.target.value ? Number(e.target.value) : null)}
-                  className="mt-3 w-full rounded-lg border border-[#3a3b3d] bg-[#2a2b2d] px-3 py-2.5 text-sm text-[#E1E6EE] transition-colors focus:border-[#4b4c4e] focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-[#1f2022]"
+                  className="mt-3 w-full rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-card"
                 >
                   <option value="">No task</option>
                   {todos.map((t) => (
@@ -163,7 +162,7 @@ export function Notes({
                 type="button"
                 onClick={handleAdd}
                 disabled={!newContent.trim() || isSubmitting}
-                className="mt-3 self-end rounded-lg bg-[#0B64F9] px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#0958e6] hover:shadow disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-[#1f2022]"
+                className="mt-3 self-end rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-card"
               >
                 Add note
               </button>
@@ -172,29 +171,29 @@ export function Notes({
             {/* Notes list */}
             <div className="flex flex-col gap-3">
               {notes.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#3a3b3d]/60 bg-[#1f2022]/50 py-16">
+                <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border bg-secondary/50 py-16">
                   <div className="flex size-14 items-center justify-center rounded-full bg-violet-500/15 text-violet-400">
                     <StickyNote className="size-7" strokeWidth={1.5} />
                   </div>
-                  <p className="text-center text-base text-[#5b5d62]">No notes yet.</p>
-                  <p className="text-center text-sm text-[#5b5d62]/80">Add one above to get started</p>
+                  <p className="text-center text-base text-muted-foreground">No notes yet.</p>
+                  <p className="text-center text-sm text-muted-foreground/80">Add one above to get started</p>
                 </div>
               ) : (
                 notes.map((note) =>
                   editingId === note.id ? (
-                    <div key={note.id} className="rounded-xl bg-[#1f2022] p-4 shadow-sm">
+                    <div key={note.id} className="rounded-xl bg-card p-4 shadow-sm">
                       <textarea
                         value={editContent}
                         onChange={(e) => setEditContent(e.target.value)}
                         rows={3}
                         autoFocus
-                        className="min-h-[80px] w-full resize-none rounded-lg border border-[#3a3b3d] bg-[#2a2b2d] px-3 py-2.5 text-base text-[#E1E6EE] transition-colors focus:border-[#4b4c4e] focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-[#1f2022]"
+                        className="min-h-[80px] w-full resize-none rounded-lg border border-border bg-secondary px-3 py-2.5 text-base text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-card"
                       />
                       {todos.length > 0 && (
                         <select
                           value={editTaskId ?? ""}
                           onChange={(e) => setEditTaskId(e.target.value ? Number(e.target.value) : null)}
-                          className="mt-3 w-full rounded-lg border border-[#3a3b3d] bg-[#2a2b2d] px-3 py-2.5 text-sm text-[#E1E6EE] transition-colors focus:border-[#4b4c4e] focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-[#1f2022]"
+                          className="mt-3 w-full rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-card"
                         >
                           <option value="">No task</option>
                           {todos.map((t) => (
@@ -208,7 +207,7 @@ export function Notes({
                         <button
                           type="button"
                           onClick={handleCancelEdit}
-                          className="rounded-lg border border-[#3a3b3d] bg-transparent px-3 py-1.5 text-sm text-[#E1E6EE] transition-colors hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-[#1f2022]"
+                          className="rounded-lg border border-border bg-transparent px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-card"
                         >
                           Cancel
                         </button>
@@ -216,7 +215,7 @@ export function Notes({
                           type="button"
                           onClick={handleSaveEdit}
                           disabled={!editContent.trim() || isSubmitting}
-                          className="rounded-lg bg-[#0B64F9] px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#0958e6] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-[#1f2022]"
+                          className="rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:bg-blue-600 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-card"
                         >
                           Save
                         </button>
@@ -225,25 +224,25 @@ export function Notes({
                   ) : (
                     <article
                       key={note.id}
-                      className="group rounded-xl bg-[#1f2022] p-4 transition-all hover:bg-[#252628] hover:shadow-sm"
+                      className="group rounded-xl bg-card p-4 transition-all hover:bg-accent/50 hover:shadow-sm"
                     >
-                      <p className="whitespace-pre-wrap text-base leading-relaxed text-[#E1E6EE]">
+                      <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
                         {note.content}
                       </p>
                       {note.task_id != null && (
-                        <p className="mt-2 text-sm text-[#5b5d62]">
+                        <p className="mt-2 text-sm text-muted-foreground">
                           Task: {getTaskText(note.task_id)}
                         </p>
                       )}
                       <div className="mt-3 flex items-center justify-between gap-2">
-                        <span className="text-xs text-[#5b5d62]">
+                        <span className="text-xs text-muted-foreground">
                           {formatNoteDate(note.updated_at ?? note.created_at)}
                         </span>
                         <div className="flex gap-1">
                           <button
                             type="button"
                             onClick={() => handleStartEdit(note)}
-                            className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-[#5b5d62] transition-colors hover:bg-white/10 hover:text-[#E1E6EE] focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-[#1f2022]"
+                            className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-card"
                           >
                             <Pencil className="size-3.5" />
                             Edit
@@ -251,7 +250,7 @@ export function Notes({
                           <button
                             type="button"
                             onClick={() => handleDelete(note.id)}
-                            className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-[#EF4123] transition-colors hover:bg-[#EF4123]/15 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:ring-offset-2 focus:ring-offset-[#1f2022]"
+                            className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/15 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:ring-offset-2 focus:ring-offset-card"
                           >
                             <Trash2 className="size-3.5" />
                             Delete
@@ -263,7 +262,6 @@ export function Notes({
                 )
               )}
             </div>
-          </div>
         </div>
       </div>
     </div>

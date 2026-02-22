@@ -2220,7 +2220,7 @@ export function TodoApp() {
     setTodos(displayTasks);
   };
 
-  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null) => {
+  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null, dailyTaskId?: number | null) => {
     try {
       const todo = todos.find(t => t.id === taskId);
       if (!todo) return;
@@ -2251,6 +2251,10 @@ export function TodoApp() {
       
       if (imageUrl !== undefined) {
         updateData.imageUrl = imageUrl;
+      }
+      
+      if (dailyTaskId !== undefined) {
+        updateData.dailyTaskId = dailyTaskId;
       }
       
       if (deadline !== undefined) {
@@ -2290,6 +2294,30 @@ export function TodoApp() {
     } catch (error) {
       console.error('Error deleting task:', error);
     }
+  };
+
+  const convertTaskToDaily = async (taskId: number) => {
+    const todo = todos.find(t => t.id === taskId);
+    if (!todo) return;
+    const dailyTask = await createDailyTask({
+      text: todo.text,
+      description: todo.description ?? null,
+      listId: todo.listId ?? null,
+    });
+    await updateTask(taskId, todo.text, todo.description, todo.listId, todo.milestoneId, todo.deadline ?? undefined, todo.type, todo.imageUrl ?? undefined, dailyTask.id);
+    setDailyTasks(prev => [dbDailyTaskToDisplayDailyTask(dailyTask), ...prev]);
+  };
+
+  const convertTaskToCommon = async (taskId: number) => {
+    const todo = todos.find(t => t.id === taskId);
+    if (!todo) return;
+    await createCommonTask({
+      text: todo.text,
+      description: todo.description ?? null,
+      deadline: todo.deadline ?? undefined,
+    });
+    const commonTasksResult = await fetchCommonTasks();
+    setCommonTasks(commonTasksResult);
   };
 
   const handleUpdateDeadline = async (taskId: number, deadline: { date: Date; time: string; recurring?: string }) => {
@@ -2916,7 +2944,7 @@ export function TodoApp() {
 
   if (loading) {
     return (
-      <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-center pb-0 pt-[60px] px-0 relative size-full min-h-screen">
+      <div className="bg-background box-border content-stretch flex flex-col items-center justify-center pb-0 pt-[60px] px-0 relative size-full min-h-screen">
         <p className="text-white text-lg">Loading...</p>
       </div>
     );
@@ -2924,7 +2952,7 @@ export function TodoApp() {
 
   if (connectionError) {
     return (
-      <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-center pb-0 pt-[60px] px-0 relative size-full min-h-screen">
+      <div className="bg-background box-border content-stretch flex flex-col items-center justify-center pb-0 pt-[60px] px-0 relative size-full min-h-screen">
         <div className="max-w-md mx-auto px-6">
           <div className="bg-[#EF4123] text-white p-6 rounded-lg mb-4">
             <h2 className="text-xl font-semibold mb-2">⚠️ Connection Error</h2>
@@ -2945,7 +2973,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           </div>
           <button 
             onClick={() => window.location.reload()} 
-            className="w-full bg-[#0B64F9] text-white py-2 px-4 rounded hover:bg-[#0954d0]"
+            className="w-full bg-blue-500 text-primary-foreground py-2 px-4 rounded hover:bg-blue-600 transition-opacity"
           >
             Retry Connection
           </button>
@@ -3659,6 +3687,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             setSelectedTask(null);
             setCurrentPage("commonTasks");
           }}
+          onConvertToDailyTask={convertTaskToDaily}
+          onConvertToCommonTask={convertTaskToCommon}
         />
       )}
 

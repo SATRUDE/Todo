@@ -91,27 +91,21 @@ export function ReviewMissedDeadlinesModal({
       
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div 
-          className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet" 
-          data-node-id="36:383"
-          style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
-        >
+        <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pb-[60px] pt-5 desktop-bottom-sheet">
           {/* Handle */}
-          <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full" data-node-id="36:384">
-            <div className="h-[20px] relative shrink-0 w-[100px]" data-node-id="36:385">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
-                <g>
-                  <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
-                </g>
+          <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
+            <div className="h-5 w-24 shrink-0 text-muted-foreground">
+              <svg className="block size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
+                <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
               </svg>
             </div>
           </div>
 
           {/* Title */}
-          <div className="box-border content-stretch flex flex-col gap-[32px] items-center px-[20px] py-0 relative shrink-0 w-full" data-node-id="36:401">
-            <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[20px] text-nowrap tracking-[-0.22px] whitespace-pre" data-node-id="36:402">
+          <div className="w-full shrink-0 px-5">
+            <h2 className="text-xl font-medium tracking-tight text-foreground">
               Review missed deadlines
-            </p>
+            </h2>
           </div>
 
           {/* Scrollable Content */}
@@ -152,14 +146,15 @@ export function ReviewMissedDeadlinesModal({
                             cx="12"
                             cy="12"
                             r="11.25"
-                            stroke="#E1E6EE"
+                            stroke="currentColor"
                             strokeWidth="1.5"
-                            fill={todo.completed ? "#E1E6EE" : "none"}
+                            fill={todo.completed ? "currentColor" : "none"}
+                            className={todo.completed ? "text-blue-500" : "text-border"}
                           />
                           {todo.completed && (
                             <path
                               d="M7 12L10.5 15.5L17 9"
-                              stroke="#110c10"
+                              className="stroke-white"
                               strokeWidth="2"
                               strokeLinecap="round"
                               strokeLinejoin="round"
@@ -168,8 +163,8 @@ export function ReviewMissedDeadlinesModal({
                         </svg>
                       </div>
                       <p 
-                        className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] truncate tracking-[-0.198px] ${
-                          todo.completed ? "line-through text-[#5b5d62]" : "text-white"
+                        className={`font-normal leading-relaxed relative min-w-0 flex-1 text-lg truncate ${
+                          todo.completed ? "line-through text-muted-foreground" : "text-foreground"
                         }`}
                         data-node-id="36:499"
                         onClick={() => onTaskClick?.(todo)}
@@ -186,7 +181,7 @@ export function ReviewMissedDeadlinesModal({
                         style={{ maxWidth: '100%', boxSizing: 'border-box' }}
                       >
                         <p 
-                          className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                          className="font-normal text-sm text-muted-foreground"
                           style={{ 
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -205,7 +200,7 @@ export function ReviewMissedDeadlinesModal({
                       {/* Time */}
                       {todo.deadline?.time && todo.deadline.time.trim() !== "" && (
                         <div className="box-border content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0" data-node-id="36:501">
-                          <div className="relative shrink-0 size-[24px]" data-node-id="36:502">
+                          <div className="relative shrink-0 size-[24px] text-muted-foreground" data-node-id="36:502">
                             <svg
                               className="block size-full"
                               fill="none"
@@ -215,7 +210,7 @@ export function ReviewMissedDeadlinesModal({
                               <g>
                                 <path
                                   d={svgPathsToday.p19fddb00}
-                                  stroke="#5B5D62"
+                                  stroke="currentColor"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   strokeWidth="1.5"
@@ -223,7 +218,7 @@ export function ReviewMissedDeadlinesModal({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" data-node-id="36:504">
+                          <p className="font-normal text-lg text-muted-foreground whitespace-nowrap shrink-0">
                             {formatTime(todo.deadline.time)}
                           </p>
                         </div>
@@ -232,7 +227,7 @@ export function ReviewMissedDeadlinesModal({
                       {/* Day Due */}
                       {todo.deadline && (
                         <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0" data-node-id="36:505">
-                          <div className="relative shrink-0 size-[20px]" data-node-id="36:506">
+                          <div className="relative shrink-0 size-[20px] text-muted-foreground" data-node-id="36:506">
                             <svg
                               className="block size-full"
                               fill="none"
@@ -242,7 +237,7 @@ export function ReviewMissedDeadlinesModal({
                               <g>
                                 <path
                                   d={svgPathsToday.p31f04100}
-                                  stroke="#5B5D62"
+                                  stroke="currentColor"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   strokeWidth="1.25"

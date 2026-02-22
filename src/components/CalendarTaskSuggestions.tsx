@@ -166,7 +166,7 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
   if (loading) {
     return (
       <div className="w-full p-4">
-        <p className="text-[#5b5d62] text-[16px]">Loading calendar suggestions...</p>
+        <p className="text-muted-foreground text-base">Loading calendar suggestions...</p>
       </div>
     );
   }
@@ -174,26 +174,24 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
   if (error) {
     return (
       <div className="w-full p-4">
-        <p className="text-[#EF4123] text-[16px]">{error}</p>
+        <p className="text-destructive text-base">{error}</p>
       </div>
     );
   }
 
   if (!hasLoadedOnce) {
     return (
-      <div className="w-full flex flex-col gap-[16px]">
-        <div className="flex items-center gap-[12px]">
-          <div className="relative shrink-0 size-[20px]">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE" className="size-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-            </svg>
-          </div>
-          <p className="font-['Inter:Medium',sans-serif] font-medium text-[20px] text-white">
+      <div className="w-full flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <svg className="size-5 shrink-0 text-foreground" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+          </svg>
+          <p className="font-medium text-xl text-foreground">
             Suggested Tasks from Calendar
           </p>
         </div>
-        <div className="w-full p-[24px] bg-[#1a161a] rounded-lg border border-[#2a252a] flex flex-col items-start justify-center gap-[8px]">
-          <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62] text-left">
+        <div className="w-full p-6 rounded-lg border border-border bg-card flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground">
             Click the sync button to load calendar events
           </p>
         </div>
@@ -203,19 +201,17 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
 
   if (suggestions.length === 0) {
     return (
-      <div className="w-full flex flex-col gap-[16px]">
-        <div className="flex items-center gap-[12px]">
-          <div className="relative shrink-0 size-[20px]">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE" className="size-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-            </svg>
-          </div>
-          <p className="font-['Inter:Medium',sans-serif] font-medium text-[20px] text-white">
+      <div className="w-full flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <svg className="size-5 shrink-0 text-foreground" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+          </svg>
+          <p className="font-medium text-xl text-foreground">
             Suggested Tasks from Calendar
           </p>
         </div>
-        <div className="w-full p-[24px] bg-[#1a161a] rounded-lg border border-[#2a252a] flex flex-col items-start justify-center gap-[8px]">
-          <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62] text-left">
+        <div className="w-full p-6 rounded-lg border border-border bg-card flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground">
             All calendar events have been processed or there are no upcoming events
           </p>
         </div>
@@ -233,38 +229,36 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
   };
 
   return (
-    <div className="w-full flex flex-col gap-[16px]">
+    <div className="w-full flex flex-col gap-4">
       <div className="flex items-center justify-between w-full">
-        <div className="flex items-center gap-[12px]">
-          <div className="relative shrink-0 size-[20px]">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE" className="size-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-            </svg>
-          </div>
-          <p className="font-['Inter:Medium',sans-serif] font-medium text-[20px] text-white">
+        <div className="flex items-center gap-3">
+          <svg className="size-5 shrink-0 text-foreground" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+          </svg>
+          <p className="font-medium text-xl text-foreground">
             Suggested Tasks from Calendar
           </p>
         </div>
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="text-[#5b5d62] text-[16px] bg-transparent border-none p-0 cursor-pointer"
+            className="text-muted-foreground text-base bg-transparent border-none p-0 cursor-pointer hover:text-foreground transition-colors"
           >
             Dismiss All
           </button>
         )}
       </div>
-      
-      <div className="flex flex-col gap-[12px]">
+
+      <div className="flex flex-col gap-3">
         {suggestions.map((suggestion, index) => (
           <div
             key={index}
-            className="flex items-start justify-between p-[16px] bg-[#1a161a] rounded-lg border border-[#2a252a] w-full max-w-full overflow-hidden"
+            className="flex items-start justify-between p-4 rounded-lg border border-border bg-card w-full max-w-full overflow-hidden"
           >
-            <div className="flex-1 flex flex-col gap-[4px] min-w-0 max-w-full overflow-hidden">
-              <p 
-                className={`font-['Inter:Regular',sans-serif] font-normal text-[18px] break-words overflow-wrap-anywhere ${
-                  onTaskClick ? 'text-white cursor-pointer hover:text-[#E1E6EE] hover:underline' : 'text-white'
+            <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-full overflow-hidden">
+              <p
+                className={`font-normal text-lg break-words overflow-wrap-anywhere ${
+                  onTaskClick ? 'text-foreground cursor-pointer hover:underline' : 'text-foreground'
                 }`}
                 style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                 onClick={onTaskClick ? () => onTaskClick({ ...suggestion, eventId: suggestion.event.id }) : undefined}
@@ -272,22 +266,22 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
                 {suggestion.text}
               </p>
               {suggestion.event.calendarName && (
-                <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-[#5b5d62] break-words overflow-wrap-anywhere" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                <p className="font-normal text-xs text-muted-foreground break-words overflow-wrap-anywhere" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                   {suggestion.event.calendarName}
                 </p>
               )}
               {suggestion.deadline && (
-                <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62] break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                <p className="font-normal text-sm text-muted-foreground break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                   {formatDate(suggestion.deadline.date)} at {suggestion.deadline.time}
                 </p>
               )}
               {suggestion.description && (
-                <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#5b5d62] mt-[4px] break-words overflow-wrap-anywhere" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                <p className="font-normal text-sm text-muted-foreground mt-1 break-words overflow-wrap-anywhere" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                   {suggestion.description.substring(0, 100)}{suggestion.description.length > 100 ? '...' : ''}
                 </p>
               )}
             </div>
-            <div className="ml-[16px] flex items-center gap-[8px] flex-shrink-0">
+            <div className="ml-4 flex items-center gap-2 flex-shrink-0">
               <button
                 type="button"
                 onClick={(e) => {
@@ -295,7 +289,7 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
                   e.stopPropagation();
                   handleDismissEvent(suggestion.event.id);
                 }}
-                className="px-[12px] py-[8px] bg-transparent text-[#5b5d62] text-[16px] rounded-lg border border-[#2a252a] cursor-pointer hover:bg-[#2a252a]"
+                className="px-3 py-2 bg-transparent text-muted-foreground text-base rounded-lg border border-border cursor-pointer hover:bg-accent transition-colors"
               >
                 Dismiss
               </button>
@@ -308,10 +302,10 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
                     onTaskClick({ ...suggestion, eventId: suggestion.event.id });
                   }
                 }}
-                className="px-[16px] py-[8px] bg-[#0b64f9] text-white text-[16px] rounded-lg border-none cursor-pointer hover:bg-[#0954d0] flex items-center gap-[8px]"
+                className="px-4 py-2 bg-blue-500 text-primary-foreground text-base rounded-lg border-none cursor-pointer hover:bg-blue-600 flex items-center gap-2 transition-opacity"
               >
                 <span>Add</span>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="white" className="size-4">
+                <svg className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m9 9 6-6m0 0 6 6m-6-6v12a6 6 0 0 1-12 0v-3" />
                 </svg>
               </button>

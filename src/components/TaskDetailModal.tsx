@@ -64,6 +64,8 @@ interface TaskDetailModalProps {
   onDeleteNote?: (id: number) => void | Promise<void>;
   onNavigateToDailyTasks?: () => void;
   onNavigateToCommonTasks?: () => void;
+  onConvertToDailyTask?: (taskId: number) => void | Promise<void>;
+  onConvertToCommonTask?: (taskId: number) => void | Promise<void>;
 }
 
 // Helper function to get all text nodes in an element
@@ -83,7 +85,7 @@ function getTextNodes(element: Node): Text[] {
   return textNodes;
 }
 
-export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks }: TaskDetailModalProps) {
+export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks, onConvertToDailyTask, onConvertToCommonTask }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
   const [taskDescription, setTaskDescription] = useState(task.description || "");
   const [imageUrl, setImageUrl] = useState<string | null>(task.imageUrl || null);
@@ -400,16 +402,30 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     }
   };
 
-  const handleSelectTaskType = (type: "task" | "reminder" | "daily" | "common") => {
+  const handleSelectTaskType = async (type: "task" | "reminder" | "daily" | "common") => {
     if (type === "task" || type === "reminder") {
       setTaskType(type);
       setIsTaskTypeModalOpen(false);
-    } else if (type === "daily" && onNavigateToDailyTasks) {
-      onClose();
-      onNavigateToDailyTasks();
-    } else if (type === "common" && onNavigateToCommonTasks) {
-      onClose();
-      onNavigateToCommonTasks();
+    } else if (type === "daily") {
+      if (task.id >= 0 && onConvertToDailyTask) {
+        await onConvertToDailyTask(task.id);
+        setIsTaskTypeModalOpen(false);
+        onClose();
+        onNavigateToDailyTasks?.();
+      } else if (onNavigateToDailyTasks) {
+        onClose();
+        onNavigateToDailyTasks();
+      }
+    } else if (type === "common") {
+      if (task.id >= 0 && onConvertToCommonTask) {
+        await onConvertToCommonTask(task.id);
+        setIsTaskTypeModalOpen(false);
+        onClose();
+        onNavigateToCommonTasks?.();
+      } else if (onNavigateToCommonTasks) {
+        onClose();
+        onNavigateToCommonTasks();
+      }
     }
   };
 

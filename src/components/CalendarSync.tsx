@@ -114,82 +114,47 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
 
   return (
     <div className="relative shrink-0 w-full">
-      <div className="w-full">
-        <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] pt-0 relative w-full h-fit" style={{ paddingBottom: '150px' }}>
-          {/* Header */}
-          <div className="content-stretch flex items-center gap-[16px] relative shrink-0 w-full">
-            <div 
-              className="relative shrink-0 size-[32px] cursor-pointer"
-              onClick={onBack}
+      <div className="flex flex-col gap-8 px-5 pt-0 pb-[150px] w-full">
+        {/* Header */}
+        <div className="flex items-center gap-4 w-full">
+          <button
+            type="button"
+            onClick={onBack}
+            className="size-8 shrink-0 cursor-pointer rounded-lg text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-background"
+            aria-label="Back"
+          >
+            <svg className="block size-5" fill="none" viewBox="0 0 32 32" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2">
+              <path d="M20 8L12 16L20 24" />
+            </svg>
+          </button>
+          <h1 className="flex-1 text-2xl font-medium tracking-tight text-foreground sm:text-[28px]">
+            Calendar sync
+          </h1>
+          {onSync && (
+            <button
+              type="button"
+              className={`size-8 shrink-0 cursor-pointer rounded-lg text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-background ${isSyncing ? 'animate-spin' : ''}`}
+              onClick={handleSync}
+              title="Sync calendar"
+              aria-label="Sync calendar"
             >
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
-                <g>
-                  <path 
-                    d="M20 8L12 16L20 24" 
-                    stroke="#E1E6EE" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth="2" 
-                  />
-                </g>
+              <svg className="block size-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
               </svg>
-            </div>
-            <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative flex-1 min-w-0 text-nowrap whitespace-pre">
-              <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Calendar sync</p>
-            </div>
-            {/* Sync Button */}
-            {onSync && (
-              <div 
-                className={`relative shrink-0 size-[32px] cursor-pointer ${isSyncing ? '' : ''}`}
-                onClick={handleSync}
-                title="Sync calendar"
-              >
-                <style>{`
-                  @keyframes spin {
-                    from {
-                      transform: rotate(0deg);
-                    }
-                    to {
-                      transform: rotate(360deg);
-                    }
-                  }
-                  .sync-spinning {
-                    animation: spin 1s linear infinite;
-                  }
-                `}</style>
-                <svg 
-                  className={`block size-full ${isSyncing ? 'sync-spinning' : ''}`}
-                  fill="none" 
-                  preserveAspectRatio="none" 
-                  viewBox="0 0 24 24" 
-                  style={{ width: '32px', height: '32px', transformOrigin: 'center' }}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-                    stroke="#E1E6EE"
-                    strokeWidth="1.5"
-                  />
-                </svg>
-              </div>
-            )}
-          </div>
-
-          {/* Calendar Task Suggestions */}
-          {onAddTask && (
-            <div className="w-full">
-              <CalendarTaskSuggestions
-                ref={suggestionsRef}
-                onTaskClick={handleTaskClick}
-                onEventProcessed={onEventProcessed}
-              />
-            </div>
+            </button>
           )}
-          
-          {/* Spacer to prevent bottom cutoff */}
-          <div className="w-full" style={{ height: '20px' }} />
         </div>
+
+        {/* Calendar Task Suggestions */}
+        {onAddTask && (
+          <div className="w-full">
+            <CalendarTaskSuggestions
+              ref={suggestionsRef}
+              onTaskClick={handleTaskClick}
+              onEventProcessed={onEventProcessed}
+            />
+          </div>
+        )}
       </div>
 
       {/* Task Detail Modal for Calendar Suggestions */}

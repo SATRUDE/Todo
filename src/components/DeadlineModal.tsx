@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Calendar } from "./ui/calendar";
 import { TimeInput } from "./TimeInput";
-import svgPaths from "../imports/svg-e51h379o38";
 
 interface DeadlineModalProps {
   isOpen: boolean;
@@ -11,8 +10,27 @@ interface DeadlineModalProps {
   currentDeadline?: { date: Date; time: string; recurring?: string } | null;
 }
 
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function addMonths(date: Date, months: number): Date {
+  const result = new Date(date);
+  result.setMonth(result.getMonth() + months);
+  return result;
+}
+
+const QUICK_SELECT_OPTIONS: { label: string; getDate: () => Date }[] = [
+  { label: "Tomorrow", getDate: () => addDays(new Date(), 1) },
+  { label: "In 2 days", getDate: () => addDays(new Date(), 2) },
+  { label: "In 3 days", getDate: () => addDays(new Date(), 3) },
+  { label: "In a week", getDate: () => addDays(new Date(), 7) },
+  { label: "In a month", getDate: () => addMonths(new Date(), 1) },
+];
+
 export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline, currentDeadline }: DeadlineModalProps) {
-  // Get current time as default
   const getCurrentTime = () => {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
@@ -20,23 +38,20 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
     return `${hours}:${minutes}`;
   };
 
-  // Parse selected days from recurring string (e.g., "monday,wednesday,friday")
   const parseSelectedDays = (recurringValue: string): string[] => {
     if (recurringValue && recurringValue.includes(',')) {
       return recurringValue.split(',').map(day => day.trim().toLowerCase());
     }
     return [];
   };
-  
-  // Get initial recurring value - check if it's custom days
+
   const getInitialRecurring = (): string => {
     if (currentDeadline?.recurring && currentDeadline.recurring.includes(',')) {
-      return "weekly"; // Set to weekly to show day selection UI
+      return "weekly";
     }
     return currentDeadline?.recurring || "none";
   };
-  
-  // Get initial selected days from current deadline
+
   const getInitialSelectedDays = (): string[] => {
     if (currentDeadline?.recurring && currentDeadline.recurring.includes(',')) {
       return parseSelectedDays(currentDeadline.recurring);
@@ -51,14 +66,12 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
   const [noDate, setNoDate] = useState(!currentDeadline?.date);
   const [selectedDays, setSelectedDays] = useState<string[]>(getInitialSelectedDays());
 
-  // Set default time and date when modal opens
   useEffect(() => {
     if (isOpen) {
       if (currentDeadline?.time && currentDeadline.time.trim() !== "") {
         setSelectedTime(currentDeadline.time);
         setNoTime(false);
       } else {
-        // If no time exists, default to "no time" being checked
         setSelectedTime("");
         setNoTime(true);
       }
@@ -69,13 +82,11 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
         setSelectedDate(undefined);
         setNoDate(true);
       }
-      // Parse and set selected days if recurring contains custom days
       if (currentDeadline?.recurring && currentDeadline.recurring.includes(',')) {
         setSelectedDays(parseSelectedDays(currentDeadline.recurring));
-        setRecurring("weekly"); // Set to weekly to show day selection
+        setRecurring("weekly");
       } else {
         setSelectedDays([]);
-        // If weekly is selected but no custom days, default to the selected date's day
         if (recurring === "weekly" && selectedDate) {
           const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
           setSelectedDays([dayNames[selectedDate.getDay()]]);
@@ -86,271 +97,234 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
     }
   }, [isOpen, currentDeadline]);
 
-  const getDayOfWeek = (date: Date) => {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return days[date.getDay()];
-  };
-
-  const currentDayOfWeek = selectedDate ? getDayOfWeek(selectedDate) : "Friday";
-
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const handleConfirm = () => {
     if (noDate || !selectedDate) {
-      // If "no date" is selected, clear the deadline
       if (onClearDeadline) {
         onClearDeadline();
       }
       onClose();
     } else {
-      // If "no time" is selected, pass empty string for time
       const timeToSet = noTime ? "" : selectedTime;
-      
-      // Handle custom weekly days
       let recurringValue: string | undefined;
       if (recurring === "weekly") {
         if (selectedDays.length > 0) {
-          // Store as comma-separated string
           recurringValue = selectedDays.join(',');
         } else {
-          // If no days selected, default to the selected date's day
-          const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
           recurringValue = dayNames[selectedDate.getDay()];
         }
       } else if (recurring !== "none") {
         recurringValue = recurring;
       }
-      
       onSetDeadline(selectedDate, timeToSet, recurringValue);
       onClose();
     }
   };
-  
+
   const handleDayToggle = (day: string) => {
-    setSelectedDays(prev => {
-      if (prev.includes(day)) {
-        return prev.filter(d => d !== day);
-      } else {
-        return [...prev, day];
-      }
-    });
+    setSelectedDays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    );
   };
-  
-  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const handleNoTimeToggle = () => {
     const newNoTime = !noTime;
     setNoTime(newNoTime);
-    if (newNoTime) {
-      // Clear time when "no time" is enabled
-      setSelectedTime("");
-    } else {
-      // Set to current time when "no time" is disabled
-      setSelectedTime(getCurrentTime());
-    }
+    setSelectedTime(newNoTime ? "" : getCurrentTime());
   };
 
   const handleNoDateToggle = () => {
     const newNoDate = !noDate;
     setNoDate(newNoDate);
-    if (newNoDate) {
-      // Clear date when "no date" is enabled
-      setSelectedDate(undefined);
-    } else {
-      // Set to today when "no date" is disabled
-      setSelectedDate(new Date());
-    }
+    setSelectedDate(newNoDate ? undefined : new Date());
+  };
+
+  const handleQuickSelect = (getDate: () => Date) => {
+    setSelectedDate(getDate());
+    setNoDate(false);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[10003] pointer-events-none" style={{ zIndex: 10003 }}>
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black bg-opacity-50 pointer-events-auto"
+    <div className="fixed inset-0 z-[10003] pointer-events-none">
+      <div
+        className="absolute inset-0 pointer-events-auto bg-black/75 backdrop-blur-sm transition-opacity duration-300"
         onClick={onClose}
+        aria-hidden
       />
-      
-      {/* Bottom Sheet */}
+
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div 
-          className="bg-[#110c10] box-border flex flex-col items-center relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet"
-          style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
-        >
+        <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pb-[60px] pt-5 desktop-bottom-sheet">
           {/* Handle */}
-          <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full pt-[20px]">
-            <div className="h-[20px] relative shrink-0 w-[100px]">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
-                <g>
-                  <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
-                </g>
+          <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
+            <div className="h-5 w-24 shrink-0 text-muted-foreground">
+              <svg className="block size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
+                <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
               </svg>
             </div>
           </div>
 
-          {/* Title */}
-          <div className="px-[20px] w-full shrink-0">
-            <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic text-white text-[28px] tracking-[-0.308px]">
+          <div className="w-full shrink-0 px-5">
+            <h2 className="text-xl font-medium tracking-tight text-foreground">
               Set Deadline
-            </p>
+            </h2>
           </div>
 
-          {/* Scrollable Content */}
-          <div 
-            className="flex flex-col w-full"
-            style={{ 
-              overflowY: 'auto', 
-              WebkitOverflowScrolling: 'touch', 
-              maxHeight: 'calc(90vh - 120px)', 
-              minHeight: 0, 
-              overflowX: 'hidden' 
-            }}
-          >
-            <div className="flex flex-col gap-[32px] items-center pb-[40px] pt-[20px]">
-              {/* Calendar */}
-              <div className="px-[20px] w-full">
+          <div className="flex flex-1 flex-col w-full overflow-x-hidden overflow-y-auto px-5 [-webkit-overflow-scrolling:touch] min-h-0" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+            <div className="flex flex-col gap-6 pt-4 pb-2">
+              {/* Calendar section */}
+              <div className="w-full">
                 {/* No Date Toggle */}
-                <div className="mb-[12px]">
-              <div 
-                className="bg-[rgba(225,230,238,0.1)] box-border flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
-                onClick={handleNoDateToggle}
-              >
-                {/* Toggle Switch */}
-                <div className="h-[24px] relative shrink-0 w-[44px]">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 24">
-                    <g>
-                      <rect fill={noDate ? "#00C853" : "#595559"} height="24" rx="12" width="44" />
-                      <circle cx={noDate ? "32" : "12"} cy="12" fill="white" r="10" />
-                    </g>
-                  </svg>
+                <button
+                  type="button"
+                  onClick={handleNoDateToggle}
+                  className="flex items-center gap-2 rounded-full px-4 py-2 bg-secondary hover:bg-accent transition-colors mb-3"
+                >
+                  <div className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${noDate ? 'bg-emerald-500' : 'bg-gray-400 dark:bg-gray-600'}`}>
+                    <div
+                      className={`absolute top-1 size-4 rounded-full bg-white shadow transition-all ${noDate ? 'left-6' : 'left-1'}`}
+                    />
+                  </div>
+                  <span className="text-lg font-normal text-foreground">No date</span>
+                </button>
+
+                <div className={`flex justify-center ${noDate ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      if (date) {
+                        setSelectedDate(date);
+                        setNoDate(false);
+                      }
+                    }}
+                    className="rounded-lg border border-border bg-secondary"
+                  />
                 </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">No date</p>
-                </div>
+
+                {/* Quick-select buttons */}
+                {!noDate && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {QUICK_SELECT_OPTIONS.map(({ label, getDate }) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => handleQuickSelect(getDate)}
+                        className="px-3 py-2 rounded-lg text-sm font-normal bg-secondary hover:bg-accent text-foreground transition-colors"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className={`flex justify-center ${noDate ? 'opacity-50 pointer-events-none' : ''}`}>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => {
-                    if (date) {
-                      setSelectedDate(date);
-                      setNoDate(false);
-                    }
-                  }}
-                  className="rounded-md border border-[rgba(225,230,238,0.1)] bg-[rgba(225,230,238,0.05)]"
+
+              {/* Time Picker */}
+              <div className="w-full">
+                <button
+                  type="button"
+                  onClick={handleNoTimeToggle}
+                  className="flex items-center gap-2 rounded-full px-4 py-2 bg-secondary hover:bg-accent transition-colors mb-3"
+                >
+                  <div className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${noTime ? 'bg-emerald-500' : 'bg-gray-400 dark:bg-gray-600'}`}>
+                    <div
+                      className={`absolute top-1 size-4 rounded-full bg-white shadow transition-all ${noTime ? 'left-6' : 'left-1'}`}
+                    />
+                  </div>
+                  <span className="text-lg font-normal text-foreground">No time</span>
+                </button>
+                <TimeInput
+                  id="deadline-time"
+                  value={selectedTime}
+                  onChange={(time) => setSelectedTime(time)}
+                  label="Time"
+                  disabled={noTime}
                 />
               </div>
-            </div>
 
-            {/* Time Picker */}
-            <div className="px-[20px] w-full">
-              {/* No Time Toggle */}
-              <div className="mb-[12px]">
-              <div 
-                className="bg-[rgba(225,230,238,0.1)] box-border flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
-                onClick={handleNoTimeToggle}
-              >
-                {/* Toggle Switch */}
-                <div className="h-[24px] relative shrink-0 w-[44px]">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 24">
-                    <g>
-                      <rect fill={noTime ? "#00C853" : "#595559"} height="24" rx="12" width="44" />
-                      <circle cx={noTime ? "32" : "12"} cy="12" fill="white" r="10" />
-                    </g>
-                  </svg>
-                </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">No time</p>
-                </div>
-              </div>
-              <TimeInput
-                id="deadline-time"
-                value={selectedTime}
-                onChange={(time) => setSelectedTime(time)}
-                label="Time"
-                disabled={noTime}
-              />
-            </div>
-
-            {/* Recurring Dropdown */}
-            <div className="px-[20px] w-full shrink-0">
-              <label className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#e1e6ee] text-[18px] tracking-[-0.198px] mb-2 block">
-                Recurring
-              </label>
-              <select
-                value={recurring}
-                onChange={(e) => {
-                  setRecurring(e.target.value);
-                  // If changing away from weekly, clear selected days
-                  if (e.target.value !== "weekly") {
-                    setSelectedDays([]);
-                  } else if (selectedDate) {
-                    // If changing to weekly, default to selected date's day
-                    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                    setSelectedDays([dayNames[selectedDate.getDay()]]);
-                  }
-                }}
-                className="w-full bg-[rgba(225,230,238,0.1)] border border-[rgba(225,230,238,0.1)] rounded-[12px] px-[16px] py-[12px] text-white font-['Inter:Regular',sans-serif] font-normal text-[18px] outline-none focus:border-[rgba(225,230,238,0.3)] cursor-pointer"
-              >
-                <option value="none" className="bg-[#110c10]">None</option>
-                <option value="daily" className="bg-[#110c10]">Every day</option>
-                <option value="weekly" className="bg-[#110c10]">Weekly (select days)</option>
-                <option value="weekday" className="bg-[#110c10]">Every weekday</option>
-                <option value="monthly" className="bg-[#110c10]">Every month</option>
-              </select>
-            </div>
-
-            {/* Day Selection for Weekly */}
-            {recurring === "weekly" && !noDate && (
-              <div className="px-[20px] w-full shrink-0">
-                <label className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#e1e6ee] text-[18px] tracking-[-0.198px] mb-2 block">
-                  Select Days
+              {/* Recurring Dropdown */}
+              <div className="w-full">
+                <label htmlFor="deadline-recurring" className="text-lg font-normal text-foreground mb-2 block">
+                  Recurring
                 </label>
-                <div className="flex flex-wrap gap-[8px]">
-                  {dayNames.map((day, index) => (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => handleDayToggle(day)}
-                      className={`px-[16px] py-[8px] rounded-[12px] font-['Inter:Regular',sans-serif] font-normal text-[16px] tracking-[-0.176px] transition-colors ${
-                        selectedDays.includes(day)
-                          ? 'bg-white text-[#110c10]'
-                          : 'bg-[rgba(225,230,238,0.1)] text-[#e1e6ee] hover:bg-[rgba(225,230,238,0.15)]'
-                      }`}
-                    >
-                      {dayLabels[index]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Buttons */}
-            <div className="px-[20px] w-full flex gap-[12px] shrink-0">
-              {onClearDeadline && currentDeadline && (
-                <button
-                  onClick={() => {
-                    onClearDeadline();
-                    onClose();
+                <select
+                  id="deadline-recurring"
+                  value={recurring}
+                  onChange={(e) => {
+                    setRecurring(e.target.value);
+                    if (e.target.value !== "weekly") {
+                      setSelectedDays([]);
+                    } else if (selectedDate) {
+                      setSelectedDays([dayNames[selectedDate.getDay()]]);
+                    }
                   }}
-                  className="flex-1 bg-[rgba(239,65,35,0.1)] hover:bg-[rgba(239,65,35,0.15)] rounded-[12px] px-[24px] py-[12px] font-['Inter:Regular',sans-serif] font-normal text-[#EF4123] text-[18px] tracking-[-0.198px]"
+                  className="w-full rounded-lg border border-border bg-secondary px-4 py-3 text-lg text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-violet-500/30 cursor-pointer"
                 >
-                  Clear
-                </button>
+                  <option value="none" className="bg-card text-foreground">None</option>
+                  <option value="daily" className="bg-card text-foreground">Every day</option>
+                  <option value="weekly" className="bg-card text-foreground">Weekly (select days)</option>
+                  <option value="weekday" className="bg-card text-foreground">Every weekday</option>
+                  <option value="monthly" className="bg-card text-foreground">Every month</option>
+                </select>
+              </div>
+
+              {/* Day Selection for Weekly */}
+              {recurring === "weekly" && !noDate && (
+                <div className="w-full">
+                  <label className="text-lg font-normal text-foreground mb-2 block">
+                    Select Days
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {dayNames.map((day, index) => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => handleDayToggle(day)}
+                        className={`px-4 py-2 rounded-lg font-normal text-base transition-colors ${
+                          selectedDays.includes(day)
+                            ? 'bg-blue-500 text-primary-foreground'
+                            : 'bg-secondary text-foreground hover:bg-accent'
+                        }`}
+                      >
+                        {dayLabels[index]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
-              <button
-                onClick={onClose}
-                className="flex-1 bg-[rgba(225,230,238,0.1)] hover:bg-[rgba(225,230,238,0.15)] rounded-[12px] px-[24px] py-[12px] font-['Inter:Regular',sans-serif] font-normal text-[#e1e6ee] text-[18px] tracking-[-0.198px]"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirm}
-                className="flex-1 bg-white hover:bg-[#e1e6ee] rounded-[12px] px-[24px] py-[12px] font-['Inter:Medium',sans-serif] font-medium text-[#110c10] text-[18px] tracking-[-0.198px]"
-              >
-                Confirm
-              </button>
-            </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 w-full pt-2">
+                {onClearDeadline && currentDeadline && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClearDeadline();
+                      onClose();
+                    }}
+                    className="flex-1 rounded-lg px-6 py-3 font-normal text-lg bg-destructive/20 hover:bg-destructive/30 text-destructive transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 rounded-lg px-6 py-3 font-normal text-lg bg-secondary hover:bg-accent text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirm}
+                  className="flex-1 rounded-lg px-6 py-3 font-medium text-lg bg-blue-500 hover:bg-blue-600 text-primary-foreground transition-colors"
+                >
+                  Confirm
+                </button>
+              </div>
             </div>
           </div>
         </div>

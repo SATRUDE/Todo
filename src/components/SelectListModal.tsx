@@ -34,90 +34,51 @@ export function SelectListModal({ isOpen, onClose, lists, selectedListId, onSele
   }, [isOpen]);
 
 
-  // Create list items array with optional "Today" at the beginning
-  const listItems = includeToday 
-    ? [{ id: 0, name: "Today", color: "#E1E6EE", count: 0, isShared: false }, ...lists]
+  const listItemsWithDefault = includeToday
+    ? [{ id: 0, name: "Today", color: "currentColor", count: 0, isShared: false }, ...lists]
     : lists;
 
   return (
-    <div className="fixed inset-0 z-[10002] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
-        onClick={onClose}
-        style={{ 
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(4px)'
-        }}
-      />
-      
-      {/* Bottom Sheet */}
+    <div className="fixed inset-0 z-[10002] pointer-events-none">
+      <div className="absolute inset-0 pointer-events-auto bg-black/75 backdrop-blur-sm transition-opacity duration-300" onClick={onClose} aria-hidden />
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div 
-          className="bg-[#110c10] box-border flex flex-col items-center relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet"
-          style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
-        >
-          {/* Handle */}
-          <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full pt-[20px]">
-            <div className="h-[20px] relative shrink-0 w-[100px]">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
-                <g>
-                  <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
-                </g>
+        <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pb-[60px] pt-5 desktop-bottom-sheet">
+          <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
+            <div className="h-5 w-24 shrink-0 text-muted-foreground">
+              <svg className="block size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
+                <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
               </svg>
             </div>
           </div>
-
-          {/* Title */}
-          <div className="px-[20px] w-full shrink-0">
-            <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[20px] text-nowrap tracking-[-0.22px] whitespace-pre">Add to list</p>
+          <div className="w-full shrink-0 px-5">
+            <h2 className="text-xl font-medium tracking-tight text-foreground">Add to list</h2>
           </div>
-
-          {/* Scrollable Content */}
-          <div 
-            className="flex flex-col w-full"
-            style={{ 
-              overflowY: 'auto', 
-              WebkitOverflowScrolling: 'touch', 
-              maxHeight: 'calc(90vh - 120px)', 
-              minHeight: 0, 
-              overflowX: 'hidden' 
-            }}
-          >
-            <div className="flex flex-col gap-[16px] items-start pb-[40px] pt-[20px] px-[20px]">
-              {/* List Items */}
-              {listItems.map((list) => (
-                <div 
+          <div className="flex flex-1 flex-col w-full overflow-x-hidden overflow-y-auto px-5 [-webkit-overflow-scrolling:touch] min-h-0" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+            <div className="flex flex-col gap-4 pt-4 pb-2">
+              {listItemsWithDefault.map((list) => (
+                <div
                   key={list.id}
-                  className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+                  className="flex items-center gap-2 w-full py-2 px-3 -mx-3 rounded-lg cursor-pointer transition-colors hover:bg-accent"
                   onClick={() => onSelectList(list.id)}
                 >
-                  <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full">
-                    {/* Radio Button */}
-                    <div className="content-stretch flex gap-[12px] items-center relative shrink-0">
-                      <div className="relative shrink-0 size-[24px]">
-                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                          {selectedListId === list.id ? (
-                            <g>
-                              <circle cx="12" cy="12" fill="#110C10" r="11.25" stroke="#E1E6EE" strokeWidth="1.5" />
-                              <circle cx="12" cy="12" fill="#E1E6EE" r="6" />
-                            </g>
-                          ) : (
-                            <circle cx="12" cy="12" fill="#110C10" r="11.25" stroke="#E1E6EE" strokeWidth="1.5" />
-                          )}
-                        </svg>
+                  <div className="relative shrink-0 size-6 flex items-center justify-center">
+                    {selectedListId === list.id ? (
+                      <div className="size-6 rounded-full border-2 border-blue-500 flex items-center justify-center">
+                        <div className="size-3 rounded-full bg-blue-500" />
                       </div>
-                    </div>
-                    {/* Hashtag Icon */}
-                    <div className="relative shrink-0 size-[20px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-                        <g>
-                          <path d={svgPaths.p1dfd6800} stroke={list.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
-                        </g>
-                      </svg>
-                    </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{list.name}</p>
+                    ) : (
+                      <div className="size-6 rounded-full border-2 border-border" />
+                    )}
                   </div>
+                  <div
+                    className="relative shrink-0 size-5 text-muted-foreground"
+                    style={list.color !== "currentColor" ? { color: list.color } : undefined}
+                  >
+                    <svg className="block size-full" fill="none" viewBox="0 0 20 20">
+                      <path d={svgPaths.p1dfd6800} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+                    </svg>
+                  </div>
+                  <p className="font-normal text-lg leading-relaxed text-foreground truncate">{list.name}</p>
                 </div>
               ))}
             </div>

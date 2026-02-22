@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import svgPaths from "../imports/svg-p3zv31caxs";
+import { Button } from "./ui/button";
 
 interface ListFolder {
   id: number;
@@ -50,7 +51,7 @@ export function FilterListsModal({ isOpen, onClose, lists, folders = [], selecte
 
   // Group user lists by folder (same order as Lists page: folders first, then "No folder")
   const folderIds = new Set(folders.map(f => f.id));
-  const todayItem = includeToday ? [{ id: 0, name: "Today", color: "#E1E6EE", count: 0, isShared: false, folderId: null as number | null }] : [];
+  const todayItem = includeToday ? [{ id: 0, name: "Today", color: "currentColor", count: 0, isShared: false, folderId: null as number | null }] : [];
   const listsByFolder = (() => {
     const byFolder = new Map<number | null, ListItem[]>();
     byFolder.set(null, []);
@@ -66,35 +67,31 @@ export function FilterListsModal({ isOpen, onClose, lists, folders = [], selecte
   })();
 
   const renderListRow = (list: ListItem) => (
-    <div 
+    <div
       key={list.id}
-      className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+      className="flex items-center gap-2 w-full py-2 px-3 -mx-3 rounded-lg cursor-pointer transition-colors hover:bg-accent"
       onClick={() => handleToggleList(list.id)}
     >
-      <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full">
-        <div className="content-stretch flex gap-[12px] items-center relative shrink-0">
-          <div className="relative shrink-0 size-[24px]">
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-              {localSelectedIds.has(list.id) ? (
-                <g>
-                  <rect x="3" y="3" width="18" height="18" rx="2" fill="#E1E6EE" stroke="#E1E6EE" strokeWidth="1.5" />
-                  <path d="M7 12L10.5 15.5L17 9" stroke="#110C10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </g>
-              ) : (
-                <rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="#E1E6EE" strokeWidth="1.5" />
-              )}
+      <div className="relative shrink-0 size-6 flex items-center justify-center">
+        {localSelectedIds.has(list.id) ? (
+          <div className="size-6 rounded-md border-2 border-blue-500 bg-blue-500 flex items-center justify-center">
+            <svg className="size-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 13l4 4L19 7" />
             </svg>
           </div>
-        </div>
-        <div className="relative shrink-0 size-[20px]">
-          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-            <g>
-              <path d={svgPaths.p1dfd6800} stroke={list.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
-            </g>
-          </svg>
-        </div>
-        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{list.name}</p>
+        ) : (
+          <div className="size-6 rounded-md border-2 border-border" />
+        )}
       </div>
+      <div
+        className="relative shrink-0 size-5 text-muted-foreground"
+        style={list.color !== "currentColor" ? { color: list.color } : undefined}
+      >
+        <svg className="block size-full" fill="none" viewBox="0 0 20 20">
+          <path d={svgPaths.p1dfd6800} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+        </svg>
+      </div>
+      <p className="font-normal text-lg leading-relaxed text-foreground truncate">{list.name}</p>
     </div>
   );
 
@@ -116,58 +113,43 @@ export function FilterListsModal({ isOpen, onClose, lists, folders = [], selecte
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[10002] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+    <div className="fixed inset-0 z-[10002] pointer-events-none">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
+      <div
+        className="absolute inset-0 pointer-events-auto bg-black/75 backdrop-blur-sm transition-opacity duration-300"
         onClick={onClose}
-        style={{ 
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(4px)'
-        }}
+        aria-hidden
       />
-      
+
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div 
-          className="bg-[#110c10] box-border flex flex-col items-center relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet"
-          style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
-        >
+        <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pb-[60px] pt-5 desktop-bottom-sheet">
           {/* Handle */}
-          <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full pt-[20px]">
-            <div className="h-[20px] relative shrink-0 w-[100px]">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
-                <g>
-                  <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
-                </g>
+          <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
+            <div className="h-5 w-24 shrink-0 text-muted-foreground">
+              <svg className="block size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
+                <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
               </svg>
             </div>
           </div>
 
           {/* Title */}
-          <div className="px-[20px] w-full shrink-0">
-            <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[20px] text-nowrap tracking-[-0.22px] whitespace-pre">Filter by list</p>
+          <div className="w-full shrink-0 px-5">
+            <h2 className="text-xl font-medium tracking-tight text-foreground">
+              Filter by list
+            </h2>
           </div>
 
           {/* Scrollable Content */}
-          <div 
-            className="flex flex-col w-full"
-            style={{ 
-              overflowY: 'auto', 
-              WebkitOverflowScrolling: 'touch', 
-              maxHeight: 'calc(90vh - 120px)', 
-              minHeight: 0, 
-              overflowX: 'hidden' 
-            }}
-          >
-            <div className="flex flex-col gap-[16px] items-start pb-[40px] pt-[20px] px-[20px]">
+          <div className="flex flex-1 flex-col w-full overflow-x-hidden overflow-y-auto px-5 [-webkit-overflow-scrolling:touch] min-h-0" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+            <div className="flex flex-col gap-4 pt-4 pb-2">
               {/* Today (if included) */}
               {todayItem.length > 0 && (
-                <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic text-[#5b5d62] text-[14px] tracking-[-0.154px] uppercase">
+                <div className="flex flex-col gap-3 w-full">
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-tight">
                     Today
                   </p>
-                  <div className="content-stretch flex flex-col gap-[16px] items-start w-full pl-0">
+                  <div className="flex flex-col gap-1 w-full">
                     {todayItem.map((list) => renderListRow(list))}
                   </div>
                 </div>
@@ -178,11 +160,11 @@ export function FilterListsModal({ isOpen, onClose, lists, folders = [], selecte
                 const folderLists = listsByFolder.get(folder.id) ?? [];
                 if (folderLists.length === 0) return null;
                 return (
-                  <div key={folder.id} className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-                    <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic text-[#5b5d62] text-[14px] tracking-[-0.154px] uppercase">
+                  <div key={folder.id} className="flex flex-col gap-3 w-full">
+                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-tight">
                       {folder.name}
                     </p>
-                    <div className="content-stretch flex flex-col gap-[16px] items-start w-full pl-0">
+                    <div className="flex flex-col gap-1 w-full">
                       {folderLists.map((list) => renderListRow(list))}
                     </div>
                   </div>
@@ -191,43 +173,28 @@ export function FilterListsModal({ isOpen, onClose, lists, folders = [], selecte
 
               {/* No folder */}
               {((listsByFolder.get(null) ?? []).length > 0) && (
-                <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic text-[#5b5d62] text-[14px] tracking-[-0.154px] uppercase">
+                <div className="flex flex-col gap-3 w-full">
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-tight">
                     No folder
                   </p>
-                  <div className="content-stretch flex flex-col gap-[16px] items-start w-full pl-0">
+                  <div className="flex flex-col gap-1 w-full">
                     {(listsByFolder.get(null) ?? []).map((list) => renderListRow(list))}
                   </div>
                 </div>
               )}
 
               {/* Submit Button */}
-              <div className="flex gap-[10px] items-end justify-end w-full mt-[16px]" style={{ justifyContent: 'flex-end', width: '100%' }}>
-                <div 
-                  className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
-                  style={{
-                    width: '35px',
-                    height: '35px',
-                    padding: '3px',
-                    flexShrink: 0,
-                    backgroundColor: '#0b64f9'
-                  }}
+              <div className="flex justify-end w-full mt-4 pt-2">
+                <Button
+                  size="icon"
+                  className="size-9 rounded-full bg-blue-500 text-primary-foreground hover:bg-blue-600 focus-visible:ring-violet-500/30"
                   onClick={handleApply}
+                  aria-label="Apply filter"
                 >
-                  <div className="relative" style={{ width: '24px', height: '24px' }}>
-                    <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: '24px', height: '24px' }}>
-                      <g>
-                        <path
-                          d="M5 13l4 4L19 7"
-                          stroke="#E1E6EE"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </g>
-                    </svg>
-                  </div>
-                </div>
+                  <svg className="size-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 13l4 4L19 7" />
+                  </svg>
+                </Button>
               </div>
             </div>
           </div>

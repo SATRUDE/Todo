@@ -25,35 +25,16 @@ export function TimeInput({
   const inputValue = value || '';
 
   return (
-    <div className={`w-full flex flex-col gap-[4px] items-start ${className || ''}`}>
+    <div className={`w-full flex flex-col gap-1 items-start ${className || ''}`}>
       {label && (
-        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[#e1e6ee] text-[18px] tracking-[-0.198px]">
+        <label htmlFor={id} className="text-lg font-normal text-foreground">
           {label}
-        </p>
+        </label>
       )}
-      <div 
-        className="box-border flex gap-[4px] items-center rounded-[8px] w-full relative"
-        style={{
-          backgroundColor: '#201C20',
-          padding: '16px',
-          opacity: disabled ? 0.5 : 1
-        }}
-      >
-        <div className="relative shrink-0 size-[24px]">
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            strokeWidth="1.5" 
-            stroke="currentColor" 
-            className="size-6"
-            style={{ width: '24px', height: '24px', color: '#e1e6ee' }}
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" 
-            />
+      <div className={`flex gap-2 items-center rounded-lg p-4 w-full bg-secondary border border-border ${disabled ? 'opacity-50' : ''}`}>
+        <div className="shrink-0 size-6 text-muted-foreground">
+          <svg fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" className="size-6">
+            <path d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
         </div>
         <input
@@ -63,11 +44,8 @@ export function TimeInput({
           onChange={handleChange}
           step="60"
           disabled={disabled}
-          className="bg-transparent border-none outline-none font-['Inter:Regular',sans-serif] font-normal leading-[1.5] text-[18px] tracking-[-0.198px] flex-1 cursor-pointer disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:pointer-events-none"
+          className="bg-transparent border-none outline-none font-normal text-lg flex-1 min-w-0 cursor-pointer disabled:cursor-not-allowed text-foreground placeholder:text-muted-foreground [&::-webkit-calendar-picker-indicator]:cursor-pointer"
           placeholder="09:00"
-          style={{
-            color: inputValue ? '#e1e6ee' : '#5b5d62'
-          }}
         />
       </div>
     </div>
