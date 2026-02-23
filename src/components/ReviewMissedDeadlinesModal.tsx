@@ -163,7 +163,7 @@ export function ReviewMissedDeadlinesModal({
                         </svg>
                       </div>
                       <p 
-                        className={`font-normal leading-relaxed relative min-w-0 flex-1 text-lg truncate ${
+                        className={`font-normal leading-relaxed relative min-w-0 flex-1 text-lg break-words ${
                           todo.completed ? "line-through text-muted-foreground" : "text-foreground"
                         }`}
                         data-node-id="36:499"
@@ -196,7 +196,7 @@ export function ReviewMissedDeadlinesModal({
                     )}
 
                     {/* Metadata Row */}
-                    <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="36:500">
+                    <div className="flex gap-[8px] items-start flex-wrap" data-node-id="36:500">
                       {/* Time */}
                       {todo.deadline?.time && todo.deadline.time.trim() !== "" && (
                         <div className="box-border content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0" data-node-id="36:501">

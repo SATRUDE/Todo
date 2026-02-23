@@ -4,11 +4,22 @@ This project uses Vercel cron jobs to send push notifications for due/overdue to
 
 ## How It Works
 
-Vercel cron jobs run a scheduled workflow every minute that:
+### Initial due reminders (`/api/reminders`)
+
+Runs every minute that:
 1. Fetches all incomplete todos with deadlines
-2. Checks which todos are due (deadline was hit within the last 2 minutes)
+2. Checks which todos are due (deadline was hit)
 3. Sends push notifications to all registered subscriptions
 4. Marks todos as notified to prevent duplicate notifications
+5. **Quiet hours:** Skips entirely between 10pm and 9am (configurable via `REMINDER_TIMEZONE`)
+
+### Periodic overdue reminders (`/api/reminders-overdue`)
+
+Runs at 9am, 1pm, 5pm, and 9pm that:
+1. Finds overdue todos (deadline passed, not completed)
+2. Sends a summary notification: "You have N overdue items to address"
+3. Throttled to at most one per user every 4 hours
+4. **Quiet hours:** Never runs between 10pm and 9am
 
 ## Configuration
 
@@ -28,6 +39,15 @@ The cron job is configured in `vercel.json`:
 - **Path**: `/api/reminders` - The Vercel serverless function endpoint
 - **Schedule**: `* * * * *` - Runs every minute for accurate deadline notifications
 
+## Overdue reminders migration
+
+Run the migration to create the `overdue_notification_log` table (required for `/api/reminders-overdue`):
+
+```bash
+# In Supabase SQL Editor, run:
+# migration-create-overdue-notification-log.sql
+```
+
 ## Required Environment Variables
 
 Set these in your Vercel project settings:
@@ -39,6 +59,9 @@ Set these in your Vercel project settings:
 2. **VAPID Keys:**
    - `VAPID_PUBLIC_KEY` - Public VAPID key for push notifications
    - `VAPID_PRIVATE_KEY` - Private VAPID key for push notifications
+
+3. **Optional:**
+   - `REMINDER_TIMEZONE` - IANA timezone for quiet hours (e.g. `America/Los_Angeles`). Default: UTC.
 
 ## Setting Up in Vercel
 

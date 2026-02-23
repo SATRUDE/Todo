@@ -133,11 +133,11 @@ export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdate
     return (
       <div
         key={list.id}
-        className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+        className="flex flex-col gap-[8px] items-start justify-center w-full min-w-0 cursor-pointer"
         onClick={() => onSelectList(list)}
       >
-        <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-          <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
+        <div className="flex items-center justify-between w-full min-w-0">
+          <div className="flex gap-[8px] items-center min-w-0 flex-1">
             <div className="relative shrink-0 size-[24px]">
               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                 <g>
@@ -145,9 +145,9 @@ export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdate
                 </g>
               </svg>
             </div>
-            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">{list.name}</p>
+            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[18px] text-white tracking-[-0.198px] break-words min-w-0">{list.name}</p>
           </div>
-          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{taskCount}</p>
+          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px] ml-2">{taskCount}</p>
         </div>
         {list.isShared && (
           <div className="content-stretch flex gap-[8px] items-start relative shrink-0">
@@ -169,8 +169,8 @@ export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdate
 
   return (
     <>
-    <div className="relative shrink-0 w-full">
-      <div className="size-full">
+    <div className="relative shrink-0 w-full min-w-0 overflow-x-hidden">
+      <div className="size-full min-w-0">
         <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
           {/* Header */}
           <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
@@ -238,12 +238,11 @@ export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdate
 
             {/* All Tasks List */}
             <div
-              className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+              className="flex flex-col gap-[8px] items-start justify-center w-full min-w-0 cursor-pointer"
               onClick={() => onSelectList(allTasksList)}
             >
-              {/* List Name Row */}
-              <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
+              <div className="flex items-center justify-between w-full min-w-0">
+                <div className="flex gap-[8px] items-center min-w-0 flex-1">
                   <div className="relative shrink-0 size-[24px]">
                     <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                       <g>
@@ -251,20 +250,19 @@ export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdate
                       </g>
                     </svg>
                   </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">{allTasksList.name}</p>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[18px] text-white tracking-[-0.198px] break-words min-w-0">{allTasksList.name}</p>
                 </div>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{allTasksList.count}</p>
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px] ml-2">{allTasksList.count}</p>
               </div>
             </div>
 
             {/* Completed List */}
             <div
-              className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+              className="flex flex-col gap-[8px] items-start justify-center w-full min-w-0 cursor-pointer"
               onClick={() => onSelectList(completedList)}
             >
-              {/* List Name Row */}
-              <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
+              <div className="flex items-center justify-between w-full min-w-0">
+                <div className="flex gap-[8px] items-center min-w-0 flex-1">
                   <div className="relative shrink-0 size-[24px]">
                     <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                       <g>
@@ -272,9 +270,9 @@ export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdate
                       </g>
                     </svg>
                   </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">{completedList.name}</p>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[18px] text-white tracking-[-0.198px] break-words min-w-0">{completedList.name}</p>
                 </div>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{completedList.count}</p>
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px] ml-2">{completedList.count}</p>
               </div>
             </div>
           </div>

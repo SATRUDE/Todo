@@ -325,7 +325,7 @@ export function GoalDetail({
                 >
                   <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
                     <div className="content-stretch flex items-center relative shrink-0 w-full min-w-0">
-                      <p className="basis-0 font-['Inter:Regular',sans-serif] font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-[#e1e6ee] text-[18px] tracking-[-0.198px] truncate">
+                      <p className="basis-0 font-['Inter:Regular',sans-serif] font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-[#e1e6ee] text-[18px] tracking-[-0.198px] break-words">
                         {milestone.name}
                       </p>
                     </div>
@@ -390,7 +390,7 @@ export function GoalDetail({
                         >
                           <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
                             <div className="content-stretch flex items-center relative shrink-0 w-full min-w-0">
-                              <p className="basis-0 font-['Inter:Regular',sans-serif] font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px] line-through truncate">
+                              <p className="basis-0 font-['Inter:Regular',sans-serif] font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px] line-through break-words">
                                 {milestone.name}
                               </p>
                             </div>

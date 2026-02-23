@@ -126,8 +126,8 @@ export function DailyTasks({
   };
 
   return (
-    <div className="relative shrink-0 w-full">
-      <div className="w-full">
+    <div className="relative shrink-0 w-full min-w-0 overflow-x-hidden">
+      <div className="w-full min-w-0">
         <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] pt-[30px] relative w-full h-fit" style={{ paddingBottom: '150px' }}>
           {/* Header */}
           <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
@@ -181,7 +181,7 @@ export function DailyTasks({
               dailyTasks.map((task) => (
                 <div
                   key={task.id}
-                  className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full cursor-pointer"
+                  className="flex gap-[8px] items-center w-full min-w-0 cursor-pointer"
                   onClick={() => handleTaskClick(task)}
                 >
                   {/* Bolt Icon */}
@@ -204,14 +204,14 @@ export function DailyTasks({
                     </svg>
                   </div>
                   {/* Task Name and Deadline */}
-                  <div className="basis-0 content-stretch flex flex-col gap-[8px] grow items-start min-h-px min-w-px relative shrink-0">
-                    <div className="content-stretch flex items-center relative shrink-0 w-full">
-                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px]">
+                  <div className="basis-0 flex flex-col gap-[8px] grow items-start min-h-px min-w-0 overflow-hidden">
+                    <div className="flex items-center w-full min-w-0">
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[18px] text-white tracking-[-0.198px] break-words min-w-0">
                         {task.text}
                       </p>
                     </div>
                     {task.deadline && (
-                      <div className="content-stretch flex gap-[8px] items-start relative shrink-0">
+                      <div className="flex gap-[8px] items-start flex-wrap">
                         {/* Time */}
                         {task.deadline.time && task.deadline.time.trim() !== "" && (
                           <div className="content-stretch flex items-start relative shrink-0">

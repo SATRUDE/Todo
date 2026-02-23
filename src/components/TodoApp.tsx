@@ -24,7 +24,9 @@ import { SignIn } from "./SignIn";
 import { ResetPassword } from "./ResetPassword";
 import { Workshop } from "./Workshop";
 import { Notes } from "./Notes";
+import { NoteDetail } from "./NoteDetail";
 import { TasksPage } from "./TasksPage";
+import { SearchPage } from "./SearchPage";
 import { APP_VERSION } from "../lib/version";
 import { supabase } from "../lib/supabase";
 import { linkifyText } from "../lib/textUtils";
@@ -125,7 +127,7 @@ interface ListItem {
   folderId?: number | null;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop" | "notes";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop" | "notes" | "noteDetail" | "search";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -142,6 +144,8 @@ export function TodoApp() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [notesPreselectedTaskId, setNotesPreselectedTaskId] = useState<number | null>(null);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [noteDetailReturnPage, setNoteDetailReturnPage] = useState<"notes" | "search" | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [isReviewMissedDeadlinesOpen, setIsReviewMissedDeadlinesOpen] = useState(false);
@@ -1490,13 +1494,13 @@ export function TodoApp() {
     
     try {
       console.log('Adding new task:', { taskText, description, listId, deadline });
-      await createTask(newTodo);
+      const createdTask = await createTask(newTodo);
       console.log('Task created successfully');
       // Reload all tasks to ensure consistency and immediate visibility
       const allTasks = await fetchTasks();
       const displayTasks = allTasks.map(dbTodoToDisplayTodo);
       setTodos(displayTasks);
-      
+      return createdTask.id;
       // Note: Calendar sync is manual only - users must explicitly sync from the calendar sync page
       // Tasks are NOT automatically added to calendar when created
     } catch (error) {
@@ -3043,7 +3047,34 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             onConnectCalendar={handleConnectCalendarFromBanner}
             calendarPendingEventsCount={calendarPendingEventsCount}
             onCalendarSyncClick={() => setCurrentPage('calendarSync')}
+            notificationPermission={notificationPermission}
+            onEnableNotifications={handleEnableNotifications}
+            onOpenSearch={() => setCurrentPage('search')}
           />
+            ) : currentPage === "search" ? (
+        <SearchPage
+          todos={todos}
+          notes={notes}
+          lists={lists}
+          getListById={getListById}
+          onTaskClick={handleTaskClick}
+          onBack={() => setCurrentPage("today")}
+          onNavigateToNotes={() => {
+            setNotesPreselectedTaskId(null);
+            setCurrentPage("notes");
+          }}
+          onNoteClick={(note) => {
+            const fullNote = notes.find((n) => n.id === note.id);
+            if (fullNote) {
+              setSelectedNote(fullNote);
+              setNoteDetailReturnPage("search");
+              setCurrentPage("noteDetail");
+            } else {
+              setNotesPreselectedTaskId(null);
+              setCurrentPage("notes");
+            }
+          }}
+        />
             ) : currentPage === "lists" ? (
         <Lists 
           onSelectList={handleSelectList}
@@ -3080,6 +3111,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onEventProcessed={checkCalendarEvents}
           onNavigateToDailyTasks={() => setCurrentPage("dailyTasks")}
           onNavigateToCommonTasks={() => setCurrentPage("commonTasks")}
+          autoLoadOnMount={calendarPendingEventsCount > 0}
         />
       ) : currentPage === "commonTasks" ? (
         isSecondaryDataLoading ? (
@@ -3152,6 +3184,18 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onBack={() => setCurrentPage("dashboard")} 
           tasks={todos}
         />
+      ) : currentPage === "noteDetail" && selectedNote ? (
+        <NoteDetail
+          note={notes.find((n) => n.id === selectedNote.id) ?? selectedNote}
+          todos={todos.map((t) => ({ id: t.id, text: t.text, completed: t.completed }))}
+          onBack={() => {
+            setCurrentPage(noteDetailReturnPage ?? "notes");
+            setSelectedNote(null);
+            setNoteDetailReturnPage(null);
+          }}
+          onUpdateNote={handleUpdateNote}
+          onDeleteNote={handleDeleteNote}
+        />
       ) : currentPage === "notes" ? (
         isSecondaryDataLoading ? (
           <div className="flex items-center justify-center h-full">
@@ -3169,6 +3213,11 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             onUpdateNote={handleUpdateNote}
             onDeleteNote={handleDeleteNote}
             preselectedTaskId={notesPreselectedTaskId}
+            onNoteClick={(note) => {
+              setSelectedNote(note);
+              setNoteDetailReturnPage("notes");
+              setCurrentPage("noteDetail");
+            }}
           />
         )
       ) : currentPage === "goals" ? (
@@ -3642,6 +3691,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddTask={addNewTask}
+        onUpdateTask={async (id, task, description, listId, milestoneId, deadline, type) => {
+          await updateTask(id, task, description ?? null, listId, milestoneId, deadline ?? null, type);
+        }}
+        onDeleteTask={deleteTask}
         lists={lists}
         milestones={allMilestonesWithGoals}
         defaultListId={currentPage === "listDetail" && selectedList && selectedList.id !== ALL_TASKS_LIST_ID ? selectedList.id : undefined}

@@ -1,6 +1,6 @@
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle } from "lucide-react";
+import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search } from "lucide-react";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { linkifyText } from "../lib/textUtils";
 
@@ -102,7 +102,7 @@ export function TaskRow({
           <Bell className="shrink-0 size-6 text-muted-foreground" />
         )}
         <p
-          className={`min-w-0 flex-1 text-lg truncate tracking-tight ${
+          className={`min-w-0 flex-1 text-lg break-words tracking-tight ${
             todo.completed
               ? "line-through text-muted-foreground"
               : "text-foreground"
@@ -114,7 +114,7 @@ export function TaskRow({
 
       {description && (
         <div className="w-full pl-8 overflow-hidden">
-          <p className="text-muted-foreground text-sm truncate">
+          <p className="text-muted-foreground text-sm break-words">
             {linkifyDescription ? linkifyText(description) : description}
           </p>
         </div>
@@ -418,6 +418,9 @@ export interface TasksPageProps {
   onConnectCalendar?: () => void;
   calendarPendingEventsCount: number;
   onCalendarSyncClick?: () => void;
+  notificationPermission?: NotificationPermission;
+  onEnableNotifications?: () => void;
+  onOpenSearch?: () => void;
 }
 
 export function TasksPage(props: TasksPageProps) {
@@ -454,6 +457,9 @@ export function TasksPage(props: TasksPageProps) {
     onConnectCalendar,
     calendarPendingEventsCount,
     onCalendarSyncClick,
+    notificationPermission,
+    onEnableNotifications,
+    onOpenSearch,
   } = props;
 
   const renderTaskRow = (todo: Todo, useLinkify = false) => (
@@ -482,27 +488,71 @@ export function TasksPage(props: TasksPageProps) {
               {formattedDate}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onOpenFilter}
-            className="shrink-0 size-8 cursor-pointer p-1 -m-1 rounded hover:bg-accent/50 text-foreground"
-            aria-label="Filter lists"
-          >
-            <svg
-              className="block size-full"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="1.5"
-              stroke="currentColor"
+          <div className="flex items-center gap-1">
+            {onOpenSearch && (
+              <button
+                type="button"
+                onClick={onOpenSearch}
+                className="shrink-0 size-8 cursor-pointer p-1 -m-1 rounded hover:bg-accent/50 text-foreground"
+                aria-label="Search"
+              >
+                <Search className="block size-full" strokeWidth={1.5} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onOpenFilter}
+              className="shrink-0 size-8 cursor-pointer p-1 -m-1 rounded hover:bg-accent/50 text-foreground"
+              aria-label="Filter lists"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"
-              />
-            </svg>
-          </button>
+              <svg
+                className="block size-full"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* Notification banner */}
+        {notificationPermission !== "granted" &&
+          onEnableNotifications &&
+          "Notification" in window && (
+          <div className="w-full px-5">
+            <Card
+              className="cursor-pointer hover:opacity-90 border-border"
+              onClick={onEnableNotifications}
+            >
+              <CardContent className="flex items-center gap-3 p-3">
+                <Bell className="size-5 shrink-0 text-muted-foreground" />
+                <p className="flex-1 text-base text-foreground">
+                  Enable notifications to get reminders for due tasks
+                </p>
+                <svg
+                  className="size-5 shrink-0 text-muted-foreground"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth="1.5"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m8.25 4.5 7.5 7.5-7.5 7.5"
+                  />
+                </svg>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Calendar banners */}
         {isCalendarConnected === false && onConnectCalendar && (
@@ -686,7 +736,7 @@ export function TasksPage(props: TasksPageProps) {
                               d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0"
                             />
                           </svg>
-                          <p className="flex-1 text-lg truncate text-foreground">
+                          <p className="flex-1 text-lg break-words text-foreground">
                             {goal.text}
                           </p>
                         </div>

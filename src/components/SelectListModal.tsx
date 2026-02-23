@@ -78,7 +78,7 @@ export function SelectListModal({ isOpen, onClose, lists, selectedListId, onSele
                       <path d={svgPaths.p1dfd6800} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
                     </svg>
                   </div>
-                  <p className="font-normal text-lg leading-relaxed text-foreground truncate">{list.name}</p>
+                  <p className="font-normal text-lg leading-relaxed text-foreground break-words">{list.name}</p>
                 </div>
               ))}
             </div>

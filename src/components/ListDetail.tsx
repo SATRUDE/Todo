@@ -138,8 +138,8 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
         <div className="w-full">
           <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
             {/* Header */}
-            <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-              <div className="content-stretch flex gap-[16px] items-center relative shrink-0">
+            <div className="flex items-center justify-between w-full min-w-0">
+              <div className="flex gap-[16px] items-center min-w-0 flex-1">
                 <div 
                   className="relative shrink-0 size-[32px] cursor-pointer"
                   onClick={onBack}
@@ -157,10 +157,10 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                   </svg>
                 </div>
                 <div 
-                  className="content-stretch flex flex-col items-start relative shrink-0 cursor-pointer"
+                  className="flex flex-col items-start min-w-0 flex-1 overflow-hidden cursor-pointer"
                   onClick={() => !isCompletedList && !isAllTasksList && setIsEditListModalOpen(true)}
                 >
-                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">
+                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic text-[28px] text-white tracking-[-0.308px] break-words min-w-0 w-full">
                     {listName}
                   </p>
                 </div>
@@ -331,19 +331,17 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                         onClick={() => onTaskClick && onTaskClick(todo)}
                       >
                         {/* Reminder Row */}
-                        <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+                        <div className="flex gap-[8px] items-center w-full min-w-0">
                           {/* Bell Icon */}
                           <div className="relative shrink-0 size-[24px]">
                             <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
                             </svg>
                           </div>
-                          <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                            <div className="content-stretch flex items-center relative shrink-0 w-full">
-                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px]">
-                                {todo.text}
-                              </p>
-                            </div>
+                          <div className="basis-0 flex flex-col grow items-start min-h-px min-w-0 overflow-hidden">
+                            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[18px] text-white tracking-[-0.198px] break-words min-w-0">
+                              {todo.text}
+                            </p>
                           </div>
                         </div>
                         
@@ -443,7 +441,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                         </svg>
                       </div>
                     )}
-                    <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] truncate tracking-[-0.198px] ${
+                    <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
                       todo.completed ? "text-[#5b5d62] line-through" : "text-white"
                     }`}>
                       {todo.text}
@@ -472,7 +470,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                   )}
 
                   {/* Metadata Row */}
-                  <div className="content-stretch flex gap-[8px] items-start relative shrink-0 pl-[32px]">
+                  <div className="flex gap-[8px] items-start flex-wrap pl-[32px]">
                     {/* Time */}
                     {todo.time && (
                       <div className="box-border content-stretch flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">

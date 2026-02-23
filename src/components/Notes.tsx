@@ -23,6 +23,7 @@ interface NotesProps {
   onUpdateNote: (id: number, content: string, taskId?: number | null) => Promise<void>;
   onDeleteNote: (id: number) => Promise<void>;
   preselectedTaskId?: number | null;
+  onNoteClick?: (note: Note) => void;
 }
 
 function formatNoteDate(iso?: string): string {
@@ -45,6 +46,7 @@ export function Notes({
   onUpdateNote,
   onDeleteNote,
   preselectedTaskId,
+  onNoteClick,
 }: NotesProps) {
   const [newContent, setNewContent] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(preselectedTaskId ?? null);
@@ -224,37 +226,46 @@ export function Notes({
                   ) : (
                     <article
                       key={note.id}
-                      className="group rounded-xl bg-card p-4 transition-all hover:bg-accent/50 hover:shadow-sm"
+                      className={`group rounded-xl bg-card p-4 transition-all hover:bg-accent/50 hover:shadow-sm ${onNoteClick ? "cursor-pointer" : ""}`}
+                      onClick={onNoteClick ? () => onNoteClick(note) : undefined}
                     >
-                      <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
-                        {note.content}
-                      </p>
-                      {note.task_id != null && (
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          Task: {getTaskText(note.task_id)}
+                      <div className="min-w-0">
+                        <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
+                          {note.content}
                         </p>
-                      )}
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          {formatNoteDate(note.updated_at ?? note.created_at)}
-                        </span>
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleStartEdit(note)}
-                            className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-card"
-                          >
-                            <Pencil className="size-3.5" />
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(note.id)}
-                            className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/15 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:ring-offset-2 focus:ring-offset-card"
-                          >
-                            <Trash2 className="size-3.5" />
-                            Delete
-                          </button>
+                        {note.task_id != null && (
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            Task: {getTaskText(note.task_id)}
+                          </p>
+                        )}
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {formatNoteDate(note.updated_at ?? note.created_at)}
+                          </span>
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartEdit(note);
+                              }}
+                              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:ring-offset-2 focus:ring-offset-card"
+                            >
+                              <Pencil className="size-3.5" />
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(note.id);
+                              }}
+                              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/15 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:ring-offset-2 focus:ring-offset-card"
+                            >
+                              <Trash2 className="size-3.5" />
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </article>

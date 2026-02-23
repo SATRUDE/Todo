@@ -388,7 +388,7 @@ export function MilestoneDetail({
                   className="content-stretch flex flex-col items-start relative shrink-0 cursor-pointer min-w-0 flex-1 overflow-hidden"
                   onClick={handleMilestoneClick}
                 >
-                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-white tracking-[-0.308px] truncate w-full">
+                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-white tracking-[-0.308px] break-words w-full">
                     {milestone.name}
                   </p>
                 </div>
@@ -491,7 +491,7 @@ export function MilestoneDetail({
                           )}
                         </svg>
                       </div>
-                      <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] truncate tracking-[-0.198px] ${
+                      <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
                         todo.completed ? "text-[#5b5d62] line-through" : "text-white"
                       }`}>
                         {todo.text}
@@ -520,7 +520,7 @@ export function MilestoneDetail({
                     )}
 
                     {/* Metadata Row */}
-                    <div className="content-stretch flex gap-[8px] items-start relative shrink-0 pl-[32px]">
+                    <div className="flex gap-[8px] items-start flex-wrap pl-[32px]">
                       {/* Time */}
                       {todo.time && (
                         <div className="box-border content-stretch flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">

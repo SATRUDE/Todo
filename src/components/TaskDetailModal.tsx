@@ -504,7 +504,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
             </svg>
           </div>
           <p 
-            className={`font-normal leading-relaxed relative min-w-0 flex-1 truncate text-lg tracking-tight cursor-pointer ${
+            className={`font-normal leading-relaxed relative min-w-0 flex-1 break-words text-lg tracking-tight cursor-pointer ${
               subtask.completed ? "text-muted-foreground line-through" : "text-foreground"
             }`}
             onClick={() => onEdit(subtask.id)}

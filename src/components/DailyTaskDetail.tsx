@@ -226,7 +226,7 @@ export function DailyTaskDetail({
                           )}
                         </svg>
                       </div>
-                      <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] truncate tracking-[-0.198px] ${
+                      <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
                         todo.completed ? "text-[#5b5d62] line-through" : "text-white"
                       }`}>
                         {todo.text}

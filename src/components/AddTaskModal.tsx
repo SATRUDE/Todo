@@ -1,5 +1,7 @@
 import { useState, KeyboardEvent, useEffect, useRef, ChangeEvent } from "react";
 import { createPortal } from "react-dom";
+import { Mic, MicOff } from "lucide-react";
+import { toast } from "sonner";
 import svgPaths from "../imports/svg-p3zv31caxs";
 import generateSvgPaths from "../imports/svg-gf1ry58lrd";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
@@ -8,6 +10,7 @@ import { SelectMilestoneModal } from "./SelectMilestoneModal";
 import { DeadlineModal } from "./DeadlineModal";
 import { TaskTypeModal } from "./TaskTypeModal";
 import { supabase } from "../lib/supabase";
+import { useVoiceTask } from "../hooks/useVoiceTask";
 
 interface ListItem {
   id: number;
@@ -27,7 +30,9 @@ interface MilestoneWithGoal {
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddTask: (task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder', imageUrl?: string | null) => void;
+  onAddTask: (task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder', imageUrl?: string | null) => void | Promise<number | void>;
+  onUpdateTask?: (id: number, task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder') => Promise<void>;
+  onDeleteTask?: (id: number) => Promise<void>;
   lists?: ListItem[];
   defaultListId?: number;
   milestones?: MilestoneWithGoal[];
@@ -36,7 +41,7 @@ interface AddTaskModalProps {
   onNavigateToCommonTasks?: () => void;
 }
 
-export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultListId, milestones = [], defaultMilestoneId, onNavigateToDailyTasks, onNavigateToCommonTasks }: AddTaskModalProps) {
+export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDeleteTask, lists = [], defaultListId, milestones = [], defaultMilestoneId, onNavigateToDailyTasks, onNavigateToCommonTasks }: AddTaskModalProps) {
   const getDefaultDeadline = () => {
     const today = new Date();
     return { date: today, time: "", recurring: undefined };
@@ -55,9 +60,104 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
   const [isBulkAddMode, setIsBulkAddMode] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [voiceProcessing, setVoiceProcessing] = useState(false);
+  const [voiceProcessingTranscript, setVoiceProcessingTranscript] = useState("");
+  const [voiceSuccessAdded, setVoiceSuccessAdded] = useState<{
+    taskId: number;
+    text: string;
+    description?: string;
+    listName?: string;
+    listId?: number;
+    deadline?: { date: Date; time: string; recurring?: string };
+    type: 'task' | 'reminder';
+  } | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const voiceTask = useVoiceTask();
+  const voiceJustStoppedRef = useRef(false);
+
+  // Process voice transcript when user stops listening
+  useEffect(() => {
+    if (!voiceTask.isListening && voiceJustStoppedRef.current) {
+      const transcript = voiceTask.transcript.trim();
+      voiceJustStoppedRef.current = false;
+      voiceTask.resetTranscript();
+      if (!transcript) return;
+      setVoiceProcessingTranscript(transcript);
+      setVoiceProcessing(true);
+      const processVoiceTranscript = async () => {
+        try {
+          const listNames = lists.map((l) => l.name);
+          const clientToday = new Date();
+          const clientDateStr = clientToday.getFullYear() + '-' + String(clientToday.getMonth() + 1).padStart(2, '0') + '-' + String(clientToday.getDate()).padStart(2, '0');
+          const res = await fetch("/api/parse-voice-task", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transcript, listNames, clientDate: clientDateStr }),
+          });
+          const text = await res.text();
+          let data: { text?: string; description?: string; listName?: string | null; type?: string; deadline?: { date: string; time?: string; recurring?: string } | null; message?: string; error?: string };
+          try {
+            data = text ? JSON.parse(text) : {};
+          } catch {
+            throw new Error(
+              res.ok
+                ? "Invalid API response. Try again."
+                : `Voice parsing failed (${res.status}). Run 'npm run dev:all' to start the API.`
+            );
+          }
+          if (!res.ok) {
+            throw new Error(
+              data.message || data.error || `Voice parsing failed (${res.status}). Check OPENAI_API_KEY and run 'npm run dev:all'.`
+            );
+          }
+          if (!data.text) {
+            throw new Error("Voice parsing returned no task. Try again.");
+          }
+          const listId = data.listName
+            ? lists.find((l) => l.name.toLowerCase() === data.listName.toLowerCase())?.id
+            : undefined;
+          const deadline = data.deadline
+            ? {
+                date: new Date(data.deadline.date),
+                time: data.deadline.time || "",
+                recurring: data.deadline.recurring,
+              }
+            : undefined;
+          const taskId = await onAddTask(
+            data.text,
+            data.description,
+            listId,
+            undefined,
+            deadline,
+            data.type === "reminder" ? "reminder" : "task"
+          );
+          const resolvedId = typeof taskId === "number" ? taskId : 0;
+          setVoiceSuccessAdded({
+            taskId: resolvedId,
+            text: data.text,
+            description: data.description,
+            listName: data.listName || undefined,
+            listId,
+            deadline,
+            type: data.type === "reminder" ? "reminder" : "task",
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Failed to add task from voice";
+          toast.error(msg);
+        } finally {
+          setVoiceProcessing(false);
+          setVoiceProcessingTranscript("");
+        }
+      };
+      processVoiceTranscript();
+    } else if (!voiceTask.isListening) {
+      voiceJustStoppedRef.current = false;
+    }
+  }, [voiceTask.isListening, voiceTask.transcript]);
 
   // Update selectedListId and selectedMilestoneId when defaults change or modal opens
   useEffect(() => {
@@ -78,6 +178,10 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
       setTaskType('task');
       setImageUrl(null);
       setIsTaskTypeModalOpen(false);
+      setVoiceSuccessAdded(null);
+      setVoiceProcessing(false);
+      setVoiceProcessingTranscript("");
+      setEditingTaskId(null);
     }
   }, [isOpen, defaultListId, defaultMilestoneId]);
 
@@ -85,6 +189,16 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
     if (taskInput.trim() !== "") {
       if (isBulkAddMode) {
         await handleBulkAdd();
+      } else if (editingTaskId && onUpdateTask) {
+        await onUpdateTask(editingTaskId, taskInput, taskDescription, selectedListId ?? undefined, selectedMilestoneId ?? undefined, deadline ?? undefined, taskType);
+        setTaskInput("");
+        setSelectedListId(null);
+        setSelectedMilestoneId(null);
+        setDeadline(getDefaultDeadline());
+        setTaskDescription("");
+        setTaskType('task');
+        setEditingTaskId(null);
+        onClose();
       } else {
         await onAddTask(taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined, taskType, imageUrl);
         setTaskInput("");
@@ -138,6 +252,18 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
     if (selectedListId === null) return "List";
     const list = lists.find(l => l.id === selectedListId);
     return list ? list.name : "List";
+  };
+
+  const formatVoiceDeadline = (d: { date: Date; time: string; recurring?: string }) => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const isToday = d.date.toDateString() === today.toDateString();
+    const isTomorrow = d.date.toDateString() === tomorrow.toDateString();
+    const dateStr = isToday ? "Today" : isTomorrow ? "Tomorrow" : d.date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: d.date.getFullYear() !== today.getFullYear() ? "numeric" : undefined });
+    const timeStr = d.time?.trim() ? ` at ${d.time}` : "";
+    const recurStr = d.recurring ? ` (${d.recurring})` : "";
+    return `${dateStr}${timeStr}${recurStr}`;
   };
 
   const getSelectedListColor = () => {
@@ -346,8 +472,116 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
           </div>
 
           {/* Content */}
-          <div className="flex shrink-0 w-full flex-col gap-8 overflow-y-auto overflow-x-hidden px-5 [-webkit-overflow-scrolling:touch]">
+          <div className="flex flex-1 min-h-0 w-full flex-col gap-8 overflow-y-auto overflow-x-hidden px-5 [-webkit-overflow-scrolling:touch]">
+                {/* Voice processing - loading */}
+                {voiceProcessing && (
+                  <div className="flex flex-1 flex-col items-center justify-center gap-6 min-h-[240px] py-12">
+                    <div className="size-10 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" aria-hidden />
+                    <p className="text-muted-foreground text-lg">Creating task...</p>
+                    {voiceProcessingTranscript && (
+                      <p className="text-foreground text-center text-base max-w-full px-4 line-clamp-4" aria-live="polite">
+                        {voiceProcessingTranscript}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Active listening - full space */}
+                {voiceTask.isListening && !voiceProcessing && (
+                  <div className="flex flex-1 flex-col items-center justify-center gap-6 min-h-[240px] py-12">
+                    <p className="text-muted-foreground text-lg">Listening...</p>
+                    <button
+                      type="button"
+                      className="flex items-center justify-center gap-2 rounded-full bg-accent text-accent-foreground px-8 py-4 animate-pulse transition-opacity hover:opacity-90 cursor-pointer"
+                      onClick={() => {
+                        voiceJustStoppedRef.current = true;
+                        voiceTask.stopListening();
+                      }}
+                      aria-label="Tap to stop recording"
+                    >
+                      <MicOff className="size-8 shrink-0" strokeWidth={2} />
+                      <span className="text-lg font-medium">Tap to stop</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Voice success message */}
+                {voiceSuccessAdded && !voiceTask.isListening && !voiceProcessing && (
+                  <div className="flex flex-col gap-3 rounded-lg bg-accent/20 p-4">
+                    <p className="font-medium text-accent-foreground">Task added from voice</p>
+                    <div className="flex flex-col gap-1.5 text-foreground">
+                      <p className="font-medium text-lg">{voiceSuccessAdded.text}</p>
+                      {voiceSuccessAdded.description && (
+                        <p className="text-muted-foreground text-base">{voiceSuccessAdded.description}</p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {voiceSuccessAdded.deadline && (
+                          <span className="rounded-full bg-secondary px-3 py-0.5 text-sm text-secondary-foreground">
+                            {formatVoiceDeadline(voiceSuccessAdded.deadline)}
+                          </span>
+                        )}
+                        {voiceSuccessAdded.listName && (
+                          <span className="rounded-full bg-secondary px-3 py-0.5 text-sm text-secondary-foreground">
+                            {voiceSuccessAdded.listName}
+                          </span>
+                        )}
+                        <span className="rounded-full bg-secondary px-3 py-0.5 text-sm text-secondary-foreground capitalize">
+                          {voiceSuccessAdded.type}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {onUpdateTask && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTaskInput(voiceSuccessAdded.text);
+                            setTaskDescription(voiceSuccessAdded.description ?? "");
+                            setSelectedListId(voiceSuccessAdded.listId ?? null);
+                            setDeadline(voiceSuccessAdded.deadline ?? getDefaultDeadline());
+                            setTaskType(voiceSuccessAdded.type);
+                            setEditingTaskId(voiceSuccessAdded.taskId);
+                            setVoiceSuccessAdded(null);
+                          }}
+                          className="rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-accent transition-colors"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {onDeleteTask && voiceSuccessAdded.taskId > 0 && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await onDeleteTask(voiceSuccessAdded.taskId);
+                            setVoiceSuccessAdded(null);
+                            onClose();
+                          }}
+                          className="rounded-full bg-destructive/20 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/30 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { setVoiceSuccessAdded(null); }}
+                        className="rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-accent transition-colors"
+                      >
+                        Add another
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Title and Description Section */}
+                {!voiceSuccessAdded && !voiceTask.isListening && !voiceProcessing && (
+                <>
                 <div className="content-stretch flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
                   {isBulkAddMode ? (
                     <textarea
@@ -535,21 +769,63 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, lists = [], defaultLi
 
                   {/* Submit Button Row */}
                   <div className="flex w-full items-end justify-end gap-2.5">
+                    {/* Mic Button - Add task by voice */}
                     <button
                       type="button"
-                      className={`flex size-9 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-90 ${
-                        taskInput.trim() ? 'bg-blue-500 text-primary-foreground' : 'bg-muted text-muted-foreground'
+                      className={`flex items-center justify-center gap-2 rounded-full transition-opacity hover:opacity-90 shrink-0 ${
+                        voiceTask.isListening
+                          ? "bg-accent text-accent-foreground px-4 py-2 animate-pulse"
+                          : "size-9 bg-secondary text-secondary-foreground"
+                      } ${!voiceTask.browserSupported ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                      onClick={() => {
+                        if (!voiceTask.browserSupported) {
+                          toast.error("Voice input is not supported in this browser. Try Chrome or Edge.");
+                          return;
+                        }
+                        if (voiceTask.error) {
+                          toast.error(voiceTask.error);
+                          return;
+                        }
+                        if (voiceTask.isListening) {
+                          voiceJustStoppedRef.current = true;
+                          voiceTask.stopListening();
+                        } else {
+                          voiceTask.startListening();
+                        }
+                      }}
+                      disabled={!voiceTask.browserSupported}
+                      aria-label={voiceTask.isListening ? "Tap to stop recording" : "Add task by voice"}
+                    >
+                      {voiceTask.isListening ? (
+                        <>
+                          <MicOff className="size-5 shrink-0" strokeWidth={2} />
+                          <span className="text-sm font-medium">Tap to stop</span>
+                        </>
+                      ) : (
+                        <Mic className="size-5 shrink-0" strokeWidth={2} />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className={`flex shrink-0 items-center justify-center gap-2 rounded-full transition-opacity hover:opacity-90 ${
+                        taskInput.trim() ? 'bg-blue-500 text-primary-foreground px-4 py-2' : 'size-9 bg-muted text-muted-foreground'
                       }`}
                       onClick={handleSubmit}
-                      aria-label="Add task"
+                      aria-label={editingTaskId ? "Save changes" : "Add task"}
                     >
-                      <svg className="size-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                        <line x1="12" y1="6" x2="12" y2="18" strokeLinecap="round" />
-                        <line x1="6" y1="12" x2="18" y2="12" strokeLinecap="round" />
-                      </svg>
+                      {editingTaskId ? (
+                        <span className="text-sm font-medium">Save</span>
+                      ) : (
+                        <svg className="size-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                          <line x1="12" y1="6" x2="12" y2="18" strokeLinecap="round" />
+                          <line x1="6" y1="12" x2="18" y2="12" strokeLinecap="round" />
+                        </svg>
+                      )}
                     </button>
                   </div>
                 </div>
+                </>
+                )}
           </div>
         </div>
       </div>

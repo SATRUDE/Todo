@@ -602,7 +602,7 @@ export function Goals({
           </p>
 
           {/* Goals List */}
-          <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
+          <div className="flex flex-col gap-[24px] items-start w-full min-w-0">
             {goals.length === 0 ? (
               <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
                 No goals yet. Click the + button in the top right to add one.
@@ -615,7 +615,7 @@ export function Goals({
                   return (
                     <div
                       key={goal.id}
-                      className="rounded-[12px] w-full cursor-pointer"
+                      className="rounded-[12px] w-full min-w-0 cursor-pointer overflow-hidden"
                       style={{ 
                         backgroundColor: '#1f2022',
                         padding: '16px'
@@ -657,7 +657,7 @@ export function Goals({
                       </div>
 
                       {/* Goal Title */}
-                      <h3 className="font-['Inter:Medium',sans-serif] font-medium text-[18px] text-white mb-[10px] tracking-[-0.198px]">
+                      <h3 className="font-['Inter:Medium',sans-serif] font-medium text-[18px] text-white mb-[10px] tracking-[-0.198px] break-words min-w-0">
                         {goal.text}
                       </h3>
 
@@ -680,7 +680,7 @@ export function Goals({
                 {inactiveGoals.map((goal) => (
                   <div
                     key={goal.id}
-                    className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full cursor-pointer"
+                    className="flex gap-[8px] items-center w-full min-w-0 cursor-pointer"
                     onClick={() => handleGoalClick(goal)}
                   >
                     {/* Trophy Icon - gray for inactive */}
@@ -701,12 +701,10 @@ export function Goals({
                       </svg>
                     </div>
                     {/* Goal Name */}
-                    <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                      <div className="content-stretch flex items-center relative shrink-0 w-full">
-                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-[#5b5d62] tracking-[-0.198px]">
-                          {goal.text}
-                        </p>
-                      </div>
+                    <div className="basis-0 flex flex-col grow items-start min-h-px min-w-0 overflow-hidden">
+                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[18px] text-[#5b5d62] tracking-[-0.198px] break-words min-w-0">
+                        {goal.text}
+                      </p>
                     </div>
                   </div>
                 ))}

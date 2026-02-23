@@ -164,6 +164,19 @@ module.exports = async function handler(req, res) {
     vapidPrivateKey
   );
 
+  // Quiet hours: no notifications between 10pm and 9am (configurable via REMINDER_TIMEZONE, default UTC)
+  const tz = process.env.REMINDER_TIMEZONE || 'UTC';
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: tz, hour: 'numeric', hour12: false });
+  const hour = parseInt(formatter.format(new Date()), 10);
+  if (hour >= 22 || hour < 9) {
+    console.log('⏸️ Skipping reminders: quiet hours (10pm–9am)');
+    return res.status(200).json({
+      success: true,
+      message: 'Skipped: quiet hours (10pm–9am)',
+      checked: new Date().toISOString(),
+    });
+  }
+
   // Create Supabase client with service role key (bypasses RLS)
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
@@ -321,7 +334,7 @@ module.exports = async function handler(req, res) {
       message: 'Reminder check complete',
       checked: new Date().toISOString(),
       dueTodos: dueTodos.length,
-      subscriptions: subscriptions.length,
+      subscriptionsNotified: successCount,
       notificationsSent: successCount,
       notificationsFailed: failureCount
     });

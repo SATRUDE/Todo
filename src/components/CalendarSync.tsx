@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { CalendarTaskSuggestions, CalendarTaskSuggestionsRef } from "./CalendarTaskSuggestions";
 import { TaskDetailModal } from "./TaskDetailModal";
 import { markEventAsProcessed } from "../lib/calendar";
@@ -12,6 +12,8 @@ interface CalendarSyncProps {
   onEventProcessed?: () => void;
   onNavigateToDailyTasks?: () => void;
   onNavigateToCommonTasks?: () => void;
+  /** When true, syncs and loads suggestions on mount (e.g. when arriving via "X calendar events ready to sync" banner) */
+  autoLoadOnMount?: boolean;
 }
 
 interface Todo {
@@ -29,7 +31,7 @@ interface Todo {
   };
 }
 
-export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing = false, onEventProcessed, onNavigateToDailyTasks, onNavigateToCommonTasks }: CalendarSyncProps) {
+export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing = false, onEventProcessed, onNavigateToDailyTasks, onNavigateToCommonTasks, autoLoadOnMount = false }: CalendarSyncProps) {
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<{ text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string } | null>(null);
   const suggestionsRef = useRef<CalendarTaskSuggestionsRef>(null);
@@ -54,6 +56,14 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
       console.error('[CalendarSync] Error syncing:', error);
     }
   };
+
+  // When arriving via "X calendar events ready to sync" banner, auto-load so user doesn't have to tap sync again
+  const hasAutoLoaded = useRef(false);
+  useEffect(() => {
+    if (!autoLoadOnMount || hasAutoLoaded.current || !onSync) return;
+    hasAutoLoaded.current = true;
+    void handleSync();
+  }, [autoLoadOnMount]);
 
   const handleCreateTask = async (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder') => {
     if (!onAddTask || !selectedSuggestion) return;
