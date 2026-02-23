@@ -2,10 +2,12 @@ import { defineConfig } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react-swc';
 import { VitePWA } from 'vite-plugin-pwa';
+import { parseVoiceApiPlugin } from './vite-parse-voice-plugin';
 import path from 'path';
 
 export default defineConfig({
   plugins: [
+    parseVoiceApiPlugin(),
     tailwindcss(),
     react(),
     VitePWA({
@@ -115,7 +117,7 @@ export default defineConfig({
       port: 3000,
       open: true,
       proxy: {
-        '/api': {
+        '^/api/(?!parse-voice-task$).*': {
           target: 'http://localhost:3001',
           changeOrigin: true,
           secure: false,
