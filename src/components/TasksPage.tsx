@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search } from "lucide-react";
+import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search, StickyNote } from "lucide-react";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { linkifyText } from "../lib/textUtils";
 
@@ -43,6 +43,7 @@ interface TaskRowProps {
   showCheckbox?: boolean;
   getListById?: (listId?: number) => ListItem | null;
   getSubtaskCount?: (taskId: number) => number;
+  getNoteCount?: (taskId: number) => number;
   linkifyDescription?: boolean;
 }
 
@@ -53,11 +54,13 @@ export function TaskRow({
   showCheckbox = true,
   getListById,
   getSubtaskCount,
+  getNoteCount,
   linkifyDescription = false,
 }: TaskRowProps) {
   const time = todo.deadline?.time || todo.time;
   const list = getListById?.(todo.listId);
   const subtaskCount = getSubtaskCount?.(todo.id) ?? 0;
+  const noteCount = getNoteCount?.(todo.id) ?? 0;
   const description = todo.description?.trim();
 
   return (
@@ -121,7 +124,7 @@ export function TaskRow({
         </div>
       )}
 
-      {(time || list || subtaskCount > 0) && (
+      {(time || list || subtaskCount > 0 || noteCount > 0) && (
         <div className="flex gap-2 items-center pl-8 flex-wrap">
           {time && (
             <div className="flex gap-1 items-center text-muted-foreground">
@@ -154,6 +157,12 @@ export function TaskRow({
             <div className="flex gap-1 items-center text-muted-foreground">
               <LayoutList className="size-5 shrink-0" />
               <span className="text-sm">{subtaskCount}</span>
+            </div>
+          )}
+          {noteCount > 0 && (
+            <div className="flex gap-1 items-center text-muted-foreground">
+              <StickyNote className="size-5 shrink-0" />
+              <span className="text-sm">{noteCount} {noteCount === 1 ? 'note' : 'notes'}</span>
             </div>
           )}
         </div>
@@ -412,6 +421,7 @@ export interface TasksPageProps {
   onToggleTask: (id: number) => void;
   getListById: (listId?: number) => ListItem | null;
   getSubtaskCount: (taskId: number) => number;
+  getNoteCount?: (taskId: number) => number;
   linkifyText: (text: string) => React.ReactNode;
 
   // Banners
@@ -450,6 +460,7 @@ export function TasksPage(props: TasksPageProps) {
     onToggleTask,
     getListById,
     getSubtaskCount,
+    getNoteCount,
     linkifyText: _linkifyText,
     showNoticeBoard,
     groupTasksByDate,
@@ -488,6 +499,7 @@ export function TasksPage(props: TasksPageProps) {
       showCheckbox={todo.type !== "reminder"}
       getListById={getListById}
       getSubtaskCount={getSubtaskCount}
+      getNoteCount={getNoteCount}
       linkifyDescription={useLinkify}
     />
   );

@@ -3042,6 +3042,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             onToggleTask={toggleTodo}
             getListById={getListById}
             getSubtaskCount={getSubtaskCount}
+            getNoteCount={(id) => notes.filter((n) => n.task_id === id).length}
             linkifyText={linkifyText}
             isCalendarConnected={isCalendarConnected}
             onConnectCalendar={handleConnectCalendarFromBanner}
@@ -3511,6 +3512,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 setDateFilter(null);
                 setTimeRangeFilter(null);
               }}
+              getNoteCount={(id) => notes.filter((n) => n.task_id === id).length}
             />
           );
         })()
