@@ -68,9 +68,10 @@ interface ListDetailProps {
   onDeleteFolder?: (folderId: number) => void;
   onNavigateToDailyTasks?: () => void;
   onNavigateToCommonTasks?: () => void;
+  getNoteCount?: (taskId: number) => number;
 }
 
-export function ListDetail({ listId, listName, listColor, isShared, listFolderId, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList, onTaskClick, lists = [], milestones = [], dateFilter, timeRangeFilter, onClearDateFilter, folders = [], onAddFolder, onUpdateFolder, onDeleteFolder, onNavigateToDailyTasks, onNavigateToCommonTasks }: ListDetailProps) {
+export function ListDetail({ listId, listName, listColor, isShared, listFolderId, onBack, tasks, onToggleTask, onAddTask, onUpdateList, onDeleteList, onTaskClick, lists = [], milestones = [], dateFilter, timeRangeFilter, onClearDateFilter, folders = [], onAddFolder, onUpdateFolder, onDeleteFolder, onNavigateToDailyTasks, onNavigateToCommonTasks, getNoteCount }: ListDetailProps) {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
   const [isRemindersExpanded, setIsRemindersExpanded] = useState(true);
@@ -394,6 +395,33 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                             </p>
                           </div>
                         )}
+                        {/* Notes */}
+                        {(() => {
+                          const noteCount = getNoteCount?.(todo.id) ?? 0;
+                          return noteCount > 0 ? (
+                            <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] relative shrink-0">
+                              <div className="relative shrink-0 size-[20px]">
+                                <svg
+                                  className="block size-full"
+                                  fill="none"
+                                  preserveAspectRatio="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth="1.5"
+                                  stroke="#5B5D62"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5v-7.5H8.25v7.5Z"
+                                  />
+                                </svg>
+                              </div>
+                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                                note {noteCount}
+                              </p>
+                            </div>
+                          ) : null;
+                        })()}
                       </div>
                     ))}
                   </div>
@@ -604,6 +632,34 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                           </div>
                           <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {subtaskCount}
+                          </p>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* Notes */}
+                    {(() => {
+                      const noteCount = getNoteCount?.(todo.id) ?? 0;
+                      return noteCount > 0 ? (
+                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                          <div className="relative shrink-0 size-[20px]">
+                            <svg
+                              className="block size-full"
+                              fill="none"
+                              preserveAspectRatio="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth="1.5"
+                              stroke="#5B5D62"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5v-7.5H8.25v7.5Z"
+                              />
+                            </svg>
+                          </div>
+                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                            note {noteCount}
                           </p>
                         </div>
                       ) : null;
