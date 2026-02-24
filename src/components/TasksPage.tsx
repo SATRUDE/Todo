@@ -684,22 +684,13 @@ export function TasksPage(props: TasksPageProps) {
 
         {/* Notice board */}
         {showNoticeBoard &&
-          (reminders.length > 0 ||
-            dailyTaskItems.length > 0 ||
-            activeGoals.length > 0) && (
+          (reminders.length > 0 || activeGoals.length > 0) && (
             <NoticeBoardSection
               title="NOTICE BOARD"
               count={0}
               isExpanded={isScheduledExpanded}
               onToggleExpand={onToggleScheduled}
             >
-              {dailyTaskItems.length > 0 && (
-                <NoticeBoardCard header="DAILY" count={dailyTaskItems.length}>
-                  {dailyTaskItems.map((todo) =>
-                    renderTaskRow(todo, true)
-                  )}
-                </NoticeBoardCard>
-              )}
               {reminders.length > 0 && (
                 <NoticeBoardCard
                   header="REMINDERS"
@@ -796,9 +787,15 @@ export function TasksPage(props: TasksPageProps) {
                         {formatDateHeading(date)}
                       </p>
                       {dateDaily.length > 0 && (
-                        <NoticeBoardCard header="DAILY" count={dateDaily.length}>
-                          {dateDaily.map((t) => renderTaskRow(t, true))}
-                        </NoticeBoardCard>
+                        <>
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                            Daily
+                          </p>
+                          <div className="flex flex-col gap-2">
+                            {dateDaily.map((t) => renderTaskRow(t, true))}
+                          </div>
+                          <div className="h-px w-full bg-border" />
+                        </>
                       )}
                       {dateReminders.length > 0 && (
                         <NoticeBoardCard
@@ -817,7 +814,20 @@ export function TasksPage(props: TasksPageProps) {
               regularTasks.map((t) => renderTaskRow(t, true))
             )
           ) : (
-            regularTasks.map((t) => renderTaskRow(t, true))
+            <>
+              {dailyTaskItems.length > 0 && (
+                <>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Daily
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {dailyTaskItems.map((todo) => renderTaskRow(todo, true))}
+                  </div>
+                  <div className="h-px w-full bg-border" />
+                </>
+              )}
+              {regularTasks.map((t) => renderTaskRow(t, true))}
+            </>
           )}
         </div>
       </div>
