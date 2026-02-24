@@ -1,5 +1,5 @@
 import { useState } from "react";
-import svgPathsToday from "../imports/svg-z2a631st9g";
+import { Zap, ChevronLeft, Plus, Clock, Calendar, RefreshCw } from "lucide-react";
 import { CommonTaskDetailModal } from "./CommonTaskDetailModal";
 
 interface CommonTask {
@@ -142,167 +142,67 @@ export function CommonTasks({
   return (
     <div className="relative shrink-0 w-full min-w-0 overflow-x-hidden">
       <div className="w-full min-w-0">
-        <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] pt-[30px] relative w-full h-fit" style={{ paddingBottom: '150px' }}>
+        <div className="flex flex-col gap-8 items-start px-5 pt-6 pb-[150px] w-full">
           {/* Header */}
-          <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-            <div className="content-stretch flex items-center gap-[16px] relative shrink-0">
-              <div 
-                className="relative shrink-0 size-[32px] cursor-pointer"
+          <header className="flex items-center justify-between w-full shrink-0">
+            <div className="flex items-center gap-4 shrink-0">
+              <button
+                type="button"
                 onClick={onBack}
+                className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-background"
+                aria-label="Back"
               >
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
-                  <g>
-                    <path 
-                      d="M20 8L12 16L20 24" 
-                      stroke="#E1E6EE" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth="2" 
-                    />
-                  </g>
-                </svg>
-              </div>
-              <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre">
-                <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Common tasks</p>
-              </div>
+                <ChevronLeft className="size-5" />
+              </button>
+              <h1 className="shrink-0 text-2xl font-medium tracking-tight text-foreground sm:text-[28px]">
+                Common tasks
+              </h1>
             </div>
-            {/* Plus Button */}
-            <div 
-              className="relative shrink-0 size-[32px] cursor-pointer"
+            <button
+              type="button"
               onClick={handleCreateNewTask}
+              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-background"
+              aria-label="Add common task"
             >
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
-                <g>
-                  <path
-                    d="M16 6V26M26 16H6"
-                    stroke="#E1E6EE"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                  />
-                </g>
-              </svg>
-            </div>
-          </div>
+              <Plus className="size-5" />
+            </button>
+          </header>
 
           {/* Common Tasks List */}
-          <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
+          <div className="flex flex-col gap-6 items-start w-full shrink-0">
             {commonTasks.length === 0 ? (
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+              <p className="text-muted-foreground text-lg">
                 No common tasks yet. Click the + button in the top right to add one.
               </p>
             ) : (
               commonTasks.map((task) => (
                 <div
                   key={task.id}
-                  className="flex gap-[8px] items-center w-full min-w-0 cursor-pointer"
+                  className="flex gap-2 items-center w-full min-w-0 cursor-pointer group"
                   onClick={() => handleTaskClick(task)}
                 >
-                  {/* Bolt Icon */}
-                  <div className="relative shrink-0 size-[24px]">
-                    <svg
-                      className="block size-full"
-                      fill="none"
-                      preserveAspectRatio="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <g>
-                        <path
-                          d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"
-                          stroke="#E1E6EE"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="1.5"
-                        />
-                      </g>
-                    </svg>
-                  </div>
-                  {/* Task Name and Deadline */}
-                  <div className="basis-0 flex flex-col gap-[8px] grow items-start min-h-px min-w-0 overflow-hidden">
-                    <div className="flex items-center w-full min-w-0">
-                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[18px] text-white tracking-[-0.198px] break-words min-w-0">
-                        {task.text}
-                      </p>
-                    </div>
+                  <Zap className="shrink-0 size-6 text-muted-foreground" strokeWidth={1.5} />
+                  <div className="flex flex-col gap-2 grow min-w-0 overflow-hidden">
+                    <p className="text-lg text-foreground break-words min-w-0">
+                      {task.text}
+                    </p>
                     {task.deadline && (
-                      <div className="flex gap-[8px] items-start flex-wrap">
-                        {/* Time */}
+                      <div className="flex gap-2 items-center flex-wrap text-muted-foreground text-sm">
                         {task.deadline.time && task.deadline.time.trim() !== "" && (
-                          <div className="content-stretch flex items-start relative shrink-0">
-                            <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
-                              <div className="relative shrink-0 size-[20px]">
-                                <svg
-                                  className="block size-full"
-                                  fill="none"
-                                  preserveAspectRatio="none"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <g>
-                                    <path
-                                      d={svgPathsToday.p19fddb00}
-                                      stroke="#5B5D62"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="1.5"
-                                    />
-                                  </g>
-                                </svg>
-                              </div>
-                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
-                                {formatTime(task.deadline.time)}
-                              </p>
-                            </div>
-                          </div>
+                          <span className="flex items-center gap-1">
+                            <Clock className="size-4 shrink-0" />
+                            {formatTime(task.deadline.time)}
+                          </span>
                         )}
-                        {/* Day */}
-                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
-                          <div className="relative shrink-0 size-[20px]">
-                            <svg
-                              className="block size-full"
-                              fill="none"
-                              preserveAspectRatio="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <g>
-                                <path
-                                  d={svgPathsToday.p31f04100}
-                                  stroke="#5B5D62"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="1.5"
-                                />
-                              </g>
-                            </svg>
-                          </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
-                            {getDayOfWeek(task.deadline.date)}
-                          </p>
-                        </div>
-                        {/* Recurring Pattern */}
+                        <span className="flex items-center gap-1">
+                          <Calendar className="size-4 shrink-0" />
+                          {getDayOfWeek(task.deadline.date)}
+                        </span>
                         {task.deadline.recurring && (
-                          <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
-                            <div className="relative shrink-0 size-[20px]">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth="1.5"
-                                stroke="currentColor"
-                                className="size-6"
-                                style={{ width: '20px', height: '20px' }}
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-                                  stroke="#5B5D62"
-                                />
-                              </svg>
-                            </div>
-                            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
-                              {formatRecurring(task.deadline.recurring, task.deadline.date)}
-                            </p>
-                          </div>
+                          <span className="flex items-center gap-1">
+                            <RefreshCw className="size-4 shrink-0" />
+                            {formatRecurring(task.deadline.recurring, task.deadline.date)}
+                          </span>
                         )}
                       </div>
                     )}
@@ -311,9 +211,6 @@ export function CommonTasks({
               ))
             )}
           </div>
-          
-          {/* Spacer to prevent bottom cutoff */}
-          <div className="w-full" style={{ height: '20px' }} />
         </div>
       </div>
 
