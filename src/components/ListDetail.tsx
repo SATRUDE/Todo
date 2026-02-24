@@ -417,7 +417,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                                 </svg>
                               </div>
                               <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                                note {noteCount}
+                                {noteCount} {noteCount === 1 ? 'note' : 'notes'}
                               </p>
                             </div>
                           ) : null;
@@ -658,9 +658,9 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                               />
                             </svg>
                           </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                            note {noteCount}
-                          </p>
+                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                                {noteCount} {noteCount === 1 ? 'note' : 'notes'}
+                              </p>
                         </div>
                       ) : null;
                     })()}

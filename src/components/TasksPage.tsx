@@ -162,7 +162,7 @@ export function TaskRow({
           {noteCount > 0 && (
             <div className="flex gap-1 items-center text-muted-foreground">
               <StickyNote className="size-5 shrink-0" />
-              <span className="text-sm">note {noteCount}</span>
+              <span className="text-sm">{noteCount} {noteCount === 1 ? 'note' : 'notes'}</span>
             </div>
           )}
         </div>
