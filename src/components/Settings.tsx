@@ -1,12 +1,16 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
+import { ChevronLeft, Bell, RefreshCw, Calendar, Sparkles, FlaskConical, LogOut } from "lucide-react";
 import { APP_VERSION } from "../lib/version";
 import { supabase } from "../lib/supabase";
-import { 
-  connectGoogleCalendar, 
-  disconnectGoogleCalendar, 
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Switch } from "./ui/switch";
+import {
+  connectGoogleCalendar,
+  disconnectGoogleCalendar,
   getCalendarConnection,
-  refreshCalendarConnection,
-  CalendarConnection 
+  CalendarConnection,
 } from "../lib/calendar";
 
 interface SettingsProps {
@@ -22,9 +26,11 @@ interface SettingsProps {
 }
 
 export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, isChecking, onEnableNotifications, notificationPermission = 'default', onTestNotification, onCreateOverdueTask }: SettingsProps) {
+  const { theme, setTheme } = useTheme();
   const [calendarConnection, setCalendarConnection] = useState<CalendarConnection | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const isDark = theme === "dark";
 
   // Check for calendar connection on mount and handle OAuth callback
   useEffect(() => {
@@ -82,240 +88,163 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
   };
 
 
-  // Debug: Log props on mount and when permission changes
-  console.log('Settings component rendered with:', {
-    hasOnEnableNotifications: !!onEnableNotifications,
-    hasOnCheckForUpdate: !!onCheckForUpdate,
-    hasOnReload: !!onReload,
-    hasOnTestNotification: !!onTestNotification,
-    notificationPermission,
-    updateAvailable,
-    shouldShowTestButton: notificationPermission === 'granted'
-  });
-
   return (
-    <div className="w-full h-full flex flex-col" style={{ pointerEvents: 'auto', minHeight: '100%' }}>
-      {/* Main Content Container - frameParent equivalent */}
-      <div className="flex-1 flex flex-col justify-between px-[20px] pb-[24px]" style={{ pointerEvents: 'auto', minHeight: '100%' }}>
-        {/* Top Section - frameGroup equivalent */}
-        <div className="flex flex-col gap-[32px]">
-          {/* Header */}
-          <div className="flex gap-[32px] items-center">
-            <div className="flex gap-[16px] items-center">
-              <div 
-                className="relative shrink-0 size-[32px] cursor-pointer"
-                onClick={onBack}
-              >
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
-                  <g>
-                    <path 
-                      d="M20 8L12 16L20 24" 
-                      stroke="#E1E6EE" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth="2" 
-                    />
-                  </g>
-                </svg>
-              </div>
-              <div className="flex flex-col items-start">
-                <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">Settings</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Settings Content - frameContainer equivalent */}
-          <div className="flex flex-col gap-[24px] items-start w-full">
-            {/* Enable Notifications */}
-            <div className="flex items-center justify-between w-full">
-              <button
-                type="button"
-                className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left"
-                style={{ pointerEvents: 'auto', zIndex: 1, color: 'inherit', font: 'inherit' }}
-                onClick={(e) => {
-                  console.log('Enable notifications clicked', { notificationPermission, hasHandler: !!onEnableNotifications });
-                  e.stopPropagation();
-                  if (onEnableNotifications) {
-                    console.log('Calling onEnableNotifications');
-                    onEnableNotifications();
-                  } else {
-                    console.error('onEnableNotifications handler is not defined!');
-                  }
-                }}
-              >
-                <div className="relative shrink-0 size-[24px]">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#E1E6EE" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                  </svg>
-                </div>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
-                  {notificationPermission === 'granted' ? 'Notifications enabled' : 'Enable notifications'}
-                </p>
-              </button>
-              {notificationPermission === 'granted' && (
-                <button
-                  type="button"
-                  className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#0b64f9] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre bg-transparent border-none p-0 cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('Test notification clicked', { hasHandler: !!onTestNotification });
-                    if (onTestNotification) {
-                      onTestNotification();
-                    } else {
-                      console.error('onTestNotification handler is not defined!');
-                    }
-                  }}
-                >
-                  Test
-                </button>
-              )}
-            </div>
-
-            {/* Check for Update */}
-            <div className="flex items-center justify-between w-full">
-              <button
-                type="button"
-                className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left"
-                style={{ pointerEvents: 'auto', zIndex: 1, userSelect: 'none', color: 'inherit', font: 'inherit' }}
-                onClick={(e) => {
-                  console.log('Check for update clicked', { updateAvailable, hasReload: !!onReload, hasCheck: !!onCheckForUpdate });
-                  e.stopPropagation();
-                  if (updateAvailable) {
-                    console.log('Calling onReload');
-                    onReload();
-                  } else {
-                    console.log('Calling onCheckForUpdate');
-                    onCheckForUpdate();
-                  }
-                }}
-              >
-                <div className="relative shrink-0 size-[24px]">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#E1E6EE" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                  </svg>
-                </div>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
-                  Check for update
-                </p>
-              </button>
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">
-                {APP_VERSION}
-              </p>
-            </div>
-
-            {/* Google Calendar Connection */}
-            <div className="flex items-center justify-between w-full">
-              <button
-                type="button"
-                className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left"
-                style={{ pointerEvents: 'auto', zIndex: 1, color: 'inherit', font: 'inherit' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (calendarConnection) {
-                    handleDisconnectCalendar();
-                  } else {
-                    handleConnectCalendar();
-                  }
-                }}
-                disabled={isConnecting}
-              >
-                <div className="relative shrink-0 size-[24px]">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#E1E6EE" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                  </svg>
-                </div>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
-                  {calendarConnection 
-                    ? (calendarConnection.calendar_name || 'Connected to Calendar')
-                    : isConnecting 
-                    ? 'Connecting...' 
-                    : 'Connect Google Calendar'}
-                </p>
-              </button>
-            </div>
-            {syncStatus && (
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre w-full">
-                {syncStatus}
-              </p>
-            )}
-
-            {/* Storybook - Only show on localhost */}
-            {typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
-              <div className="flex items-center justify-between w-full">
-                <a
-                  href="http://localhost:6006"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left no-underline"
-                  style={{ pointerEvents: 'auto', zIndex: 1, color: 'inherit', font: 'inherit' }}
-                >
-                  <div className="relative shrink-0 size-[24px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#E1E6EE" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423z" />
-                    </svg>
-                  </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
-                    Component library (Storybook)
-                  </p>
-                </a>
-              </div>
-            )}
-
-            {/* Create Overdue Task (Test) - Only show on localhost */}
-            {onCreateOverdueTask && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
-              <div className="flex items-center justify-between w-full">
-                <button
-                  type="button"
-                  className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left"
-                  style={{ pointerEvents: 'auto', zIndex: 1, color: 'inherit', font: 'inherit' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onCreateOverdueTask) {
-                      onCreateOverdueTask();
-                    }
-                  }}
-                >
-                  <div className="relative shrink-0 size-[24px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#EF4123" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3" />
-                    </svg>
-                  </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
-                    Create overdue test task
-                  </p>
-                </button>
-              </div>
-            )}
-
-            {/* Sign Out */}
-            <div className="flex items-center justify-between w-full">
-              <button
-                type="button"
-                className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left"
-                style={{ pointerEvents: 'auto', zIndex: 1, color: 'inherit', font: 'inherit' }}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  try {
-                    await supabase.auth.signOut();
-                    // The auth state change listener in TodoApp will handle the UI update
-                  } catch (error) {
-                    console.error('Error signing out:', error);
-                  }
-                }}
-              >
-                <div className="relative shrink-0 size-[24px]">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#EF4123" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
-                  </svg>
-                </div>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
-                  Sign out
-                </p>
-              </button>
-            </div>
+    <div className="relative w-full min-w-0 overflow-x-hidden">
+      <div className="flex flex-col gap-8 px-5 pt-0 pb-[150px] w-full">
+        {/* Header */}
+        <div className="flex items-center justify-between w-full">
+          <div className="flex gap-4 items-center min-w-0 flex-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onBack}
+              className="shrink-0 size-8 text-foreground hover:bg-accent/50 focus-visible:ring-violet-500/30"
+              aria-label="Back"
+            >
+              <ChevronLeft className="size-6" strokeWidth={2} />
+            </Button>
+            <h1 className="text-2xl font-medium text-foreground tracking-tight truncate">Settings</h1>
           </div>
         </div>
 
+        {/* Settings rows as cards */}
+        <div className="flex flex-col gap-4 w-full">
+          {/* Dark mode */}
+          <Card className="w-full rounded-lg border border-border bg-card px-4 py-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-lg font-normal text-foreground tracking-tight">Dark mode</span>
+              <Switch
+                checked={isDark}
+                onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+              />
+            </div>
+          </Card>
+
+          {/* Notifications */}
+          <Card className="w-full rounded-lg border border-border bg-card px-4 py-3">
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                className="flex gap-3 items-center flex-1 justify-start h-auto p-0 text-foreground hover:bg-transparent font-normal text-lg"
+                onClick={() => onEnableNotifications?.()}
+              >
+                <Bell className="size-6 shrink-0 text-foreground" strokeWidth={1.5} />
+                <span className="tracking-tight">
+                  {notificationPermission === "granted" ? "Notifications enabled" : "Enable notifications"}
+                </span>
+              </Button>
+              {notificationPermission === "granted" && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 text-primary hover:bg-accent/50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTestNotification?.();
+                  }}
+                >
+                  Test
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          {/* Check for update */}
+          <Card className="w-full rounded-lg border border-border bg-card px-4 py-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="flex gap-3 items-center justify-between w-full h-auto p-0 text-left font-normal text-lg text-foreground hover:bg-transparent"
+              onClick={() => (updateAvailable ? onReload() : onCheckForUpdate())}
+            >
+              <div className="flex gap-3 items-center min-w-0 flex-1">
+                <RefreshCw className="size-6 shrink-0 text-foreground" strokeWidth={1.5} />
+                <span className="tracking-tight">Check for update</span>
+              </div>
+              <span className="shrink-0 text-muted-foreground tabular-nums">{APP_VERSION}</span>
+            </Button>
+          </Card>
+
+          {/* Google Calendar */}
+          <Card className="w-full rounded-lg border border-border bg-card px-4 py-3">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isConnecting}
+              className="flex gap-3 items-center w-full h-auto p-0 justify-start font-normal text-lg text-foreground hover:bg-transparent"
+              onClick={() =>
+                calendarConnection ? handleDisconnectCalendar() : handleConnectCalendar()
+              }
+            >
+              <Calendar className="size-6 shrink-0 text-foreground" strokeWidth={1.5} />
+              <span className="tracking-tight truncate text-left">
+                {calendarConnection
+                  ? calendarConnection.calendar_name || "Connected to Calendar"
+                  : isConnecting
+                    ? "Connecting…"
+                    : "Connect Google Calendar"}
+              </span>
+            </Button>
+            {syncStatus && (
+              <p className="mt-2 pl-9 text-sm text-muted-foreground">{syncStatus}</p>
+            )}
+          </Card>
+
+          {/* Storybook - localhost only */}
+          {typeof window !== "undefined" &&
+            (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && (
+            <Card className="w-full rounded-lg border border-border bg-card px-4 py-3">
+              <a
+                href="http://localhost:6006"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex gap-3 items-center w-full text-foreground no-underline hover:opacity-90"
+              >
+                <Sparkles className="size-6 shrink-0 text-foreground" strokeWidth={1.5} />
+                <span className="text-lg font-normal tracking-tight">Component library (Storybook)</span>
+              </a>
+            </Card>
+          )}
+
+          {/* Create overdue test task - localhost only */}
+          {onCreateOverdueTask &&
+            typeof window !== "undefined" &&
+            (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && (
+            <Card className="w-full rounded-lg border border-border bg-card px-4 py-3">
+              <Button
+                type="button"
+                variant="ghost"
+                className="flex gap-3 items-center w-full h-auto p-0 justify-start font-normal text-lg text-foreground hover:bg-transparent"
+                onClick={() => onCreateOverdueTask()}
+              >
+                <FlaskConical className="size-6 shrink-0 text-destructive" strokeWidth={1.5} />
+                <span className="tracking-tight">Create overdue test task</span>
+              </Button>
+            </Card>
+          )}
+
+          {/* Sign out */}
+          <Card className="w-full rounded-lg border border-border bg-card px-4 py-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="flex gap-3 items-center w-full h-auto p-0 justify-start font-normal text-lg text-destructive hover:bg-transparent hover:text-destructive"
+              onClick={async () => {
+                try {
+                  await supabase.auth.signOut();
+                } catch (error) {
+                  console.error("Error signing out:", error);
+                }
+              }}
+            >
+              <LogOut className="size-6 shrink-0" strokeWidth={1.5} />
+              <span className="tracking-tight">Sign out</span>
+            </Button>
+          </Card>
+        </div>
       </div>
     </div>
   );

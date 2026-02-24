@@ -3557,11 +3557,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
 
       {/* Bottom Navigation */}
       {currentPage !== "workshop" && (
-      <nav className="flex gap-10 items-center justify-center py-5 pb-[60px] fixed bottom-0 left-0 right-0 w-full bg-background z-[1000]" aria-label="Main navigation">
-        <div
-          aria-hidden="true"
-          className="absolute border-t border-border inset-0 pointer-events-none"
-        />
+      <nav className="flex gap-10 items-center justify-center py-5 pb-[60px] fixed bottom-0 left-0 right-0 w-full bg-card border-t border-border z-[1000]" aria-label="Main navigation">
         
         {/* Calendar Icon */}
         <button

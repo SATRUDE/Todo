@@ -55,58 +55,42 @@ export function AddFolderModal({ isOpen, onClose, onAddFolder }: AddFolderModalP
       />
 
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div
-          className="bg-[#110c10] box-border flex flex-col items-center relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet"
-          style={{ display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden" }}
-        >
-          <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full pt-[20px]">
-            <div className="h-[20px] relative shrink-0 w-[100px]">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
-                <g>
-                  <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
-                </g>
+        <div className="flex flex-col items-center rounded-t-xl w-full max-h-[90vh] overflow-hidden bg-card desktop-bottom-sheet">
+          <div className="flex flex-col gap-2.5 items-center shrink-0 w-full pt-5">
+            <div className="h-5 w-24 shrink-0 text-muted-foreground">
+              <svg className="block size-full" fill="none" viewBox="0 0 100 20" stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5">
+                <line x1="13" x2="87" y1="10" y2="10" />
               </svg>
             </div>
           </div>
 
-          <div className="flex flex-col w-full gap-[24px] pb-[40px] px-[20px]">
-            <div className="box-border content-stretch flex flex-col gap-[32px] items-start relative w-full">
+          <div className="flex flex-col w-full gap-6 pb-10 px-5">
+            <div className="flex flex-col gap-8 items-start w-full">
               <input
                 type="text"
                 value={folderName}
                 onChange={(e) => setFolderName(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Folder name"
-                className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62]"
+                className="font-medium text-2xl tracking-tight bg-transparent border-none outline-none w-full text-foreground placeholder:text-muted-foreground"
                 autoFocus
               />
 
-              {/* Plus Button - bottom right, grey when empty */}
-              <div className="flex gap-[10px] items-end justify-end w-full" style={{ justifyContent: "flex-end", width: "100%" }}>
-                <div
-                  className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
-                  style={{
-                    width: "35px",
-                    height: "35px",
-                    padding: "3px",
-                    flexShrink: 0,
-                    backgroundColor: folderName.trim() ? "#0b64f9" : "#5b5d62",
-                  }}
-                  onClick={() => {
-                    if (folderName.trim()) {
-                      handleSubmit();
-                    }
-                  }}
+              {/* Submit button */}
+              <div className="flex justify-end w-full">
+                <button
+                  type="button"
+                  className={`flex items-center justify-center size-9 rounded-full shrink-0 cursor-pointer hover:opacity-90 transition-opacity ${
+                    folderName.trim() ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  }`}
+                  onClick={() => folderName.trim() && handleSubmit()}
+                  aria-label="Create folder"
                 >
-                  <div className="relative" style={{ width: "24px", height: "24px" }}>
-                    <svg className="block" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" style={{ width: "24px", height: "24px" }}>
-                      <g>
-                        <line x1="12" y1="6" x2="12" y2="18" stroke="#E1E6EE" strokeWidth="1.5" strokeLinecap="round" />
-                        <line x1="6" y1="12" x2="18" y2="12" stroke="#E1E6EE" strokeWidth="1.5" strokeLinecap="round" />
-                      </g>
-                    </svg>
-                  </div>
-                </div>
+                  <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <line x1="12" y1="6" x2="12" y2="18" />
+                    <line x1="6" y1="12" x2="18" y2="12" />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>

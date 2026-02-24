@@ -190,7 +190,7 @@ export function StatusCard({
 }: StatusCardProps) {
   return (
     <Card
-      className={`flex-1 rounded-lg border-0 bg-card transition-opacity ${
+      className={`flex-1 rounded-lg border border-border bg-card transition-opacity ${
         disabled ? "opacity-25" : "cursor-pointer hover:opacity-90"
       }`}
       onClick={disabled ? undefined : onClick}
@@ -232,7 +232,7 @@ const TABS: { value: TimeRange; label: string }[] = [
 export function TimeRangeTabs({ value, onChange }: TimeRangeTabsProps) {
   return (
     <div className="w-full px-5 overflow-x-auto overflow-y-hidden scrollbar-none -webkit-overflow-scrolling-touch">
-      <div className="flex gap-2 items-center rounded-full py-1 px-1 min-w-max bg-card">
+      <div className="flex gap-2 items-center rounded-full py-1 px-1 min-w-max bg-card border border-border">
         {TABS.map((tab) => (
           <Button
             key={tab.value}
@@ -241,7 +241,7 @@ export function TimeRangeTabs({ value, onChange }: TimeRangeTabsProps) {
             className={`shrink-0 rounded-full h-9 px-4 font-normal text-lg whitespace-nowrap ${
               value === tab.value
                 ? "bg-muted text-foreground border border-border hover:bg-muted hover:text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-accent/50"
             }`}
             onClick={() => onChange(tab.value)}
           >
@@ -315,7 +315,7 @@ export function NoticeBoardCard({
 }: NoticeBoardCardProps) {
   return (
     <Card
-      className={`flex flex-col gap-2.5 p-4 rounded-lg border-0 bg-card min-w-[300px] w-[300px] ${className}`}
+      className={`flex flex-col gap-2.5 p-4 rounded-lg border border-border bg-card min-w-[300px] w-[300px] ${className}`}
     >
       <div className="flex items-start justify-between w-full">
         <button

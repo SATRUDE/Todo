@@ -9,7 +9,7 @@ function DashboardCard({ label, iconPath, colorClass, onClick }: DashboardCardPr
   return (
     <button
       type="button"
-      className="flex flex-col items-start justify-end px-4 py-3 flex-1 cursor-pointer rounded-lg bg-card h-[146px] transition-colors hover:bg-accent/50 text-left"
+      className="flex flex-col items-start justify-end px-4 py-3 flex-1 cursor-pointer rounded-lg bg-card border border-border h-[146px] transition-colors hover:bg-accent/50 text-left"
       onClick={onClick}
     >
       <div className="flex flex-col gap-2.5 items-start w-full">

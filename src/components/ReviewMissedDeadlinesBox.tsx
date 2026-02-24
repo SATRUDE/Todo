@@ -6,7 +6,7 @@ interface ReviewMissedDeadlinesBoxProps {
 export function ReviewMissedDeadlinesBox({ onClick, missedCount }: ReviewMissedDeadlinesBoxProps) {
   return (
     <div
-      className="flex items-center justify-between px-4 py-3 rounded-lg bg-card w-full cursor-pointer transition-opacity hover:opacity-90"
+      className="flex items-center justify-between px-4 py-3 rounded-lg bg-card border border-border w-full cursor-pointer transition-opacity hover:opacity-90"
       onClick={onClick}
     >
       <div className="flex gap-2.5 items-center shrink-0">

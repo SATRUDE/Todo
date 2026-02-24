@@ -280,8 +280,8 @@ export function RadialTimePicker({ selectedTime, onTimeChange }: RadialTimePicke
               }}
             >
               <p
-                className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-white tracking-[-0.264px] whitespace-pre ${
-                  isSelected ? 'text-[24px]' : 'text-[20px]'
+                className={`font-normal leading-[1.5] tracking-tight text-foreground whitespace-pre ${
+                  isSelected ? 'text-2xl' : 'text-xl'
                 }`}
               >
                 {value.toString().padStart(2, '0')}
@@ -297,7 +297,7 @@ export function RadialTimePicker({ selectedTime, onTimeChange }: RadialTimePicke
   };
 
   return (
-    <div className="bg-[#201c20] box-border content-stretch flex gap-[80px] items-center justify-center p-[20px] relative rounded-[8px] shrink-0 w-full">
+    <div className="bg-secondary border border-border rounded-lg flex gap-16 items-center justify-center p-5 w-full">
       <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0">
         {renderTimeColumn('hours', hours)}
       </div>

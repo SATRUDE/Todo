@@ -453,9 +453,9 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   };
 
   const getSelectedListColor = () => {
-    if (selectedListId === null) return "#E1E6EE";
+    if (selectedListId === null) return "var(--muted-foreground)";
     const list = lists.find(l => l.id === selectedListId);
-    return list ? list.color : "#E1E6EE";
+    return list ? list.color : "var(--muted-foreground)";
   };
 
   const getSelectedMilestoneName = () => {

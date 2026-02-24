@@ -211,31 +211,7 @@ html {
   display: none;  /* Chrome, Safari and Opera */
 }
 
-/* Calendar selected day styling - ensure white background and black text */
-/* This rule applies to all calendar day buttons when selected */
-button[aria-selected="true"] {
-  background-color: white !important;
-  color: black !important;
-}
-
-/* Additional specificity for react-day-picker classes */
-.rdp-button[aria-selected="true"],
-.rdp-day_selected {
-  background-color: white !important;
-  color: black !important;
-}
-
-/* Ensure hover states maintain white background and black text for selected days */
-button[aria-selected="true"]:hover,
-button[aria-selected="true"]:focus {
-  background-color: white !important;
-  color: black !important;
-}
-
-/* Force inactive tab text color */
-.tab-inactive-text {
-  color: #E1E6EE !important;
-}
+/* Tab inactive text uses token (see index.css) */
 
 /* Test: Make it more visible to verify styling works */
 .tab-inactive-text-test {

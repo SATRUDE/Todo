@@ -1,6 +1,9 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import { ChevronLeft, Plus, CheckCircle2, Inbox, Users } from "lucide-react";
 import svgPaths from "../imports/svg-4ile2zv366";
 import completedSvgPaths from "../imports/svg-qfhtru23ul";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 import { AddListModal } from "./AddListModal";
 import { AddListOrFolderModal } from "./AddListOrFolderModal";
 import { AddFolderModal } from "./AddFolderModal";
@@ -131,153 +134,121 @@ export function Lists({ onSelectList, todos, lists, folders, onAddList, onUpdate
   const renderListRow = (list: ListItem) => {
     const taskCount = getListCount(list.id);
     return (
-      <div
+      <Card
         key={list.id}
-        className="flex flex-col gap-[8px] items-start justify-center w-full min-w-0 cursor-pointer"
+        className="w-full cursor-pointer rounded-lg border border-border bg-card px-4 py-3 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-violet-500/30"
         onClick={() => onSelectList(list)}
       >
-        <div className="flex items-center justify-between w-full min-w-0">
-          <div className="flex gap-[8px] items-center min-w-0 flex-1">
-            <div className="relative shrink-0 size-[24px]">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                <g>
-                  <path d={svgPaths.p1c6a4380} stroke={list.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                </g>
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex gap-3 items-center min-w-0 flex-1">
+            <div className="shrink-0 size-6 text-foreground" style={{ color: list.color }}>
+              <svg className="block size-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d={svgPaths.p1c6a4380} />
               </svg>
             </div>
-            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[18px] text-white tracking-[-0.198px] break-words min-w-0">{list.name}</p>
-          </div>
-          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px] ml-2">{taskCount}</p>
-        </div>
-        {list.isShared && (
-          <div className="content-stretch flex gap-[8px] items-start relative shrink-0">
-            <div className="box-border content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
-              <div className="relative shrink-0 size-[24px]">
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                  <g>
-                    <path d={svgPaths.pded7080} stroke="#5B5D62" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                  </g>
-                </svg>
-              </div>
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Shared</p>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <p className="text-lg font-normal text-foreground tracking-tight break-words truncate">{list.name}</p>
+              {list.isShared && (
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Users className="size-4 shrink-0" />
+                  Shared
+                </span>
+              )}
             </div>
           </div>
-        )}
-      </div>
+          <span className="shrink-0 text-lg font-normal text-muted-foreground tabular-nums">{taskCount}</span>
+        </div>
+      </Card>
     );
   };
 
   return (
     <>
-    <div className="relative shrink-0 w-full min-w-0 overflow-x-hidden">
-      <div className="size-full min-w-0">
-        <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
-          {/* Header */}
-          <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-            <div className="content-stretch flex gap-[16px] items-center relative shrink-0">
-              {onBack && (
-                <div 
-                  className="relative shrink-0 size-[32px] cursor-pointer"
-                  onClick={onBack}
-                >
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
-                    <g>
-                      <path 
-                        d="M20 8L12 16L20 24" 
-                        stroke="#E1E6EE" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth="2" 
-                      />
-                    </g>
-                  </svg>
-                </div>
-              )}
-              <div className="content-stretch flex flex-col items-start relative shrink-0">
-                <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">Lists</p>
-              </div>
-            </div>
-            <div 
-              className="relative shrink-0 size-[32px] cursor-pointer"
-              onClick={() => setIsChoiceModalOpen(true)}
-            >
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
-                <g>
-                  <path d="M16 6V26M26 16H6" stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                </g>
-              </svg>
-            </div>
-          </div>
-
-          {/* List Items grouped by folder */}
-          <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
-            {folders.map((folder) => {
-              const folderLists = listsByFolder.get(folder.id) ?? [];
-              if (folderLists.length === 0) return null;
-              return (
-                <div key={folder.id} className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic text-[#5b5d62] text-[14px] tracking-[-0.154px] uppercase">
-                    {folder.name}
-                  </p>
-                  <div className="content-stretch flex flex-col gap-[24px] items-start w-full pl-0">
-                    {folderLists.map((list) => renderListRow(list))}
-                  </div>
-                </div>
-              );
-            })}
-            {((listsByFolder.get(null) ?? []).length > 0) && (
-              <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-                <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic text-[#5b5d62] text-[14px] tracking-[-0.154px] uppercase">
-                  No folder
-                </p>
-                <div className="content-stretch flex flex-col gap-[24px] items-start w-full pl-0">
-                  {(listsByFolder.get(null) ?? []).map((list) => renderListRow(list))}
-                </div>
-              </div>
+    <div className="relative w-full min-w-0 overflow-x-hidden">
+      <div className="flex flex-col gap-8 px-5 pt-0 pb-[150px] w-full">
+        {/* Header */}
+        <div className="flex items-center justify-between w-full">
+          <div className="flex gap-4 items-center min-w-0 flex-1">
+            {onBack && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                className="shrink-0 size-8 text-foreground hover:bg-accent/50 focus-visible:ring-violet-500/30"
+                aria-label="Back"
+              >
+                <ChevronLeft className="size-6" strokeWidth={2} />
+              </Button>
             )}
-
-            {/* All Tasks List */}
-            <div
-              className="flex flex-col gap-[8px] items-start justify-center w-full min-w-0 cursor-pointer"
-              onClick={() => onSelectList(allTasksList)}
-            >
-              <div className="flex items-center justify-between w-full min-w-0">
-                <div className="flex gap-[8px] items-center min-w-0 flex-1">
-                  <div className="relative shrink-0 size-[24px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                      <g>
-                        <path d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" stroke={allTasksList.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                      </g>
-                    </svg>
-                  </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[18px] text-white tracking-[-0.198px] break-words min-w-0">{allTasksList.name}</p>
-                </div>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px] ml-2">{allTasksList.count}</p>
-              </div>
-            </div>
-
-            {/* Completed List */}
-            <div
-              className="flex flex-col gap-[8px] items-start justify-center w-full min-w-0 cursor-pointer"
-              onClick={() => onSelectList(completedList)}
-            >
-              <div className="flex items-center justify-between w-full min-w-0">
-                <div className="flex gap-[8px] items-center min-w-0 flex-1">
-                  <div className="relative shrink-0 size-[24px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                      <g>
-                        <path d={completedSvgPaths.pcf2b720} stroke={completedList.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                      </g>
-                    </svg>
-                  </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[18px] text-white tracking-[-0.198px] break-words min-w-0">{completedList.name}</p>
-                </div>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px] ml-2">{completedList.count}</p>
-              </div>
-            </div>
+            <h1 className="text-2xl font-medium text-foreground tracking-tight truncate">Lists</h1>
           </div>
-          {/* Spacer to prevent bottom nav from covering content */}
-          <div className="w-full" style={{ height: '20px' }} />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsChoiceModalOpen(true)}
+            className="shrink-0 size-8 text-foreground hover:bg-accent/50 focus-visible:ring-violet-500/30"
+            aria-label="Add list or folder"
+          >
+            <Plus className="size-6" strokeWidth={2} />
+          </Button>
+        </div>
+
+        {/* List items grouped by folder */}
+        <div className="flex flex-col gap-6 w-full">
+          {folders.map((folder) => {
+            const folderLists = listsByFolder.get(folder.id) ?? [];
+            if (folderLists.length === 0) return null;
+            return (
+              <section key={folder.id} className="flex flex-col gap-3 w-full">
+                <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  {folder.name}
+                </h2>
+                <div className="flex flex-col gap-2 w-full">
+                  {folderLists.map((list) => renderListRow(list))}
+                </div>
+              </section>
+            );
+          })}
+          {((listsByFolder.get(null) ?? []).length > 0) && (
+            <section className="flex flex-col gap-3 w-full">
+              <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                No folder
+              </h2>
+              <div className="flex flex-col gap-2 w-full">
+                {(listsByFolder.get(null) ?? []).map((list) => renderListRow(list))}
+              </div>
+            </section>
+          )}
+
+          {/* All tasks */}
+          <Card
+            className="w-full cursor-pointer rounded-lg border border-border bg-card px-4 py-3 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+            onClick={() => onSelectList(allTasksList)}
+          >
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex gap-3 items-center min-w-0 flex-1">
+                <Inbox className="size-6 shrink-0 text-orange-500" strokeWidth={1.5} />
+                <p className="text-lg font-normal text-foreground tracking-tight truncate">{allTasksList.name}</p>
+              </div>
+              <span className="shrink-0 text-lg font-normal text-muted-foreground tabular-nums">{allTasksList.count}</span>
+            </div>
+          </Card>
+
+          {/* Completed list */}
+          <Card
+            className="w-full cursor-pointer rounded-lg border border-border bg-card px-4 py-3 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+            onClick={() => onSelectList(completedList)}
+          >
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex gap-3 items-center min-w-0 flex-1">
+                <CheckCircle2 className="size-6 shrink-0 text-emerald-600" strokeWidth={1.5} />
+                <p className="text-lg font-normal text-foreground tracking-tight truncate">{completedList.name}</p>
+              </div>
+              <span className="shrink-0 text-lg font-normal text-muted-foreground tabular-nums">{completedList.count}</span>
+            </div>
+          </Card>
         </div>
       </div>
     </div>

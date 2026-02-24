@@ -9,8 +9,8 @@ const preview = {
       return React.createElement(
         'div',
         {
-          className: theme === 'dark' ? 'dark' : '',
-          style: { minHeight: '100vh', padding: '1rem', background: 'var(--background)' },
+          className: `bg-background text-foreground ${theme === 'dark' ? 'dark' : ''}`,
+          style: { minHeight: '100vh', width: '100%', padding: '1rem', background: 'var(--background)' },
         },
         React.createElement(Story)
       );
@@ -18,12 +18,15 @@ const preview = {
   ],
   globalTypes: {
     theme: {
-      description: 'Global theme for components',
+      description: 'Toggle light or dark mode for all components',
       defaultValue: 'dark',
       toolbar: {
         title: 'Theme',
         icon: 'circlehollow',
-        items: ['light', 'dark'],
+        items: [
+          { value: 'light', title: 'Light' },
+          { value: 'dark', title: 'Dark' },
+        ],
         dynamicTitle: true,
       },
     },

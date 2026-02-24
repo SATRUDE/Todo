@@ -40,32 +40,34 @@
   }
 }
 
-/* shadcn theme variables */
+/* Light mode: Tailwind-inspired tokens (zinc/slate palette) */
 :root {
   --font-size: 16px;
-  --background: #fff;
-  --foreground: oklch(.145 0 0);
-  --card: #fff;
-  --card-foreground: oklch(.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(.95 .0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
-  --destructive-foreground: #fff;
-  --border: #0000001a;
+  /* Tailwind zinc-50 / white */
+  --background: oklch(.985 0 0);
+  --foreground: oklch(.141 .005 285.823); /* zinc-950 */
+  /* Card surface: zinc-100 so cards/tabs/nav stand out from page */
+  --card: oklch(.967 .001 286.375); /* zinc-100 */
+  --card-foreground: oklch(.141 .005 285.823);
+  --popover: oklch(.985 0 0);
+  --popover-foreground: oklch(.141 .005 285.823);
+  --primary: oklch(.141 .005 285.823);
+  --primary-foreground: oklch(.985 0 0);
+  --secondary: oklch(.967 .001 286.375); /* zinc-100 */
+  --secondary-foreground: oklch(.141 .005 285.823);
+  --muted: oklch(.967 .001 286.375); /* zinc-100 */
+  --muted-foreground: oklch(.552 .016 285.938); /* zinc-500 */
+  --accent: oklch(.92 .004 286.32); /* zinc-200 */
+  --accent-foreground: oklch(.141 .005 285.823);
+  --destructive: oklch(.396 .141 25.723); /* red-600 */
+  --destructive-foreground: oklch(.985 0 0);
+  --border: oklch(.92 .004 286.32); /* zinc-200 */
   --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
+  --input-background: oklch(.967 .001 286.375); /* zinc-100 */
+  --switch-background: oklch(.871 .006 286.286); /* zinc-300 */
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: oklch(.708 0 0);
+  --ring: oklch(.705 .015 286.067); /* zinc-400 */
   --chart-1: oklch(.646 .222 41.116);
   --chart-2: oklch(.6 .118 184.704);
   --chart-3: oklch(.398 .07 227.392);
@@ -73,13 +75,13 @@
   --chart-5: oklch(.769 .188 70.08);
   --radius: .625rem;
   --sidebar: oklch(.985 0 0);
-  --sidebar-foreground: oklch(.145 0 0);
-  --sidebar-primary: #030213;
+  --sidebar-foreground: oklch(.141 .005 285.823);
+  --sidebar-primary: oklch(.141 .005 285.823);
   --sidebar-primary-foreground: oklch(.985 0 0);
-  --sidebar-accent: oklch(.97 0 0);
-  --sidebar-accent-foreground: oklch(.205 0 0);
-  --sidebar-border: oklch(.922 0 0);
-  --sidebar-ring: oklch(.708 0 0);
+  --sidebar-accent: oklch(.967 .001 286.375);
+  --sidebar-accent-foreground: oklch(.274 .006 286.033); /* zinc-800 */
+  --sidebar-border: oklch(.92 .004 286.32);
+  --sidebar-ring: oklch(.705 .015 286.067);
 }
 
 .dark {
@@ -159,45 +161,19 @@ html {
 }
 
 /* Tab inactive overrides */
-.tab-inactive-text {
-  color: #E1E6EE !important;
-}
-
-button .tab-inactive-text-v2 {
-  color: #E1E6EE !important;
-}
-
-.content-stretch.flex.items-center button p.tab-inactive-text-v3 {
-  color: #E1E6EE !important;
-}
-
-[data-tab-inactive="true"] {
-  color: #E1E6EE !important;
-}
-
-.tab-inactive-text-v5 {
-  --tab-inactive-color: #E1E6EE;
-  color: var(--tab-inactive-color) !important;
-}
-
-p.tab-inactive-text-v6 {
-  color: #E1E6EE !important;
-}
-
-button.tab-button-inactive p {
-  color: #E1E6EE !important;
-}
-
-#tab-inactive-text-v8 {
-  color: #E1E6EE !important;
-}
-
-.tab-inactive-text-v9.font-['Inter:Regular',sans-serif] {
-  color: #E1E6EE !important;
-}
-
+/* Tab inactive: use token so light/dark both work */
+.tab-inactive-text,
+button .tab-inactive-text-v2,
+.content-stretch.flex.items-center button p.tab-inactive-text-v3,
+[data-tab-inactive="true"],
+.tab-inactive-text-v5,
+p.tab-inactive-text-v6,
+button.tab-button-inactive p,
+#tab-inactive-text-v8,
+.tab-inactive-text-v9.font-['Inter:Regular',sans-serif],
 *.tab-inactive-text-v10 {
-  color: #E1E6EE !important;
+  --tab-inactive-color: var(--muted-foreground);
+  color: var(--tab-inactive-color) !important;
 }
 
 /* Hide scrollbar but keep scrolling */

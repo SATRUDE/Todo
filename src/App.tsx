@@ -1,5 +1,10 @@
+import { ThemeProvider } from "next-themes";
 import { TodoApp } from "./components/TodoApp";
 
 export default function App() {
-  return <TodoApp />;
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="todo-app-theme">
+      <TodoApp />
+    </ThemeProvider>
+  );
 }

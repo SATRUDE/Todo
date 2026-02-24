@@ -1,5 +1,7 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Zap, ChevronLeft, Plus, Clock, Calendar, RefreshCw } from "lucide-react";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 import { CommonTaskDetailModal } from "./CommonTaskDetailModal";
 
 interface CommonTask {
@@ -140,66 +142,72 @@ export function CommonTasks({
   };
 
   return (
-    <div className="relative shrink-0 w-full min-w-0 overflow-x-hidden">
-      <div className="w-full min-w-0">
-        <div className="flex flex-col gap-8 items-start px-5 pt-6 pb-[150px] w-full">
-          {/* Header */}
-          <header className="flex items-center justify-between w-full shrink-0">
-            <div className="flex items-center gap-4 shrink-0">
-              <button
-                type="button"
-                onClick={onBack}
-                className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-background"
-                aria-label="Back"
-              >
-                <ChevronLeft className="size-5" />
-              </button>
-              <h1 className="shrink-0 text-2xl font-medium tracking-tight text-foreground sm:text-[28px]">
-                Common tasks
-              </h1>
-            </div>
-            <button
+    <div className="relative w-full min-w-0 overflow-x-hidden">
+      <div className="flex flex-col gap-8 px-5 pt-0 pb-[150px] w-full">
+        {/* Header */}
+        <div className="flex items-center justify-between w-full">
+          <div className="flex gap-4 items-center min-w-0 flex-1">
+            <Button
               type="button"
-              onClick={handleCreateNewTask}
-              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-background"
-              aria-label="Add common task"
+              variant="ghost"
+              size="icon"
+              onClick={onBack}
+              className="shrink-0 size-8 text-foreground hover:bg-accent/50 focus-visible:ring-violet-500/30"
+              aria-label="Back"
             >
-              <Plus className="size-5" />
-            </button>
-          </header>
+              <ChevronLeft className="size-6" strokeWidth={2} />
+            </Button>
+            <h1 className="text-2xl font-medium text-foreground tracking-tight truncate">
+              Common tasks
+            </h1>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleCreateNewTask}
+            className="shrink-0 size-8 text-foreground hover:bg-accent/50 focus-visible:ring-violet-500/30"
+            aria-label="Add common task"
+          >
+            <Plus className="size-6" strokeWidth={2} />
+          </Button>
+        </div>
 
-          {/* Common Tasks List */}
-          <div className="flex flex-col gap-6 items-start w-full shrink-0">
-            {commonTasks.length === 0 ? (
-              <p className="text-muted-foreground text-lg">
-                No common tasks yet. Click the + button in the top right to add one.
+        {/* Task list */}
+        <div className="flex flex-col gap-4 w-full">
+          {commonTasks.length === 0 ? (
+            <Card className="w-full rounded-lg border border-border bg-card px-4 py-6">
+              <p className="text-center text-muted-foreground text-lg">
+                No common tasks yet. Tap + to add one.
               </p>
-            ) : (
-              commonTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="flex gap-2 items-center w-full min-w-0 cursor-pointer group"
-                  onClick={() => handleTaskClick(task)}
-                >
-                  <Zap className="shrink-0 size-6 text-muted-foreground" strokeWidth={1.5} />
-                  <div className="flex flex-col gap-2 grow min-w-0 overflow-hidden">
-                    <p className="text-lg text-foreground break-words min-w-0">
+            </Card>
+          ) : (
+            commonTasks.map((task) => (
+              <Card
+                key={task.id}
+                className="w-full cursor-pointer rounded-lg border border-border bg-card px-4 py-3 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+                onClick={() => handleTaskClick(task)}
+              >
+                <div className="flex gap-3 items-start min-w-0">
+                  <Zap className="shrink-0 size-6 text-muted-foreground mt-0.5" strokeWidth={1.5} />
+                  <div className="flex flex-col gap-2 min-w-0 flex-1">
+                    <p className="text-lg font-normal text-foreground tracking-tight break-words">
                       {task.text}
                     </p>
                     {task.deadline && (
-                      <div className="flex gap-2 items-center flex-wrap text-muted-foreground text-sm">
+                      <div className="flex gap-3 items-center flex-wrap text-muted-foreground text-sm">
                         {task.deadline.time && task.deadline.time.trim() !== "" && (
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1.5">
                             <Clock className="size-4 shrink-0" />
                             {formatTime(task.deadline.time)}
                           </span>
                         )}
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1.5">
                           <Calendar className="size-4 shrink-0" />
                           {getDayOfWeek(task.deadline.date)}
                         </span>
                         {task.deadline.recurring && (
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1.5">
                             <RefreshCw className="size-4 shrink-0" />
                             {formatRecurring(task.deadline.recurring, task.deadline.date)}
                           </span>
@@ -208,9 +216,9 @@ export function CommonTasks({
                     )}
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              </Card>
+            ))
+          )}
         </div>
       </div>
 
