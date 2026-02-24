@@ -9,3 +9,6 @@ build
 .vercel
 .env.vercel
 .cursor/todo-ai-config.json
+
+*storybook.log
+storybook-static

@@ -239,6 +239,28 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
               </p>
             )}
 
+            {/* Storybook - Only show on localhost */}
+            {typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+              <div className="flex items-center justify-between w-full">
+                <a
+                  href="http://localhost:6006"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex gap-[8px] items-center cursor-pointer bg-transparent border-none p-0 text-left no-underline"
+                  style={{ pointerEvents: 'auto', zIndex: 1, color: 'inherit', font: 'inherit' }}
+                >
+                  <div className="relative shrink-0 size-[24px]">
+                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" stroke="#E1E6EE" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423z" />
+                    </svg>
+                  </div>
+                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap text-white tracking-[-0.198px] whitespace-pre">
+                    Component library (Storybook)
+                  </p>
+                </a>
+              </div>
+            )}
+
             {/* Create Overdue Task (Test) - Only show on localhost */}
             {onCreateOverdueTask && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
               <div className="flex items-center justify-between w-full">
