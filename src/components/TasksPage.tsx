@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search } from "lucide-react";
@@ -462,6 +463,22 @@ export function TasksPage(props: TasksPageProps) {
     onOpenSearch,
   } = props;
 
+  const [isDailyExpanded, setIsDailyExpanded] = useState(true);
+  const [collapsedDailyDates, setCollapsedDailyDates] = useState<Set<string>>(new Set());
+
+  const toggleDailyExpanded = (dateKey?: string) => {
+    if (dateKey) {
+      setCollapsedDailyDates((prev) => {
+        const next = new Set(prev);
+        if (next.has(dateKey)) next.delete(dateKey);
+        else next.add(dateKey);
+        return next;
+      });
+    } else {
+      setIsDailyExpanded((prev) => !prev);
+    }
+  };
+
   const renderTaskRow = (todo: Todo, useLinkify = false) => (
     <TaskRow
       key={todo.id}
@@ -786,17 +803,35 @@ export function TasksPage(props: TasksPageProps) {
                       <p className="text-xs uppercase tracking-wider text-muted-foreground">
                         {formatDateHeading(date)}
                       </p>
-                      {dateDaily.length > 0 && (
-                        <>
-                          <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                            Daily
-                          </p>
-                          <div className="flex flex-col gap-2">
-                            {dateDaily.map((t) => renderTaskRow(t, true))}
-                          </div>
-                          <div className="h-px w-full bg-border" />
-                        </>
-                      )}
+                      {dateDaily.length > 0 && (() => {
+                        const isExpanded = !collapsedDailyDates.has(dateKey);
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => toggleDailyExpanded(dateKey)}
+                              className="flex items-center gap-2 w-full text-left rounded hover:bg-accent/30 py-1 -my-1 transition-colors"
+                            >
+                              <ChevronDown
+                                className={`size-5 shrink-0 text-muted-foreground transition-transform ${
+                                  isExpanded ? "rotate-0" : "-rotate-90"
+                                }`}
+                              />
+                              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                                Daily
+                              </p>
+                            </button>
+                            {isExpanded && (
+                              <>
+                                <div className="flex flex-col gap-2">
+                                  {dateDaily.map((t) => renderTaskRow(t, true))}
+                                </div>
+                                <div className="h-px w-full bg-border" />
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
                       {dateReminders.length > 0 && (
                         <NoticeBoardCard
                           header="REMINDERS"
@@ -817,13 +852,28 @@ export function TasksPage(props: TasksPageProps) {
             <>
               {dailyTaskItems.length > 0 && (
                 <>
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                    Daily
-                  </p>
-                  <div className="flex flex-col gap-2">
-                    {dailyTaskItems.map((todo) => renderTaskRow(todo, true))}
-                  </div>
-                  <div className="h-px w-full bg-border" />
+                  <button
+                    type="button"
+                    onClick={() => toggleDailyExpanded()}
+                    className="flex items-center gap-2 w-full text-left rounded hover:bg-accent/30 py-1 -my-1 transition-colors"
+                  >
+                    <ChevronDown
+                      className={`size-5 shrink-0 text-muted-foreground transition-transform ${
+                        isDailyExpanded ? "rotate-0" : "-rotate-90"
+                      }`}
+                    />
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Daily
+                    </p>
+                  </button>
+                  {isDailyExpanded && (
+                    <>
+                      <div className="flex flex-col gap-2">
+                        {dailyTaskItems.map((todo) => renderTaskRow(todo, true))}
+                      </div>
+                      <div className="h-px w-full bg-border" />
+                    </>
+                  )}
                 </>
               )}
               {regularTasks.map((t) => renderTaskRow(t, true))}
