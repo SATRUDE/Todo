@@ -118,12 +118,34 @@ module.exports = async function handler(req, res) {
       return res.redirect(`/?calendar_error=${encodeURIComponent(userMessage)}`);
     }
     
-    if (!tokens.access_token || !tokens.refresh_token) {
-      console.error('[calendar/callback] Missing tokens:', {
-        hasAccessToken: !!tokens.access_token,
-        hasRefreshToken: !!tokens.refresh_token
-      });
+    if (!tokens.access_token) {
+      console.error('[calendar/callback] Missing access token');
       return res.redirect('/?calendar_error=token_exchange_failed');
+    }
+
+    // If Google didn't return a refresh token (e.g. user previously authorized
+    // without prompt=consent), try to reuse the existing one from the database.
+    let refreshToken = tokens.refresh_token;
+    if (!refreshToken) {
+      console.warn('[calendar/callback] No refresh_token from Google, checking for existing one');
+      const supabaseUrlCheck = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const supabaseKeyCheck = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+      if (supabaseUrlCheck && supabaseKeyCheck) {
+        const sbCheck = createClient(supabaseUrlCheck, supabaseKeyCheck);
+        const { data: existing } = await sbCheck
+          .from('calendar_connections')
+          .select('refresh_token')
+          .eq('user_id', userId)
+          .single();
+        if (existing?.refresh_token && existing.refresh_token !== 'pending') {
+          refreshToken = existing.refresh_token;
+          console.log('[calendar/callback] Reusing existing refresh_token');
+        }
+      }
+      if (!refreshToken) {
+        console.error('[calendar/callback] No refresh token available');
+        return res.redirect('/?calendar_error=no_refresh_token');
+      }
     }
 
     // Get calendar info
@@ -151,11 +173,12 @@ module.exports = async function handler(req, res) {
       .upsert({
         user_id: userId,
         access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
+        refresh_token: refreshToken,
         token_expires_at: expiresAt,
         calendar_id: primaryCalendar?.id || 'primary',
         calendar_name: primaryCalendar?.summary || 'Primary Calendar',
         enabled: true,
+        updated_at: new Date().toISOString(),
       }, {
         onConflict: 'user_id'
       });

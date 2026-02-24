@@ -75,7 +75,9 @@ export async function connectGoogleCalendar(): Promise<string> {
 }
 
 /**
- * Check if user has a connected calendar
+ * Check if user has a connected calendar.
+ * Also triggers a background token refresh when the access token is close to
+ * expiring so the next API call doesn't fail.
  */
 export async function getCalendarConnection(): Promise<CalendarConnection | null> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -87,7 +89,7 @@ export async function getCalendarConnection(): Promise<CalendarConnection | null
   try {
     const { data, error } = await supabase
       .from('calendar_connections')
-      .select('id, user_id, calendar_id, calendar_name, enabled')
+      .select('id, user_id, calendar_id, calendar_name, enabled, token_expires_at')
       .eq('user_id', user.id)
       .eq('enabled', true)
       .limit(1);
@@ -101,13 +103,24 @@ export async function getCalendarConnection(): Promise<CalendarConnection | null
       return null;
     }
 
-    const connection = data[0] as CalendarConnection;
+    const connection = data[0] as CalendarConnection & { token_expires_at?: string };
     
-    // If calendar_name is null, the connection is likely incomplete/invalid
     if (connection && !connection.calendar_name) {
       console.warn('[calendar] Connection found but calendar_name is null, connection may be invalid');
-      // Return null so user can reconnect
       return null;
+    }
+
+    // Proactively refresh tokens if expiring within 10 minutes.
+    // This fires-and-forgets so the UI isn't blocked.
+    if (connection.token_expires_at) {
+      const expiresAt = new Date(connection.token_expires_at).getTime();
+      const bufferMs = 10 * 60 * 1000;
+      if (expiresAt - Date.now() < bufferMs) {
+        console.log('[calendar] Token expiring soon, triggering background refresh');
+        refreshCalendarConnection().catch(err => {
+          console.warn('[calendar] Background token refresh failed:', err.message);
+        });
+      }
     }
 
     return connection;
@@ -187,7 +200,9 @@ export async function syncAllTasksToCalendar(): Promise<{ synced: number; errors
 }
 
 /**
- * Fetch calendar events for task suggestions
+ * Fetch calendar events for task suggestions.
+ * Automatically retries once on 401 since the server-side token refresh
+ * may need a moment to propagate.
  */
 export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -196,23 +211,36 @@ export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
     throw new Error('User must be authenticated');
   }
 
-  const response = await fetch(`/api/calendar/events?user_id=${user.id}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  const doFetch = async () => {
+    const response = await fetch(`/api/calendar/events?user_id=${user.id}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    if (response.status === 401 || error.requiresReconnect) {
-      throw new Error('Unauthorized - Please reconnect your calendar');
+    if (!response.ok) {
+      const error = await response.json();
+      if (response.status === 401 || error.requiresReconnect) {
+        throw Object.assign(new Error('Unauthorized - Please reconnect your calendar'), { status: 401 });
+      }
+      throw new Error(error.error || error.message || 'Failed to fetch calendar events');
     }
-    throw new Error(error.error || error.message || 'Failed to fetch calendar events');
-  }
 
-  const data = await response.json();
-  return data.events || [];
+    const data = await response.json();
+    return data.events || [];
+  };
+
+  try {
+    return await doFetch();
+  } catch (firstError: any) {
+    if (firstError.status === 401) {
+      console.warn('[calendar] First fetch returned 401, retrying once after short delay...');
+      await new Promise(r => setTimeout(r, 1500));
+      return await doFetch();
+    }
+    throw firstError;
+  }
 }
 
 /**

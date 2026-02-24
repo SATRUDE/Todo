@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { google } = require('googleapis');
+const { refreshTokenIfNeeded } = require('./token-refresh');
 
 function parseBody(req) {
   if (!req.body) {
@@ -16,7 +17,6 @@ function parseBody(req) {
   return req.body;
 }
 
-// Helper to get authenticated Google Calendar client
 async function getCalendarClient(userId, supabase) {
   const { data: connection, error } = await supabase
     .from('calendar_connections')
@@ -29,37 +29,7 @@ async function getCalendarClient(userId, supabase) {
     throw new Error('Calendar not connected');
   }
 
-  // Check if token needs refresh
-  const now = new Date();
-  const expiresAt = new Date(connection.token_expires_at);
-  
-  if (expiresAt <= now) {
-    // Refresh token
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
-    );
-
-    oauth2Client.setCredentials({
-      refresh_token: connection.refresh_token
-    });
-
-    const { credentials } = await oauth2Client.refreshAccessToken();
-    
-    // Update tokens in database
-    await supabase
-      .from('calendar_connections')
-      .update({
-        access_token: credentials.access_token,
-        token_expires_at: credentials.expiry_date 
-          ? new Date(credentials.expiry_date).toISOString()
-          : new Date(Date.now() + 3600 * 1000).toISOString(),
-      })
-      .eq('user_id', userId);
-
-    connection.access_token = credentials.access_token;
-  }
+  const refreshedConnection = await refreshTokenIfNeeded(connection, userId, supabase);
 
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -68,13 +38,13 @@ async function getCalendarClient(userId, supabase) {
   );
 
   oauth2Client.setCredentials({
-    access_token: connection.access_token,
-    refresh_token: connection.refresh_token
+    access_token: refreshedConnection.access_token,
+    refresh_token: refreshedConnection.refresh_token
   });
 
   return {
     calendar: google.calendar({ version: 'v3', auth: oauth2Client }),
-    calendarId: connection.calendar_id
+    calendarId: refreshedConnection.calendar_id
   };
 }
 
