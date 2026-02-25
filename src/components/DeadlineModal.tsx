@@ -157,7 +157,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
       />
 
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pb-[60px] pt-5 desktop-bottom-sheet">
+        <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pt-5 desktop-bottom-sheet">
           {/* Handle */}
           <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
             <div className="h-5 w-24 shrink-0 text-muted-foreground">
@@ -173,7 +173,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
             </h2>
           </div>
 
-          <div className="flex flex-1 flex-col w-full overflow-x-hidden overflow-y-auto px-5 [-webkit-overflow-scrolling:touch] min-h-0" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+          <div className="flex flex-1 flex-col w-full overflow-x-hidden overflow-y-auto px-5 [-webkit-overflow-scrolling:touch] min-h-0">
             <div className="flex flex-col gap-6 pt-4 pb-2">
               {/* Calendar section */}
               <div className="w-full">
@@ -295,36 +295,38 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
                   </div>
                 </div>
               )}
+            </div>
+          </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 w-full pt-2">
-                {onClearDeadline && currentDeadline && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClearDeadline();
-                      onClose();
-                    }}
-                    className="flex-1 rounded-lg px-6 py-3 font-normal text-lg bg-destructive/20 hover:bg-destructive/30 text-destructive transition-colors"
-                  >
-                    Clear
-                  </button>
-                )}
+          {/* Fixed action buttons - always visible at bottom */}
+          <div className="shrink-0 w-full px-5 py-4 bg-card border-t border-border">
+            <div className="flex gap-3 w-full">
+              {onClearDeadline && currentDeadline && (
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="flex-1 rounded-lg px-6 py-3 font-normal text-lg bg-secondary hover:bg-accent text-foreground transition-colors"
+                  onClick={() => {
+                    onClearDeadline();
+                    onClose();
+                  }}
+                  className="flex-1 rounded-lg px-6 py-3 font-normal text-lg bg-destructive/20 hover:bg-destructive/30 text-destructive transition-colors"
                 >
-                  Cancel
+                  Clear
                 </button>
-                <button
-                  type="button"
-                  onClick={handleConfirm}
-                  className="flex-1 rounded-lg px-6 py-3 font-medium text-lg bg-blue-500 hover:bg-blue-600 text-primary-foreground transition-colors"
-                >
-                  Confirm
-                </button>
-              </div>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-lg px-6 py-3 font-normal text-lg bg-secondary hover:bg-accent text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                className="flex-1 rounded-lg px-6 py-3 font-medium text-lg bg-blue-500 hover:bg-blue-600 text-primary-foreground transition-colors"
+              >
+                Confirm
+              </button>
             </div>
           </div>
         </div>
