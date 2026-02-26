@@ -25,6 +25,7 @@ import { ResetPassword } from "./ResetPassword";
 import { Workshop } from "./Workshop";
 import { Notes } from "./Notes";
 import { NoteDetail } from "./NoteDetail";
+import { DrinkWater } from "./DrinkWater";
 import { TasksPage } from "./TasksPage";
 import { SearchPage } from "./SearchPage";
 import { APP_VERSION } from "../lib/version";
@@ -3101,7 +3102,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             setNotesPreselectedTaskId(taskId ?? null);
             setCurrentPage("notes");
           }}
+          onNavigateToDrinkWater={() => setCurrentPage("drinkWater")}
         />
+      ) : currentPage === "drinkWater" ? (
+        <DrinkWater onBack={() => setCurrentPage("dashboard")} />
       ) : currentPage === "calendarSync" ? (
         <CalendarSync 
           onBack={() => setCurrentPage("dashboard")}
