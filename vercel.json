@@ -12,6 +12,10 @@
     "path": "/api/reminders-overdue",
     "schedule": "0 9,13,17,21 * * *"
   },
+  {
+    "path": "/api/water-reminders",
+    "schedule": "*/10 * * * *"
+  },
     {
       "path": "/api/calendar/sync-cron",
       "schedule": "0 * * * *"

@@ -39,9 +39,10 @@ interface DashboardProps {
   onNavigateToDailyTasks?: () => void;
   onNavigateToGoals?: () => void;
   onNavigateToNotes?: (taskId?: number) => void;
+  onNavigateToDrinkWater?: () => void;
 }
 
-export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCommonTasks, onNavigateToDailyTasks, onNavigateToGoals, onNavigateToNotes }: DashboardProps) {
+export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCommonTasks, onNavigateToDailyTasks, onNavigateToGoals, onNavigateToNotes, onNavigateToDrinkWater }: DashboardProps) {
   return (
     <div className="relative shrink-0 w-full">
       <div className="flex flex-col gap-8 px-5 pt-0 pb-[150px] w-full">
@@ -86,6 +87,12 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCom
               iconPath="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"
               colorClass="text-violet-400"
               onClick={() => onNavigateToNotes?.()}
+            />
+            <DashboardCard
+              label="Drink water"
+              iconPath="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5S13 5.64 13 3c0 2.64 1 4.5 3 6.5s3 4.5 3 6.5a7 7 0 0 1-6 6.92"
+              colorClass="text-cyan-500"
+              onClick={onNavigateToDrinkWater ?? (() => {})}
             />
           </div>
         </div>
