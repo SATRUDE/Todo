@@ -23,6 +23,7 @@ function addMonths(date: Date, months: number): Date {
 }
 
 const QUICK_SELECT_OPTIONS: { label: string; getDate: () => Date }[] = [
+  { label: "Today", getDate: () => new Date() },
   { label: "Tomorrow", getDate: () => addDays(new Date(), 1) },
   { label: "In 2 days", getDate: () => addDays(new Date(), 2) },
   { label: "In 3 days", getDate: () => addDays(new Date(), 3) },
