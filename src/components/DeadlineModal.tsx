@@ -60,7 +60,12 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
     return [];
   };
 
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(currentDeadline?.date || new Date());
+  const getInitialDate = () => (currentDeadline?.date ? new Date(currentDeadline.date) : new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(getInitialDate());
+  const [displayedMonth, setDisplayedMonth] = useState<Date>(() => {
+    const d = currentDeadline?.date ? new Date(currentDeadline.date) : new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
   const [selectedTime, setSelectedTime] = useState(currentDeadline?.time || "");
   const [recurring, setRecurring] = useState(getInitialRecurring());
   const [noTime, setNoTime] = useState(!currentDeadline?.time || currentDeadline.time.trim() === "");
@@ -77,11 +82,15 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
         setNoTime(true);
       }
       if (currentDeadline?.date) {
-        setSelectedDate(currentDeadline.date);
+        const d = currentDeadline.date;
+        setSelectedDate(d);
+        setDisplayedMonth(new Date(d.getFullYear(), d.getMonth(), 1));
         setNoDate(false);
       } else {
         setSelectedDate(undefined);
         setNoDate(true);
+        const today = new Date();
+        setDisplayedMonth(new Date(today.getFullYear(), today.getMonth(), 1));
       }
       if (currentDeadline?.recurring && currentDeadline.recurring.includes(',')) {
         setSelectedDays(parseSelectedDays(currentDeadline.recurring));
@@ -143,7 +152,9 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
   };
 
   const handleQuickSelect = (getDate: () => Date) => {
-    setSelectedDate(getDate());
+    const newDate = getDate();
+    setSelectedDate(newDate);
+    setDisplayedMonth(new Date(newDate.getFullYear(), newDate.getMonth(), 1));
     setNoDate(false);
   };
 
@@ -195,6 +206,8 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
                 <div className={`flex justify-center ${noDate ? 'opacity-50 pointer-events-none' : ''}`}>
                   <Calendar
                     mode="single"
+                    month={displayedMonth}
+                    onMonthChange={setDisplayedMonth}
                     selected={selectedDate}
                     onSelect={(date) => {
                       if (date) {
