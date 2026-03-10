@@ -74,6 +74,7 @@ export interface Todo {
   deadline_date?: string // YYYY-MM-DD string
   deadline_time?: string
   deadline_recurring?: string
+  times_delayed?: number // How many times the deadline has been changed/delayed
   type?: 'task' | 'reminder' // Task type: 'task' or 'reminder'
   created_at?: string
   updated_at?: string
@@ -180,6 +181,7 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     deadline_date: dbTodo.deadline_date,
     deadline_time: dbTodo.deadline_time,
     deadline_recurring: dbTodo.deadline_recurring,
+    times_delayed: dbTodo.times_delayed || 0,
     type: dbTodo.type || 'task', // Default to 'task' if not set
     created_at: dbTodo.created_at,
     updated_at: dbTodo.updated_at,
@@ -363,6 +365,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     dailyTaskId: dbTodo.daily_task_id,
     parentTaskId: dbTodo.parent_task_id || undefined,
     deadline,
+    timesDelayed: dbTodo.times_delayed || 0,
     type: dbTodo.type || 'task', // Default to 'task' if not set
     updatedAt: dbTodo.updated_at,
   }
@@ -599,15 +602,23 @@ export async function updateTask(id: number, todo: any): Promise<Todo> {
   fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateTask:beforeUpdate',message:'Before Supabase update',data:{taskId:id,userId,dbTodo,originalTodo:todo},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
   // #endregion
   
-  // First, check what user_id the task currently has
+  // First, check what user_id the task currently has and check for deadline changes
   // #region agent log
   const { data: existingTask } = await supabase
     .from('todos')
-    .select('id, user_id')
+    .select('id, user_id, deadline_date, times_delayed')
     .eq('id', id)
     .single();
   fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateTask:checkExisting',message:'Checking existing task user_id',data:{taskId:id,existingUserId:existingTask?.user_id,currentUserId:userId},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
   // #endregion
+  
+  // Check if deadline date has changed (only if both old and new deadlines exist)
+  if (existingTask && existingTask.deadline_date && dbTodo.deadline_date && 
+      existingTask.deadline_date !== dbTodo.deadline_date) {
+    // Deadline date changed - increment times_delayed counter
+    const currentTimesDelayed = existingTask.times_delayed || 0;
+    dbTodo.times_delayed = currentTimesDelayed + 1;
+  }
   
   // Query should match tasks with matching user_id OR NULL user_id (for legacy tasks)
   // Use .or() to allow both cases

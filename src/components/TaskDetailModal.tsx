@@ -41,6 +41,7 @@ interface Todo {
     time: string;
     recurring?: string;
   };
+  timesDelayed?: number;
   type?: 'task' | 'reminder';
 }
 
