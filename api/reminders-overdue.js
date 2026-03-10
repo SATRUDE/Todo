@@ -39,17 +39,19 @@ function isTodoOverdue(todo) {
 
   const now = new Date();
   const [year, month, day] = todo.deadline_date.split('-').map(Number);
-  const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const deadlineDateUTC = new Date(Date.UTC(year, month - 1, day));
-
-  if (deadlineDateUTC.getTime() > todayUTC.getTime()) return false;
 
   if (!todo.deadline_time || todo.deadline_time.trim() === '') {
-    return true; // date passed, no time → overdue
+    // If no time specified, the deadline is the end of that day in UTC
+    const endOfDeadlineDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    return now > endOfDeadlineDay;
   }
 
   const [hours, minutes] = todo.deadline_time.split(':').map(Number);
-  if (isNaN(hours) || isNaN(minutes)) return true;
+  if (isNaN(hours) || isNaN(minutes)) {
+    // Invalid time format - treat as end of day
+    const endOfDeadlineDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    return now > endOfDeadlineDay;
+  }
 
   const deadlineDateTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
   return now >= deadlineDateTime;
