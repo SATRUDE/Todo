@@ -20,6 +20,7 @@ export interface Todo {
   dailyTaskId?: number | null;
   description?: string | null;
   deadline?: { date: Date; time: string; recurring?: string };
+  timesDelayed?: number;
 }
 
 export interface ListItem {
@@ -124,7 +125,7 @@ export function TaskRow({
         </div>
       )}
 
-      {(time || list || subtaskCount > 0 || noteCount > 0) && (
+      {(time || list || subtaskCount > 0 || noteCount > 0 || (todo.timesDelayed && todo.timesDelayed > 0)) && (
         <div className="flex gap-2 items-center pl-8 flex-wrap">
           {time && (
             <div className="flex gap-1 items-center text-muted-foreground">
@@ -151,6 +152,29 @@ export function TaskRow({
                 />
               </svg>
               <span className="text-sm">{list.name}</span>
+            </div>
+          )}
+          {todo.timesDelayed && todo.timesDelayed > 0 && (
+            <div className="flex gap-1 items-center" style={{ color: "rgb(239, 65, 35)" }}>
+              <svg
+                className="size-5 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                />
+              </svg>
+              <span className="text-sm font-medium">{todo.timesDelayed}</span>
             </div>
           )}
           {subtaskCount > 0 && (
