@@ -365,7 +365,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     dailyTaskId: dbTodo.daily_task_id,
     parentTaskId: dbTodo.parent_task_id || undefined,
     deadline,
-    timesDelayed: dbTodo.times_delayed || 0,
+    timesDelayed: dbTodo.times_delayed && dbTodo.times_delayed > 0 ? dbTodo.times_delayed : undefined,
     type: dbTodo.type || 'task', // Default to 'task' if not set
     updatedAt: dbTodo.updated_at,
   }
