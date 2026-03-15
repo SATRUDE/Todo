@@ -6,6 +6,7 @@ interface CalendarTaskSuggestionsProps {
   onDismiss?: () => void;
   onTaskClick?: (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => void;
   onEventProcessed?: () => void;
+  onAddPrepareTask?: (params: { title: string; eventDate: Date; eventId: string }) => void;
 }
 
 export interface CalendarTaskSuggestionsRef {
@@ -14,7 +15,7 @@ export interface CalendarTaskSuggestionsRef {
 }
 
 export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, CalendarTaskSuggestionsProps>(
-  ({ onAcceptSuggestion, onDismiss, onTaskClick, onEventProcessed }, ref) => {
+  ({ onAcceptSuggestion, onDismiss, onTaskClick, onEventProcessed, onAddPrepareTask }, ref) => {
   type Suggestion = {
     text: string;
     description?: string;
@@ -271,9 +272,28 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
                 </p>
               )}
               {suggestion.deadline && (
-                <p className="font-normal text-sm text-muted-foreground break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                  {formatDate(suggestion.deadline.date)} at {suggestion.deadline.time}
-                </p>
+                <>
+                  <p className="font-normal text-sm text-muted-foreground break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                    {formatDate(suggestion.deadline.date)} at {suggestion.deadline.time}
+                  </p>
+                  {onAddPrepareTask && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onAddPrepareTask({
+                          title: suggestion.text,
+                          eventDate: suggestion.deadline!.date,
+                          eventId: suggestion.event.id,
+                        });
+                      }}
+                      className="mt-1.5 px-3 py-1.5 text-sm font-normal rounded-lg border border-border bg-transparent text-foreground cursor-pointer hover:bg-accent transition-colors text-left w-fit"
+                    >
+                      Prepare for: {suggestion.text}
+                    </button>
+                  )}
+                </>
               )}
               {suggestion.description && (
                 <p className="font-normal text-sm text-muted-foreground mt-1 break-words overflow-wrap-anywhere" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>

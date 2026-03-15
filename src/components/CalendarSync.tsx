@@ -41,6 +41,13 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
     setIsTaskDetailOpen(true);
   };
 
+  const handleAddPrepareTask = (params: { title: string; eventDate: Date; eventId: string }) => {
+    if (!onAddTask) return;
+    const dayBefore = new Date(params.eventDate);
+    dayBefore.setDate(dayBefore.getDate() - 1);
+    onAddTask("Prepare for: " + params.title, undefined, 0, undefined, { date: dayBefore, time: "" });
+  };
+
   const handleSync = async () => {
     if (!onSync || isSyncing) return;
     
@@ -162,6 +169,7 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
               ref={suggestionsRef}
               onTaskClick={handleTaskClick}
               onEventProcessed={onEventProcessed}
+              onAddPrepareTask={handleAddPrepareTask}
             />
           </div>
         )}
