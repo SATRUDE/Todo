@@ -55,6 +55,7 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
   const [suggestions, setSuggestions] = useState<Suggestion[]>(() => loadPersistedSuggestions());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [prepareAddedEventIds, setPrepareAddedEventIds] = useState<Set<string>>(new Set());
   const [hasLoadedOnce, setHasLoadedOnce] = useState(() => {
     // Check if we have persisted suggestions
     try {
@@ -282,15 +283,26 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        if (prepareAddedEventIds.has(suggestion.event.id)) return;
                         onAddPrepareTask({
                           title: suggestion.text,
                           eventDate: suggestion.deadline!.date,
                           eventId: suggestion.event.id,
                         });
+                        setPrepareAddedEventIds(prev => new Set(prev).add(suggestion.event.id));
                       }}
-                      className="mt-1.5 px-3 py-1.5 text-sm font-normal rounded-lg border border-border bg-transparent text-foreground cursor-pointer hover:bg-accent transition-colors text-left w-fit"
+                      disabled={prepareAddedEventIds.has(suggestion.event.id)}
+                      className={`mt-1.5 px-3 py-1.5 text-sm font-normal rounded-lg border text-left w-fit transition-colors ${
+                        prepareAddedEventIds.has(suggestion.event.id)
+                          ? "border-muted-foreground/30 bg-muted/30 text-muted-foreground cursor-default"
+                          : "border-border bg-transparent text-foreground cursor-pointer hover:bg-accent"
+                      }`}
                     >
-                      Prepare for: {suggestion.text}
+                      {prepareAddedEventIds.has(suggestion.event.id) ? (
+                        <>Prepare task added</>
+                      ) : (
+                        <>Prepare for: {suggestion.text}</>
+                      )}
                     </button>
                   )}
                 </>
