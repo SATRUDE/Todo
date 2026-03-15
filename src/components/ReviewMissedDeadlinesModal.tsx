@@ -36,6 +36,7 @@ interface ReviewMissedDeadlinesModalProps {
   onDeleteTask: (taskId: number) => void;
   onTaskClick?: (task: Todo) => void;
   onNewDeadlineClick?: (task: Todo) => void;
+  onMoveAllToToday?: () => void;
 }
 
 export function ReviewMissedDeadlinesModal({
@@ -48,6 +49,7 @@ export function ReviewMissedDeadlinesModal({
   onDeleteTask,
   onTaskClick,
   onNewDeadlineClick,
+  onMoveAllToToday,
 }: ReviewMissedDeadlinesModalProps) {
   const getListById = (listId?: number) => {
     if (listId === undefined) return null;
@@ -360,6 +362,19 @@ export function ReviewMissedDeadlinesModal({
               })}
             </div>
           </div>
+
+          {/* Footer: Move all to today */}
+          {onMoveAllToToday && missedDeadlines.length > 0 && (
+            <div className="shrink-0 w-full px-5 pt-4 pb-2 border-t border-border">
+              <button
+                type="button"
+                onClick={onMoveAllToToday}
+                className="w-full px-4 py-3 rounded-lg border border-border bg-transparent text-foreground font-medium cursor-pointer hover:bg-accent transition-colors"
+              >
+                Move all to today
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>,

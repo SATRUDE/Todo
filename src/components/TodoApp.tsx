@@ -2237,7 +2237,7 @@ export function TodoApp() {
         completed: todo.completed,
         listId: listId !== undefined ? listId : todo.listId,
         milestoneId: milestoneId !== undefined ? milestoneId : todo.milestoneId,
-        time: deadline?.time || todo.time || null,
+        time: deadline !== undefined ? (deadline?.time || null) : (todo.time || null),
         group: deadline ? undefined : (todo.group || null),
       };
       
@@ -2371,6 +2371,14 @@ export function TodoApp() {
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleNewDeadlineClick:stateSet',message:'State set for deadline modal',data:{taskId:task.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
     // #endregion
+  };
+
+  const handleMoveAllMissedToToday = async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (const todo of missedDeadlines) {
+      await handleUpdateDeadline(todo.id, { date: new Date(today.getTime()), time: "" });
+    }
   };
 
   const handleTaskClick = (task: Todo) => {
@@ -3762,6 +3770,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           setIsTaskDetailOpen(true);
         }}
         onNewDeadlineClick={handleNewDeadlineClick}
+        onMoveAllToToday={handleMoveAllMissedToToday}
       />
 
       {/* Filter Lists Modal */}
