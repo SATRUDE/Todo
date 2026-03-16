@@ -99,6 +99,16 @@ export interface ListItem {
   updated_at?: string
 }
 
+export interface NotebookBook {
+  id: number
+  list_id: number
+  name: string
+  color: string
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
 export interface CommonTask {
   id: number
   text: string
@@ -846,6 +856,141 @@ export async function deleteList(id: number): Promise<void> {
     console.error('Error deleting list:', error)
     throw error
   }
+}
+
+// Notebook books
+export async function fetchNotebookBooks(): Promise<NotebookBook[]> {
+  const userId = await ensureAuthenticated()
+  const { data, error } = await supabase
+    .from('notebook_books')
+    .select('*')
+    .eq('user_id', userId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching notebook books:', error)
+    throw error
+  }
+
+  return data ? data.map(dbNotebookBookToApp) : []
+}
+
+function dbNotebookBookToApp(db: any): NotebookBook {
+  return {
+    id: db.id,
+    list_id: db.list_id,
+    name: db.name,
+    color: db.color,
+    sort_order: db.sort_order ?? 0,
+    created_at: db.created_at,
+    updated_at: db.updated_at,
+  }
+}
+
+export async function createNotebookBook(book: { name: string; color?: string }): Promise<NotebookBook> {
+  const userId = await ensureAuthenticated()
+  // Create a list first to hold the book's tasks
+  const list = await createList({
+    name: book.name,
+    color: book.color || '#8B5CF6',
+    isShared: false,
+  })
+  const maxSort = await getMaxNotebookBookSortOrder()
+  const { data, error } = await supabase
+    .from('notebook_books')
+    .insert({
+      user_id: userId,
+      list_id: list.id,
+      name: book.name,
+      color: book.color || '#8B5CF6',
+      sort_order: maxSort + 1,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating notebook book:', error)
+    throw error
+  }
+
+  return dbNotebookBookToApp(data)
+}
+
+async function getMaxNotebookBookSortOrder(): Promise<number> {
+  const userId = await ensureAuthenticated()
+  const { data } = await supabase
+    .from('notebook_books')
+    .select('sort_order')
+    .eq('user_id', userId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+  return data?.[0]?.sort_order ?? -1
+}
+
+export async function updateNotebookBook(id: number, book: { name?: string; color?: string }): Promise<NotebookBook> {
+  const userId = await ensureAuthenticated()
+  const update: Record<string, unknown> = {}
+  if (book.name !== undefined) update.name = book.name
+  if (book.color !== undefined) update.color = book.color
+
+  const { data, error } = await supabase
+    .from('notebook_books')
+    .update(update)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating notebook book:', error)
+    throw error
+  }
+
+  // Keep the associated list in sync
+  if (data?.list_id && (book.name !== undefined || book.color !== undefined)) {
+    const listUpdate: Record<string, unknown> = {}
+    if (book.name !== undefined) listUpdate.name = book.name
+    if (book.color !== undefined) listUpdate.color = book.color
+    await supabase
+      .from('lists')
+      .update(listUpdate)
+      .eq('id', data.list_id)
+      .eq('user_id', userId)
+  }
+
+  return dbNotebookBookToApp(data)
+}
+
+export async function deleteNotebookBook(id: number): Promise<void> {
+  const userId = await ensureAuthenticated()
+  const { data: book } = await supabase
+    .from('notebook_books')
+    .select('list_id')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single()
+
+  if (!book?.list_id) {
+    return
+  }
+
+  const listId = book.list_id
+
+  // Delete the notebook book first (removes FK reference to list)
+  const { error } = await supabase
+    .from('notebook_books')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Error deleting notebook book:', error)
+    throw error
+  }
+
+  // Then delete the associated list (moves tasks to Today, deletes list)
+  await deleteList(listId)
 }
 
 // Common Tasks

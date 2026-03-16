@@ -26,6 +26,7 @@ import { Workshop } from "./Workshop";
 import { Notes } from "./Notes";
 import { NoteDetail } from "./NoteDetail";
 import { DrinkWater } from "./DrinkWater";
+import { Notebooks } from "./Notebooks";
 import { TasksPage } from "./TasksPage";
 import { SearchPage } from "./SearchPage";
 import { APP_VERSION } from "../lib/version";
@@ -81,7 +82,12 @@ import {
   createNote,
   updateNote,
   deleteNote,
-  type Note
+  type Note,
+  fetchNotebookBooks,
+  createNotebookBook,
+  updateNotebookBook,
+  deleteNotebookBook,
+  type NotebookBook
 } from "../lib/database";
 import { 
   requestNotificationPermission, 
@@ -128,7 +134,7 @@ interface ListItem {
   folderId?: number | null;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop" | "notes" | "noteDetail" | "search";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop" | "notes" | "noteDetail" | "search" | "notebooks" | "notebookBookDetail";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -144,6 +150,8 @@ export function TodoApp() {
   const [dailyTasks, setDailyTasks] = useState<DailyTask[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [notebookBooks, setNotebookBooks] = useState<NotebookBook[]>([]);
+  const [selectedNotebookBook, setSelectedNotebookBook] = useState<NotebookBook | null>(null);
   const [notesPreselectedTaskId, setNotesPreselectedTaskId] = useState<number | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [noteDetailReturnPage, setNoteDetailReturnPage] = useState<"notes" | "search" | null>(null);
@@ -419,17 +427,19 @@ export function TodoApp() {
     setIsSecondaryDataLoading(true);
     
     try {
-      const [commonTasksData, dailyTasksData, goalsData, notesData] = await Promise.allSettled([
+      const [commonTasksData, dailyTasksData, goalsData, notesData, notebookBooksData] = await Promise.allSettled([
         fetchCommonTasks(),
         fetchDailyTasks(),
         fetchGoals(),
-        fetchNotes()
+        fetchNotes(),
+        fetchNotebookBooks()
       ]);
       
       const commonTasksResult = commonTasksData.status === 'fulfilled' ? commonTasksData.value : [];
       const dailyTasksResult = dailyTasksData.status === 'fulfilled' ? dailyTasksData.value : [];
       const goalsResult = goalsData.status === 'fulfilled' ? goalsData.value : [];
       const notesResult = notesData.status === 'fulfilled' ? notesData.value : [];
+      const notebookBooksResult = notebookBooksData.status === 'fulfilled' ? notebookBooksData.value : [];
 
       if (commonTasksData.status === 'rejected') {
         console.error('Error fetching common tasks:', commonTasksData.reason);
@@ -443,6 +453,9 @@ export function TodoApp() {
       if (notesData.status === 'rejected') {
         console.error('Error fetching notes:', notesData.reason);
       }
+      if (notebookBooksData.status === 'rejected') {
+        console.error('Error fetching notebook books:', notebookBooksData.reason);
+      }
 
       // Convert common tasks from database format to display format
       const displayCommonTasks = commonTasksResult.map(dbCommonTaskToDisplayCommonTask);
@@ -454,6 +467,7 @@ export function TodoApp() {
       const displayGoals = goalsResult.map(dbGoalToDisplayGoal);
       setGoals(displayGoals);
       setNotes(notesResult);
+      setNotebookBooks(notebookBooksResult);
 
       // Generate tasks from daily tasks for today (if not already generated)
       if (displayDailyTasks.length > 0) {
@@ -1607,6 +1621,8 @@ export function TodoApp() {
       await deleteListDb(listId);
       // Remove the list
       setLists(lists.filter(list => list.id !== listId));
+      // Remove notebook book if this list was a notebook book's list
+      setNotebookBooks(notebookBooks.filter(b => b.list_id !== listId));
       // Move all tasks from this list to Today
       setTodos(todos.map(todo => {
         if (todo.listId === listId) {
@@ -1619,6 +1635,43 @@ export function TodoApp() {
       }));
     } catch (error) {
       console.error('Error deleting list:', error);
+    }
+  };
+
+  const handleAddNotebookBook = async (name: string, color?: string) => {
+    try {
+      const book = await createNotebookBook({ name, color });
+      setNotebookBooks(prev => [...prev, book]);
+      // Also add the new list to lists (book creates a list)
+      const newList = { id: book.list_id, name: book.name, color: book.color, count: 0, isShared: false };
+      setLists(prev => [...prev, newList]);
+    } catch (error) {
+      console.error('Error creating notebook book:', error);
+    }
+  };
+
+  const handleUpdateNotebookBook = async (id: number, name: string, color?: string) => {
+    try {
+      const updated = await updateNotebookBook(id, { name, color });
+      setNotebookBooks(prev => prev.map(b => b.id === id ? updated : b));
+      setLists(prev => prev.map(l => l.id === updated.list_id ? { ...l, name: updated.name, color: updated.color } : l));
+    } catch (error) {
+      console.error('Error updating notebook book:', error);
+    }
+  };
+
+  const handleDeleteNotebookBook = async (id: number) => {
+    try {
+      const book = notebookBooks.find(b => b.id === id);
+      if (!book) return;
+      await deleteNotebookBook(id);
+      setNotebookBooks(prev => prev.filter(b => b.id !== id));
+      setLists(prev => prev.filter(l => l.id !== book.list_id));
+      setTodos(prev => prev.map(t => t.listId === book.list_id ? { ...t, listId: TODAY_LIST_ID } : t));
+      setSelectedNotebookBook(null);
+      setCurrentPage('notebooks');
+    } catch (error) {
+      console.error('Error deleting notebook book:', error);
     }
   };
 
@@ -3089,7 +3142,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         <Lists 
           onSelectList={handleSelectList}
           todos={todos}
-          lists={lists}
+          lists={lists.filter(l => !notebookBooks.some(b => b.list_id === l.id))}
           folders={listFolders}
           onAddList={addNewList}
           onUpdateList={updateList}
@@ -3111,9 +3164,56 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             setCurrentPage("notes");
           }}
           onNavigateToDrinkWater={() => setCurrentPage("drinkWater")}
+          onNavigateToNotebook={() => setCurrentPage("notebooks")}
         />
       ) : currentPage === "drinkWater" ? (
         <DrinkWater onBack={() => setCurrentPage("dashboard")} />
+      ) : currentPage === "notebooks" ? (
+        isSecondaryDataLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-[#e1e6ee]">Loading notebook...</div>
+          </div>
+        ) : (
+          <Notebooks
+            onBack={() => setCurrentPage("dashboard")}
+            onSelectBook={(book) => {
+              setSelectedNotebookBook(book);
+              setCurrentPage("notebookBookDetail");
+            }}
+            books={notebookBooks}
+            todos={todos}
+            onAddBook={handleAddNotebookBook}
+            onUpdateBook={handleUpdateNotebookBook}
+            onDeleteBook={handleDeleteNotebookBook}
+          />
+        )
+      ) : currentPage === "notebookBookDetail" && selectedNotebookBook ? (
+        <ListDetail
+          listId={selectedNotebookBook.list_id}
+          listName={selectedNotebookBook.name}
+          listColor={selectedNotebookBook.color}
+          isShared={false}
+          listFolderId={null}
+          onBack={() => {
+            setSelectedNotebookBook(null);
+            setCurrentPage("notebooks");
+          }}
+          tasks={getTasksForList(selectedNotebookBook.list_id)}
+          onToggleTask={toggleTodo}
+          onAddTask={(taskText, description, type) => addNewTaskToList(taskText, description, selectedNotebookBook.list_id, type)}
+          onUpdateList={(_listId, listName, _isShared, color) => handleUpdateNotebookBook(selectedNotebookBook.id, listName, color)}
+          onDeleteList={() => handleDeleteNotebookBook(selectedNotebookBook.id)}
+          onTaskClick={handleTaskClick}
+          lists={lists}
+          folders={listFolders}
+          onAddFolder={addNewFolder}
+          onUpdateFolder={updateFolder}
+          onDeleteFolder={deleteFolder}
+          onNavigateToDailyTasks={() => { setSelectedNotebookBook(null); setCurrentPage("dailyTasks"); }}
+          onNavigateToCommonTasks={() => { setSelectedNotebookBook(null); setCurrentPage("commonTasks"); }}
+          milestones={allMilestonesWithGoals}
+          getNoteCount={(id) => notes.filter((n) => n.task_id === id).length}
+        />
       ) : currentPage === "calendarSync" ? (
         <CalendarSync 
           onBack={() => setCurrentPage("dashboard")}
@@ -3602,11 +3702,12 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onClick={() => {
             setCurrentPage("dashboard");
             setSelectedList(null);
+            setSelectedNotebookBook(null);
           }}
           aria-label="Dashboard"
         >
           <svg
-            className={`block size-full ${currentPage === "dashboard" ? "stroke-foreground" : "stroke-muted-foreground"}`}
+            className={`block size-full ${(currentPage === "dashboard" || currentPage === "notebooks" || currentPage === "notebookBookDetail") ? "stroke-foreground" : "stroke-muted-foreground"}`}
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -3707,7 +3808,13 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         onDeleteTask={deleteTask}
         lists={lists}
         milestones={allMilestonesWithGoals}
-        defaultListId={currentPage === "listDetail" && selectedList && selectedList.id !== ALL_TASKS_LIST_ID ? selectedList.id : undefined}
+        defaultListId={
+          currentPage === "listDetail" && selectedList && selectedList.id !== ALL_TASKS_LIST_ID
+            ? selectedList.id
+            : currentPage === "notebookBookDetail" && selectedNotebookBook
+              ? selectedNotebookBook.list_id
+              : undefined
+        }
         onNavigateToDailyTasks={() => {
           setIsModalOpen(false);
           setCurrentPage("dailyTasks");
