@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { X, Search } from "lucide-react";
 
@@ -63,10 +63,20 @@ export function AddTasksToSessionModal({
   }, [incompleteTasks, search]);
 
   // Group filtered tasks by list
+  // listId === 0  → Today
+  // listId > 0    → named list
+  // listId undefined/null/negative → Unassigned
   const tasksByList = useMemo(() => {
-    const map = new Map<number | undefined, Todo[]>();
+    const map = new Map<number | string, Todo[]>();
     filteredTasks.forEach((task) => {
-      const key = task.listId && task.listId > 0 ? task.listId : undefined;
+      let key: number | string;
+      if (task.listId && task.listId > 0) {
+        key = task.listId;
+      } else if (task.listId === 0) {
+        key = "today";
+      } else {
+        key = "unassigned";
+      }
       const arr = map.get(key) ?? [];
       arr.push(task);
       map.set(key, arr);
@@ -97,20 +107,26 @@ export function AddTasksToSessionModal({
 
   if (!isOpen) return null;
 
-  const groups: Array<{ list: ListItem | null; tasks: Todo[] }> = [];
+  const groups: Array<{ key: string; label: React.ReactNode; tasks: Todo[] }> = [];
 
-  // Named lists first (ordered by list id appearance in `lists`)
+  // Today first
+  const todayTasks = tasksByList.get("today");
+  if (todayTasks && todayTasks.length > 0) {
+    groups.push({ key: "today", label: <span className="text-[#5b5d62]">Today</span>, tasks: todayTasks });
+  }
+
+  // Named lists
   lists.forEach((list) => {
     const tasks = tasksByList.get(list.id);
     if (tasks && tasks.length > 0) {
-      groups.push({ list, tasks });
+      groups.push({ key: String(list.id), label: <span style={{ color: list.color }}>{list.name}</span>, tasks });
     }
   });
 
-  // Today / unassigned tasks last
-  const todayTasks = tasksByList.get(undefined);
-  if (todayTasks && todayTasks.length > 0) {
-    groups.push({ list: null, tasks: todayTasks });
+  // Unassigned last
+  const unassignedTasks = tasksByList.get("unassigned");
+  if (unassignedTasks && unassignedTasks.length > 0) {
+    groups.push({ key: "unassigned", label: <span className="text-[#5b5d62]">Unassigned</span>, tasks: unassignedTasks });
   }
 
   return createPortal(
@@ -166,14 +182,10 @@ export function AddTasksToSessionModal({
               <p className="text-[#5b5d62] text-base text-center py-8">No tasks available to add.</p>
             ) : (
               <div className="flex flex-col gap-5">
-                {groups.map(({ list, tasks }) => (
-                  <div key={list?.id ?? "today"} className="flex flex-col gap-2">
-                    <p className="text-xs font-medium uppercase tracking-wider text-[#5b5d62]">
-                      {list ? (
-                        <span style={{ color: list.color }}>{list.name}</span>
-                      ) : (
-                        "Today / Unassigned"
-                      )}
+                {groups.map(({ key, label, tasks }) => (
+                  <div key={key} className="flex flex-col gap-2">
+                    <p className="text-xs font-medium uppercase tracking-wider">
+                      {label}
                     </p>
                     {tasks.map((task) => (
                       <button
