@@ -26,6 +26,8 @@ import { Workshop } from "./Workshop";
 import { Notes } from "./Notes";
 import { NoteDetail } from "./NoteDetail";
 import { DrinkWater } from "./DrinkWater";
+import { FocusSessions } from "./FocusSessions";
+import { FocusSessionDetail } from "./FocusSessionDetail";
 import { TasksPage } from "./TasksPage";
 import { SearchPage } from "./SearchPage";
 import { APP_VERSION } from "../lib/version";
@@ -81,7 +83,16 @@ import {
   createNote,
   updateNote,
   deleteNote,
-  type Note
+  type Note,
+  fetchFocusSessions,
+  createFocusSession,
+  updateFocusSession,
+  deleteFocusSession,
+  fetchSessionTasks,
+  addTaskToSession,
+  removeTaskFromSession,
+  type FocusSession,
+  type SessionTaskWithTodo
 } from "../lib/database";
 import { 
   requestNotificationPermission, 
@@ -128,7 +139,7 @@ interface ListItem {
   folderId?: number | null;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop" | "notes" | "noteDetail" | "search";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop" | "notes" | "noteDetail" | "search" | "focusSessions" | "focusSessionDetail";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -147,6 +158,10 @@ export function TodoApp() {
   const [notesPreselectedTaskId, setNotesPreselectedTaskId] = useState<number | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [noteDetailReturnPage, setNoteDetailReturnPage] = useState<"notes" | "search" | null>(null);
+  const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
+  const [selectedSession, setSelectedSession] = useState<FocusSession | null>(null);
+  const [selectedSessionTasks, setSelectedSessionTasks] = useState<SessionTaskWithTodo[]>([]);
+  const [taskToAddToSession, setTaskToAddToSession] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [isReviewMissedDeadlinesOpen, setIsReviewMissedDeadlinesOpen] = useState(false);
@@ -417,19 +432,21 @@ export function TodoApp() {
   // Stage 2: Secondary data (common tasks, daily tasks, goals) - loads in background
   const loadSecondaryData = async () => {
     setIsSecondaryDataLoading(true);
-    
+
     try {
-      const [commonTasksData, dailyTasksData, goalsData, notesData] = await Promise.allSettled([
+      const [commonTasksData, dailyTasksData, goalsData, notesData, sessionsData] = await Promise.allSettled([
         fetchCommonTasks(),
         fetchDailyTasks(),
         fetchGoals(),
-        fetchNotes()
+        fetchNotes(),
+        fetchFocusSessions()
       ]);
-      
+
       const commonTasksResult = commonTasksData.status === 'fulfilled' ? commonTasksData.value : [];
       const dailyTasksResult = dailyTasksData.status === 'fulfilled' ? dailyTasksData.value : [];
       const goalsResult = goalsData.status === 'fulfilled' ? goalsData.value : [];
       const notesResult = notesData.status === 'fulfilled' ? notesData.value : [];
+      const sessionsResult = sessionsData.status === 'fulfilled' ? sessionsData.value : [];
 
       if (commonTasksData.status === 'rejected') {
         console.error('Error fetching common tasks:', commonTasksData.reason);
@@ -443,6 +460,9 @@ export function TodoApp() {
       if (notesData.status === 'rejected') {
         console.error('Error fetching notes:', notesData.reason);
       }
+      if (sessionsData.status === 'rejected') {
+        console.error('Error fetching focus sessions:', sessionsData.reason);
+      }
 
       // Convert common tasks from database format to display format
       const displayCommonTasks = commonTasksResult.map(dbCommonTaskToDisplayCommonTask);
@@ -454,6 +474,7 @@ export function TodoApp() {
       const displayGoals = goalsResult.map(dbGoalToDisplayGoal);
       setGoals(displayGoals);
       setNotes(notesResult);
+      setFocusSessions(sessionsResult);
 
       // Generate tasks from daily tasks for today (if not already generated)
       if (displayDailyTasks.length > 0) {
@@ -835,6 +856,18 @@ export function TodoApp() {
 
     initialize();
   }, [isAuthenticated]);
+
+  // Sync session task completion status when todos state changes
+  useEffect(() => {
+    if (currentPage !== 'focusSessionDetail' || selectedSessionTasks.length === 0) return;
+    setSelectedSessionTasks((prev) =>
+      prev.map((st) => {
+        const latestTodo = todos.find((t) => t.id === st.task_id);
+        if (!latestTodo) return st;
+        return { ...st, todo: { ...st.todo, completed: latestTodo.completed } };
+      })
+    );
+  }, [todos]);
 
   // Load milestones when navigating to goals-related pages
   useEffect(() => {
@@ -1920,6 +1953,85 @@ export function TodoApp() {
       alert(`Failed to delete note: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
+
+  // ─── Focus Session handlers ────────────────────────────────────────────────
+
+  const handleCreateFocusSession = async (name: string, color: string) => {
+    try {
+      const created = await createFocusSession(name, color);
+      setFocusSessions((prev) => [created, ...prev]);
+    } catch (error) {
+      console.error('Error creating focus session:', error);
+      alert(`Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleUpdateFocusSession = async (id: number, name: string, color: string) => {
+    try {
+      const updated = await updateFocusSession(id, name, color);
+      setFocusSessions((prev) => prev.map((s) => (s.id === id ? updated : s)));
+      if (selectedSession?.id === id) setSelectedSession(updated);
+    } catch (error) {
+      console.error('Error updating focus session:', error);
+      alert(`Failed to update session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleDeleteFocusSession = async (id: number) => {
+    try {
+      await deleteFocusSession(id);
+      setFocusSessions((prev) => prev.filter((s) => s.id !== id));
+      if (selectedSession?.id === id) {
+        setSelectedSession(null);
+        setSelectedSessionTasks([]);
+      }
+    } catch (error) {
+      console.error('Error deleting focus session:', error);
+      alert(`Failed to delete session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleSelectFocusSession = async (session: FocusSession, pendingTaskId?: number | null) => {
+    setSelectedSession(session);
+    try {
+      // Add the pending task before loading the session tasks
+      if (pendingTaskId != null) {
+        await addTaskToSession(session.id, pendingTaskId);
+        setTaskToAddToSession(null);
+      }
+      const tasks = await fetchSessionTasks(session.id);
+      setSelectedSessionTasks(tasks);
+    } catch (error) {
+      console.error('Error loading session tasks:', error);
+      setSelectedSessionTasks([]);
+    }
+    setCurrentPage('focusSessionDetail');
+  };
+
+  const handleAddTasksToSession = async (taskIds: number[]) => {
+    if (!selectedSession) return;
+    try {
+      await Promise.all(taskIds.map((id) => addTaskToSession(selectedSession.id, id)));
+      const tasks = await fetchSessionTasks(selectedSession.id);
+      setSelectedSessionTasks(tasks);
+    } catch (error) {
+      console.error('Error adding tasks to session:', error);
+      alert(`Failed to add tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleRemoveTaskFromSession = async (taskId: number) => {
+    if (!selectedSession) return;
+    try {
+      await removeTaskFromSession(selectedSession.id, taskId);
+      setSelectedSessionTasks((prev) => prev.filter((st) => st.task_id !== taskId));
+    } catch (error) {
+      console.error('Error removing task from session:', error);
+      alert(`Failed to remove task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // ─── End Focus Session handlers ────────────────────────────────────────────
 
   // Reset common tasks: remove all related tasks and regenerate them
   const resetCommonTasks = async (commonTasksToReset: any[]) => {
@@ -3086,7 +3198,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           }}
         />
             ) : currentPage === "lists" ? (
-        <Lists 
+        <Lists
           onSelectList={handleSelectList}
           todos={todos}
           lists={lists}
@@ -3099,8 +3211,38 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onDeleteFolder={deleteFolder}
           onBack={() => setCurrentPage("today")}
         />
+      ) : currentPage === "focusSessions" ? (
+        <FocusSessions
+          sessions={focusSessions}
+          onSelectSession={(session) => handleSelectFocusSession(session, taskToAddToSession)}
+          onCreateSession={handleCreateFocusSession}
+          onUpdateSession={handleUpdateFocusSession}
+          onDeleteSession={handleDeleteFocusSession}
+          onBack={() => {
+            setTaskToAddToSession(null);
+            setCurrentPage("dashboard");
+          }}
+          pendingTaskId={taskToAddToSession}
+        />
+      ) : currentPage === "focusSessionDetail" && selectedSession ? (
+        <FocusSessionDetail
+          session={selectedSession}
+          sessionTasks={selectedSessionTasks}
+          allTodos={todos.filter((t) => !t.completed)}
+          lists={lists}
+          onBack={() => setCurrentPage("focusSessions")}
+          onToggleTask={toggleTodo}
+          onTaskClick={handleTaskClick}
+          onUpdateSession={handleUpdateFocusSession}
+          onDeleteSession={async (id) => {
+            await handleDeleteFocusSession(id);
+            setCurrentPage("focusSessions");
+          }}
+          onAddTasksToSession={handleAddTasksToSession}
+          onRemoveTaskFromSession={handleRemoveTaskFromSession}
+        />
       ) : currentPage === "dashboard" ? (
-        <Dashboard 
+        <Dashboard
           onAddTask={addNewTask}
           onNavigateToCalendarSync={() => setCurrentPage("calendarSync")}
           onNavigateToCommonTasks={() => setCurrentPage("commonTasks")}
@@ -3111,6 +3253,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             setCurrentPage("notes");
           }}
           onNavigateToDrinkWater={() => setCurrentPage("drinkWater")}
+          onNavigateToFocusSessions={() => setCurrentPage("focusSessions")}
         />
       ) : currentPage === "drinkWater" ? (
         <DrinkWater onBack={() => setCurrentPage("dashboard")} />
@@ -3752,6 +3895,14 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           }}
           onConvertToDailyTask={convertTaskToDaily}
           onConvertToCommonTask={convertTaskToCommon}
+          sessionsForTask={selectedTask ? focusSessions : []}
+          onAddToSession={(taskId) => {
+            setIsTaskDetailOpen(false);
+            // Navigate to sessions list so user can pick a session or create one
+            setCurrentPage("focusSessions");
+            // Store the task so user can add it after selecting/creating a session
+            setTaskToAddToSession(taskId);
+          }}
         />
       )}
 

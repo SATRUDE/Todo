@@ -67,6 +67,8 @@ interface TaskDetailModalProps {
   onNavigateToCommonTasks?: () => void;
   onConvertToDailyTask?: (taskId: number) => void | Promise<void>;
   onConvertToCommonTask?: (taskId: number) => void | Promise<void>;
+  sessionsForTask?: Array<{ id: number; name: string; color: string }>;
+  onAddToSession?: (taskId: number) => void;
 }
 
 // Helper function to get all text nodes in an element
@@ -86,7 +88,7 @@ function getTextNodes(element: Node): Text[] {
   return textNodes;
 }
 
-export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks, onConvertToDailyTask, onConvertToCommonTask }: TaskDetailModalProps) {
+export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks, onConvertToDailyTask, onConvertToCommonTask, sessionsForTask = [], onAddToSession }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
   const [taskDescription, setTaskDescription] = useState(task.description || "");
   const [imageUrl, setImageUrl] = useState<string | null>(task.imageUrl || null);
@@ -965,6 +967,20 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                   </svg>
                   Add Image
                 </button>
+
+                {/* Session Button */}
+                {onAddToSession && task.id >= 0 && (
+                  <button
+                    type="button"
+                    className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
+                    onClick={() => onAddToSession(task.id)}
+                  >
+                    <svg className="size-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+                    </svg>
+                    Session
+                  </button>
+                )}
 
                 {/* Add Subtask Button */}
                 {onCreateSubtask && (
