@@ -8,6 +8,7 @@ interface Todo {
   completed: boolean;
   listId?: number;
   description?: string | null;
+  deadline?: { date: Date; time: string; recurring?: string };
 }
 
 interface ListItem {
@@ -62,39 +63,59 @@ export function AddTasksToSessionModal({
     return incompleteTasks.filter((t) => t.text.toLowerCase().includes(q));
   }, [incompleteTasks, search]);
 
-  // Group filtered tasks by list
-  // listId === 0  → Today
-  // listId > 0    → named list
-  // listId undefined/null/negative → Unassigned
-  const tasksByList = useMemo(() => {
-    const map = new Map<number | string, Todo[]>();
-    filteredTasks.forEach((task) => {
-      let key: number | string;
-      if (task.listId && task.listId > 0) {
-        key = task.listId;
-      } else if (task.listId === 0) {
-        key = "today";
-      } else {
-        key = "unassigned";
-      }
-      const arr = map.get(key) ?? [];
-      arr.push(task);
-      map.set(key, arr);
-    });
-    return map;
-  }, [filteredTasks]);
-
   const getListById = (listId?: number) =>
-    listId ? lists.find((l) => l.id === listId) : null;
+    listId && listId > 0 ? lists.find((l) => l.id === listId) ?? null : null;
+
+  // Split into Today bucket and rest-grouped-by-list
+  const { todayTasks, listGroups, unassigned } = useMemo(() => {
+    const todayDateStr = new Date().toDateString();
+    const todayIds = new Set<number>();
+    const todayBucket: Todo[] = [];
+    const byList = new Map<number, Todo[]>();
+    const unassignedBucket: Todo[] = [];
+
+    // First pass: identify today's tasks
+    filteredTasks.forEach((task) => {
+      const isToday =
+        task.listId === 0 ||
+        (task.deadline &&
+          new Date(task.deadline.date).toDateString() === todayDateStr);
+      if (isToday) {
+        todayIds.add(task.id);
+        todayBucket.push(task);
+      }
+    });
+
+    // Second pass: bucket the rest
+    filteredTasks.forEach((task) => {
+      if (todayIds.has(task.id)) return;
+      if (task.listId && task.listId > 0) {
+        const arr = byList.get(task.listId) ?? [];
+        arr.push(task);
+        byList.set(task.listId, arr);
+      } else {
+        unassignedBucket.push(task);
+      }
+    });
+
+    // Build ordered list groups following the `lists` array order
+    const ordered: Array<{ list: ListItem; tasks: Todo[] }> = [];
+    lists.forEach((list) => {
+      const tasks = byList.get(list.id);
+      if (tasks && tasks.length > 0) ordered.push({ list, tasks });
+    });
+
+    return { todayTasks: todayBucket, listGroups: ordered, unassigned: unassignedBucket };
+  }, [filteredTasks, lists]);
+
+  const hasAllTasksSection =
+    listGroups.length > 0 || unassigned.length > 0;
 
   const toggleTask = (id: number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -107,30 +128,51 @@ export function AddTasksToSessionModal({
 
   if (!isOpen) return null;
 
-  const groups: Array<{ key: string; label: React.ReactNode; tasks: Todo[] }> = [];
+  const isEmpty = todayTasks.length === 0 && !hasAllTasksSection;
 
-  // Today first
-  const todayTasks = tasksByList.get("today");
-  if (todayTasks && todayTasks.length > 0) {
-    groups.push({ key: "today", label: <span className="text-[#5b5d62]">Today</span>, tasks: todayTasks });
-  }
+  const renderTaskRow = (task: Todo) => {
+    const list = getListById(task.listId);
+    return (
+      <button
+        key={task.id}
+        type="button"
+        className="flex items-center gap-3 w-full text-left py-2 px-3 rounded-lg hover:bg-[rgba(225,230,238,0.05)] transition-colors"
+        onClick={() => toggleTask(task.id)}
+      >
+        {/* Checkbox */}
+        <div
+          className="shrink-0 size-5 rounded-full border border-[rgba(225,230,238,0.3)] flex items-center justify-center"
+          style={
+            selectedIds.has(task.id)
+              ? { backgroundColor: "#0b64f9", borderColor: "#0b64f9" }
+              : {}
+          }
+        >
+          {selectedIds.has(task.id) && (
+            <svg className="size-3" fill="none" viewBox="0 0 12 12" stroke="white" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+            </svg>
+          )}
+        </div>
 
-  // Named lists
-  lists.forEach((list) => {
-    const tasks = tasksByList.get(list.id);
-    if (tasks && tasks.length > 0) {
-      groups.push({ key: String(list.id), label: <span style={{ color: list.color }}>{list.name}</span>, tasks });
-    }
-  });
-
-  // Unassigned last
-  const unassignedTasks = tasksByList.get("unassigned");
-  if (unassignedTasks && unassignedTasks.length > 0) {
-    groups.push({ key: "unassigned", label: <span className="text-[#5b5d62]">Unassigned</span>, tasks: unassignedTasks });
-  }
+        {/* Text + list badge */}
+        <div className="flex-1 min-w-0">
+          <p className="text-base text-[#e1e6ee] truncate">{task.text}</p>
+          {list && (
+            <span className="text-xs font-medium" style={{ color: list.color }}>
+              {list.name}
+            </span>
+          )}
+        </div>
+      </button>
+    );
+  };
 
   return createPortal(
-    <div className="fixed inset-0 z-[10001] pointer-events-none" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10001 }}>
+    <div
+      className="fixed inset-0 z-[10001] pointer-events-none"
+      style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10001 }}
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 pointer-events-auto"
@@ -140,7 +182,10 @@ export function AddTasksToSessionModal({
 
       {/* Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="bg-[#110c10] flex flex-col rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet" style={{ maxHeight: "85vh" }}>
+        <div
+          className="bg-[#110c10] flex flex-col rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet"
+          style={{ maxHeight: "85vh" }}
+        >
           {/* Handle */}
           <div className="flex justify-center pt-5 pb-2 shrink-0">
             <div className="h-[20px] w-[100px]">
@@ -178,36 +223,49 @@ export function AddTasksToSessionModal({
 
           {/* Task list */}
           <div className="flex-1 overflow-y-auto px-5 pb-4">
-            {groups.length === 0 ? (
+            {isEmpty ? (
               <p className="text-[#5b5d62] text-base text-center py-8">No tasks available to add.</p>
             ) : (
-              <div className="flex flex-col gap-5">
-                {groups.map(({ key, label, tasks }) => (
-                  <div key={key} className="flex flex-col gap-2">
-                    <p className="text-xs font-medium uppercase tracking-wider">
-                      {label}
+              <div className="flex flex-col gap-1">
+
+                {/* ── TODAY ── */}
+                {todayTasks.length > 0 && (
+                  <div className="flex flex-col gap-1 mb-2">
+                    <p className="text-xs font-medium uppercase tracking-wider text-[#5b5d62] px-3 pt-1 pb-1">
+                      Today
                     </p>
-                    {tasks.map((task) => (
-                      <button
-                        key={task.id}
-                        type="button"
-                        className="flex items-center gap-3 w-full text-left py-2 px-3 rounded-lg hover:bg-[rgba(225,230,238,0.05)] transition-colors"
-                        onClick={() => toggleTask(task.id)}
-                      >
-                        {/* Checkbox */}
-                        <div className="shrink-0 size-5 rounded-full border border-[rgba(225,230,238,0.3)] flex items-center justify-center"
-                          style={selectedIds.has(task.id) ? { backgroundColor: "#0b64f9", borderColor: "#0b64f9" } : {}}>
-                          {selectedIds.has(task.id) && (
-                            <svg className="size-3" fill="none" viewBox="0 0 12 12" stroke="white" strokeWidth="2">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="text-base text-[#e1e6ee] truncate">{task.text}</span>
-                      </button>
-                    ))}
+                    {todayTasks.map(renderTaskRow)}
                   </div>
-                ))}
+                )}
+
+                {/* Divider between sections */}
+                {todayTasks.length > 0 && hasAllTasksSection && (
+                  <div className="border-t border-[rgba(225,230,238,0.08)] my-3" />
+                )}
+
+                {/* ── ALL TASKS (grouped by list) ── */}
+                {hasAllTasksSection && (
+                  <div className="flex flex-col gap-4">
+                    {listGroups.map(({ list, tasks }) => (
+                      <div key={list.id} className="flex flex-col gap-1">
+                        <p className="text-xs font-medium uppercase tracking-wider px-3 pb-1" style={{ color: list.color }}>
+                          {list.name}
+                        </p>
+                        {tasks.map(renderTaskRow)}
+                      </div>
+                    ))}
+
+                    {unassigned.length > 0 && (
+                      <div className="flex flex-col gap-1">
+                        <p className="text-xs font-medium uppercase tracking-wider text-[#5b5d62] px-3 pb-1">
+                          Unassigned
+                        </p>
+                        {unassigned.map(renderTaskRow)}
+                      </div>
+                    )}
+                  </div>
+                )}
+
               </div>
             )}
           </div>
