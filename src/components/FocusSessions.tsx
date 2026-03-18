@@ -109,8 +109,8 @@ export function FocusSessions({
               </div>
               <Button
                 type="button"
-                variant="outline"
-                className="mt-2"
+                variant="ghost"
+                className="mt-2 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
                 onClick={() => { setEditingSession(null); setIsModalOpen(true); }}
               >
                 <Plus className="size-4 mr-1" />
