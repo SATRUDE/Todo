@@ -164,6 +164,29 @@ export interface MilestoneUpdate {
   updated_at?: string
 }
 
+export interface FocusSession {
+  id: number
+  user_id?: string
+  name: string
+  color: string
+  notes?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface SessionTask {
+  id: number
+  session_id: number
+  task_id: number
+  user_id?: string
+  sort_order: number
+  created_at?: string
+}
+
+export interface SessionTaskWithTodo extends SessionTask {
+  todo: Todo
+}
+
 // Convert database Todo to app Todo format
 export function dbTodoToAppTodo(dbTodo: any): Todo {
   return {
@@ -1809,6 +1832,186 @@ export async function deleteMilestoneUpdate(id: number): Promise<void> {
     throw error
   }
 }
+
+// ─── Focus Sessions ───────────────────────────────────────────────────────────
+
+export async function fetchFocusSessions(): Promise<FocusSession[]> {
+  const userId = await ensureAuthenticated()
+
+  const { data, error } = await supabase
+    .from('focus_sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching focus sessions:', error)
+    throw error
+  }
+
+  return data || []
+}
+
+export async function createFocusSession(name: string, color: string, notes?: string | null): Promise<FocusSession> {
+  const userId = await ensureAuthenticated()
+
+  const { data, error } = await supabase
+    .from('focus_sessions')
+    .insert({ user_id: userId, name: name.trim(), color, notes: notes ?? null })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating focus session:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function updateFocusSession(id: number, name: string, color: string, notes?: string | null): Promise<FocusSession> {
+  const userId = await ensureAuthenticated()
+
+  const { data, error } = await supabase
+    .from('focus_sessions')
+    .update({ name: name.trim(), color, notes: notes ?? null })
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating focus session:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function deleteFocusSession(id: number): Promise<void> {
+  const userId = await ensureAuthenticated()
+
+  const { error } = await supabase
+    .from('focus_sessions')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Error deleting focus session:', error)
+    throw error
+  }
+}
+
+export async function fetchSessionTasks(sessionId: number): Promise<SessionTaskWithTodo[]> {
+  const userId = await ensureAuthenticated()
+
+  const { data, error } = await supabase
+    .from('session_tasks')
+    .select('*, todos(*)')
+    .eq('session_id', sessionId)
+    .eq('user_id', userId)
+    .order('sort_order', { ascending: true }) as any
+
+  if (error) {
+    console.error('Error fetching session tasks:', error)
+    throw error
+  }
+
+  return ((data as any[]) || []).map((row: any) => ({
+    id: row.id,
+    session_id: row.session_id,
+    task_id: row.task_id,
+    user_id: row.user_id,
+    sort_order: row.sort_order,
+    created_at: row.created_at,
+    todo: dbTodoToAppTodo(row.todos),
+  }))
+}
+
+export async function addTaskToSession(sessionId: number, taskId: number): Promise<SessionTask> {
+  const userId = await ensureAuthenticated()
+
+  // Determine next sort_order
+  const { data: existing } = await supabase
+    .from('session_tasks')
+    .select('sort_order')
+    .eq('session_id', sessionId)
+    .eq('user_id', userId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+
+  const maxOrder = existing && existing.length > 0 ? (existing[0].sort_order as number) : -1
+
+  const { data, error } = await supabase
+    .from('session_tasks')
+    .insert({
+      session_id: sessionId,
+      task_id: taskId,
+      user_id: userId,
+      sort_order: maxOrder + 1,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error adding task to session:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function removeTaskFromSession(sessionId: number, taskId: number): Promise<void> {
+  const userId = await ensureAuthenticated()
+
+  const { error } = await supabase
+    .from('session_tasks')
+    .delete()
+    .eq('session_id', sessionId)
+    .eq('task_id', taskId)
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Error removing task from session:', error)
+    throw error
+  }
+}
+
+export async function fetchSessionsForTask(taskId: number): Promise<FocusSession[]> {
+  const userId = await ensureAuthenticated()
+
+  const { data, error } = await supabase
+    .from('session_tasks')
+    .select('session_id')
+    .eq('task_id', taskId)
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Error fetching sessions for task:', error)
+    throw error
+  }
+
+  if (!data || data.length === 0) return []
+
+  const sessionIds = data.map((row: any) => row.session_id)
+
+  const { data: sessions, error: sessionsError } = await supabase
+    .from('focus_sessions')
+    .select('*')
+    .in('id', sessionIds)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (sessionsError) {
+    console.error('Error fetching sessions by ids:', sessionsError)
+    throw sessionsError
+  }
+
+  return sessions || []
+}
+
+// ─── End Focus Sessions ───────────────────────────────────────────────────────
 
 // Fetch updates for multiple milestones at once
 export async function fetchMilestoneUpdatesForMilestones(milestoneIds: number[]): Promise<MilestoneUpdate[]> {
