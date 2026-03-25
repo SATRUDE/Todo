@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import svgPaths from "../imports/svg-y4ms3lw2z2";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { AddTaskModal } from "./AddTaskModal";
@@ -89,10 +89,13 @@ import {
   updateFocusSession,
   deleteFocusSession,
   fetchSessionTasks,
+  fetchSessionTaskCounts,
+  setFocusSessionOpen,
   addTaskToSession,
   removeTaskFromSession,
   type FocusSession,
-  type SessionTaskWithTodo
+  type SessionTaskWithTodo,
+  type SessionTaskCountRow
 } from "../lib/database";
 import { 
   requestNotificationPermission, 
@@ -159,6 +162,7 @@ export function TodoApp() {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [noteDetailReturnPage, setNoteDetailReturnPage] = useState<"notes" | "search" | null>(null);
   const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
+  const [sessionTaskCounts, setSessionTaskCounts] = useState<SessionTaskCountRow[]>([]);
   const [selectedSession, setSelectedSession] = useState<FocusSession | null>(null);
   const [selectedSessionTasks, setSelectedSessionTasks] = useState<SessionTaskWithTodo[]>([]);
   const [taskToAddToSession, setTaskToAddToSession] = useState<number | null>(null);
@@ -434,12 +438,13 @@ export function TodoApp() {
     setIsSecondaryDataLoading(true);
 
     try {
-      const [commonTasksData, dailyTasksData, goalsData, notesData, sessionsData] = await Promise.allSettled([
+      const [commonTasksData, dailyTasksData, goalsData, notesData, sessionsData, sessionCountsData] = await Promise.allSettled([
         fetchCommonTasks(),
         fetchDailyTasks(),
         fetchGoals(),
         fetchNotes(),
-        fetchFocusSessions()
+        fetchFocusSessions(),
+        fetchSessionTaskCounts()
       ]);
 
       const commonTasksResult = commonTasksData.status === 'fulfilled' ? commonTasksData.value : [];
@@ -447,6 +452,7 @@ export function TodoApp() {
       const goalsResult = goalsData.status === 'fulfilled' ? goalsData.value : [];
       const notesResult = notesData.status === 'fulfilled' ? notesData.value : [];
       const sessionsResult = sessionsData.status === 'fulfilled' ? sessionsData.value : [];
+      const sessionCountsResult = sessionCountsData.status === 'fulfilled' ? sessionCountsData.value : [];
 
       if (commonTasksData.status === 'rejected') {
         console.error('Error fetching common tasks:', commonTasksData.reason);
@@ -463,6 +469,9 @@ export function TodoApp() {
       if (sessionsData.status === 'rejected') {
         console.error('Error fetching focus sessions:', sessionsData.reason);
       }
+      if (sessionCountsData.status === 'rejected') {
+        console.error('Error fetching session task counts:', sessionCountsData.reason);
+      }
 
       // Convert common tasks from database format to display format
       const displayCommonTasks = commonTasksResult.map(dbCommonTaskToDisplayCommonTask);
@@ -475,6 +484,7 @@ export function TodoApp() {
       setGoals(displayGoals);
       setNotes(notesResult);
       setFocusSessions(sessionsResult);
+      setSessionTaskCounts(sessionCountsResult);
 
       // Generate tasks from daily tasks for today (if not already generated)
       if (displayDailyTasks.length > 0) {
@@ -1956,6 +1966,15 @@ export function TodoApp() {
 
   // ─── Focus Session handlers ────────────────────────────────────────────────
 
+  const refreshSessionTaskCountsState = useCallback(async () => {
+    try {
+      const rows = await fetchSessionTaskCounts();
+      setSessionTaskCounts(rows);
+    } catch (e) {
+      console.error('Error refreshing session task counts:', e);
+    }
+  }, []);
+
   const handleCreateFocusSession = async (name: string, color: string) => {
     try {
       const created = await createFocusSession(name, color);
@@ -1981,6 +2000,7 @@ export function TodoApp() {
     try {
       await deleteFocusSession(id);
       setFocusSessions((prev) => prev.filter((s) => s.id !== id));
+      setSessionTaskCounts((prev) => prev.filter((c) => c.sessionId !== id));
       if (selectedSession?.id === id) {
         setSelectedSession(null);
         setSelectedSessionTasks([]);
@@ -2001,6 +2021,15 @@ export function TodoApp() {
       }
       const tasks = await fetchSessionTasks(session.id);
       setSelectedSessionTasks(tasks);
+      try {
+        await setFocusSessionOpen(session.id, true);
+        setFocusSessions((prev) =>
+          prev.map((s) => (s.id === session.id ? { ...s, is_open: true } : s))
+        );
+      } catch (openErr) {
+        console.warn('Could not mark session as open (ensure migrations are applied):', openErr);
+      }
+      await refreshSessionTaskCountsState();
     } catch (error) {
       console.error('Error loading session tasks:', error);
       setSelectedSessionTasks([]);
@@ -2014,6 +2043,7 @@ export function TodoApp() {
       await Promise.all(taskIds.map((id) => addTaskToSession(selectedSession.id, id)));
       const tasks = await fetchSessionTasks(selectedSession.id);
       setSelectedSessionTasks(tasks);
+      await refreshSessionTaskCountsState();
     } catch (error) {
       console.error('Error adding tasks to session:', error);
       alert(`Failed to add tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -2025,11 +2055,35 @@ export function TodoApp() {
     try {
       await removeTaskFromSession(selectedSession.id, taskId);
       setSelectedSessionTasks((prev) => prev.filter((st) => st.task_id !== taskId));
+      await refreshSessionTaskCountsState();
     } catch (error) {
       console.error('Error removing task from session:', error);
       alert(`Failed to remove task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
+
+  // Keep aggregate session task counts in sync when todos change while viewing a session
+  useEffect(() => {
+    if (currentPage !== 'focusSessionDetail' || !selectedSession) return;
+    refreshSessionTaskCountsState();
+  }, [todos, currentPage, selectedSession?.id, refreshSessionTaskCountsState]);
+
+  const handleOpenSessionFromTasksPage = useCallback(
+    async (sessionId: number) => {
+      const session = focusSessions.find((s) => s.id === sessionId);
+      if (!session) return;
+      setSelectedSession(session);
+      try {
+        const tasks = await fetchSessionTasks(session.id);
+        setSelectedSessionTasks(tasks);
+      } catch (error) {
+        console.error('Error loading session tasks:', error);
+        setSelectedSessionTasks([]);
+      }
+      setCurrentPage('focusSessionDetail');
+    },
+    [focusSessions]
+  );
 
   // ─── End Focus Session handlers ────────────────────────────────────────────
 
@@ -2841,6 +2895,25 @@ export function TodoApp() {
 
   // All active goals (for NOTICE BOARD display)
   const activeGoals = goals.filter(goal => goal.is_active !== false);
+
+  const openSessionsForTasksPage = useMemo(() => {
+    const countBySession = new Map(
+      sessionTaskCounts.map((c) => [c.sessionId, { total: c.total, completed: c.completed }])
+    );
+    return focusSessions
+      .filter((s) => s.is_open)
+      .map((s) => {
+        const c = countBySession.get(s.id) ?? { total: 0, completed: 0 };
+        return {
+          id: s.id,
+          name: s.name,
+          color: s.color,
+          total: c.total,
+          completed: c.completed,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [focusSessions, sessionTaskCounts]);
   
   const regularTasks = todayTasks.filter(todo => {
     const isNotReminder = todo.type !== 'reminder';
@@ -3172,6 +3245,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             notificationPermission={notificationPermission}
             onEnableNotifications={handleEnableNotifications}
             onOpenSearch={() => setCurrentPage('search')}
+            openSessions={openSessionsForTasksPage}
+            onOpenSessionClick={handleOpenSessionFromTasksPage}
           />
             ) : currentPage === "search" ? (
         <SearchPage
@@ -3230,7 +3305,19 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           sessionTasks={selectedSessionTasks}
           allTodos={todos.filter((t) => !t.completed)}
           lists={lists}
-          onBack={() => setCurrentPage("focusSessions")}
+          onBack={async () => {
+            try {
+              await setFocusSessionOpen(selectedSession.id, false);
+              setFocusSessions((prev) =>
+                prev.map((s) =>
+                  s.id === selectedSession.id ? { ...s, is_open: false } : s
+                )
+              );
+            } catch (e) {
+              console.warn('Could not mark session as closed:', e);
+            }
+            setCurrentPage("focusSessions");
+          }}
           onToggleTask={toggleTodo}
           onTaskClick={handleTaskClick}
           onUpdateSession={handleUpdateFocusSession}

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search, StickyNote } from "lucide-react";
+import { Badge } from "./ui/badge";
+import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search, StickyNote, Zap } from "lucide-react";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { linkifyText } from "../lib/textUtils";
 
@@ -35,6 +36,14 @@ export interface Goal {
   id: number;
   text: string;
   is_active?: boolean;
+}
+
+export interface OpenSessionSnapshot {
+  id: number;
+  name: string;
+  color: string;
+  total: number;
+  completed: number;
 }
 
 interface TaskRowProps {
@@ -456,6 +465,10 @@ export interface TasksPageProps {
   notificationPermission?: NotificationPermission;
   onEnableNotifications?: () => void;
   onOpenSearch?: () => void;
+
+  /** Focus sessions the user has left open; tap navigates to session detail. */
+  openSessions?: OpenSessionSnapshot[];
+  onOpenSessionClick?: (sessionId: number) => void;
 }
 
 export function TasksPage(props: TasksPageProps) {
@@ -496,6 +509,8 @@ export function TasksPage(props: TasksPageProps) {
     notificationPermission,
     onEnableNotifications,
     onOpenSearch,
+    openSessions = [],
+    onOpenSessionClick,
   } = props;
 
   const [isDailyExpanded, setIsDailyExpanded] = useState(true);
@@ -688,6 +703,64 @@ export function TasksPage(props: TasksPageProps) {
                 </svg>
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {/* Open focus sessions — same horizontal scroll pattern as notice board reminder cards */}
+        {openSessions.length > 0 && onOpenSessionClick && (
+          <div className="flex flex-col gap-2 w-full">
+            <p className="text-xs uppercase tracking-wider text-foreground px-5">
+              Open sessions
+            </p>
+            <div className="w-full overflow-x-auto overflow-y-hidden scrollbar-none -webkit-overflow-scrolling-touch">
+              <div className="flex gap-3 mx-5 pb-1 min-w-max pr-5">
+                {openSessions.map((s) => {
+                  const progressPct =
+                    s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => onOpenSessionClick(s.id)}
+                      className="flex flex-col gap-2.5 p-4 rounded-lg border border-border bg-card min-w-[300px] w-[300px] text-left cursor-pointer transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/30"
+                    >
+                      <div className="flex items-start justify-between gap-2 w-full min-w-0">
+                        <div className="flex gap-3 items-center min-w-0 flex-1">
+                          <Zap
+                            className="shrink-0 size-5 text-violet-400"
+                            strokeWidth={1.5}
+                            aria-hidden
+                          />
+                          <div
+                            className="shrink-0 size-3 rounded-full mt-1"
+                            style={{ backgroundColor: s.color }}
+                            aria-hidden
+                          />
+                          <p className="text-lg font-normal text-foreground tracking-tight truncate min-w-0">
+                            {s.name}
+                          </p>
+                        </div>
+                        {s.total > 0 && (
+                          <span className="text-sm text-muted-foreground tabular-nums shrink-0">
+                            {s.completed}/{s.total}
+                          </span>
+                        )}
+                      </div>
+                      {s.total > 0 && (
+                        <div className="flex flex-col gap-1.5 pl-0">
+                          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-violet-500 transition-[width]"
+                              style={{ width: `${progressPct}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 

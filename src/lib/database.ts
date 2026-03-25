@@ -170,6 +170,8 @@ export interface FocusSession {
   name: string
   color: string
   notes?: string | null
+  /** True while the user has this session open (viewing detail or left it open from there). */
+  is_open?: boolean
   created_at?: string
   updated_at?: string
 }
@@ -1850,6 +1852,57 @@ export async function fetchFocusSessions(): Promise<FocusSession[]> {
   }
 
   return data || []
+}
+
+export async function setFocusSessionOpen(id: number, isOpen: boolean): Promise<void> {
+  const userId = await ensureAuthenticated()
+
+  const { error } = await supabase
+    .from('focus_sessions')
+    .update({ is_open: isOpen })
+    .eq('id', id)
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Error updating focus session open state:', error)
+    throw error
+  }
+}
+
+export interface SessionTaskCountRow {
+  sessionId: number
+  total: number
+  completed: number
+}
+
+export async function fetchSessionTaskCounts(): Promise<SessionTaskCountRow[]> {
+  const userId = await ensureAuthenticated()
+
+  const { data, error } = await supabase
+    .from('session_tasks')
+    .select('session_id, todos(completed)')
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Error fetching session task counts:', error)
+    throw error
+  }
+
+  const map = new Map<number, { total: number; completed: number }>()
+  for (const row of data || []) {
+    const sid = row.session_id as number
+    const completed = Boolean((row as { todos?: { completed?: boolean } }).todos?.completed)
+    const cur = map.get(sid) ?? { total: 0, completed: 0 }
+    cur.total += 1
+    if (completed) cur.completed += 1
+    map.set(sid, cur)
+  }
+
+  return Array.from(map.entries()).map(([sessionId, v]) => ({
+    sessionId,
+    total: v.total,
+    completed: v.completed,
+  }))
 }
 
 export async function createFocusSession(name: string, color: string, notes?: string | null): Promise<FocusSession> {
