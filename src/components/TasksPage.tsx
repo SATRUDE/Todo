@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search, StickyNote } from "lucide-react";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { linkifyText } from "../lib/textUtils";
+import { ActiveSessionAlert } from "./ActiveSessionAlert";
 
 const LIST_ICON_PATH = svgPathsToday.p1c6a4380;
 
@@ -456,6 +458,12 @@ export interface TasksPageProps {
   notificationPermission?: NotificationPermission;
   onEnableNotifications?: () => void;
   onOpenSearch?: () => void;
+
+  // Active session alert
+  activeSessionName?: string;
+  activeSessionColor?: string;
+  onNavigateToActiveSession?: () => void;
+  onDismissActiveSession?: () => void;
 }
 
 export function TasksPage(props: TasksPageProps) {
@@ -496,6 +504,10 @@ export function TasksPage(props: TasksPageProps) {
     notificationPermission,
     onEnableNotifications,
     onOpenSearch,
+    activeSessionName,
+    activeSessionColor,
+    onNavigateToActiveSession,
+    onDismissActiveSession,
   } = props;
 
   const [isDailyExpanded, setIsDailyExpanded] = useState(true);
@@ -689,6 +701,16 @@ export function TasksPage(props: TasksPageProps) {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Active session alert */}
+        {activeSessionName && activeSessionColor && onNavigateToActiveSession && onDismissActiveSession && (
+          <ActiveSessionAlert
+            sessionName={activeSessionName}
+            sessionColor={activeSessionColor}
+            onNavigateToSession={onNavigateToActiveSession}
+            onDismiss={onDismissActiveSession}
+          />
         )}
 
         {/* Time range tabs */}

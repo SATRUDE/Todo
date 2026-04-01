@@ -30,6 +30,7 @@ import { FocusSessions } from "./FocusSessions";
 import { FocusSessionDetail } from "./FocusSessionDetail";
 import { TasksPage } from "./TasksPage";
 import { SearchPage } from "./SearchPage";
+import { useActiveSession } from "../hooks/useActiveSession";
 import { APP_VERSION } from "../lib/version";
 import { supabase } from "../lib/supabase";
 import { linkifyText } from "../lib/textUtils";
@@ -162,6 +163,7 @@ export function TodoApp() {
   const [selectedSession, setSelectedSession] = useState<FocusSession | null>(null);
   const [selectedSessionTasks, setSelectedSessionTasks] = useState<SessionTaskWithTodo[]>([]);
   const [taskToAddToSession, setTaskToAddToSession] = useState<number | null>(null);
+  const { activeSession, setSession: setActiveSession, clearSession: clearActiveSession } = useActiveSession();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [isReviewMissedDeadlinesOpen, setIsReviewMissedDeadlinesOpen] = useState(false);
@@ -1993,6 +1995,8 @@ export function TodoApp() {
 
   const handleSelectFocusSession = async (session: FocusSession, pendingTaskId?: number | null) => {
     setSelectedSession(session);
+    // Track this as the active session
+    setActiveSession(session.id, session.name, session.color);
     try {
       // Add the pending task before loading the session tasks
       if (pendingTaskId != null) {
@@ -3172,6 +3176,15 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             notificationPermission={notificationPermission}
             onEnableNotifications={handleEnableNotifications}
             onOpenSearch={() => setCurrentPage('search')}
+            activeSessionName={activeSession?.sessionName}
+            activeSessionColor={activeSession?.sessionColor}
+            onNavigateToActiveSession={() => {
+              const session = focusSessions.find((s) => s.id === activeSession?.sessionId);
+              if (session) {
+                handleSelectFocusSession(session);
+              }
+            }}
+            onDismissActiveSession={clearActiveSession}
           />
             ) : currentPage === "search" ? (
         <SearchPage
