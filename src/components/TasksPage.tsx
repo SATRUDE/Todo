@@ -456,6 +456,11 @@ export interface TasksPageProps {
   notificationPermission?: NotificationPermission;
   onEnableNotifications?: () => void;
   onOpenSearch?: () => void;
+  
+  // Active session
+  activeSession?: { id: number; name: string; color: string } | null;
+  onActiveSessionClick?: () => void;
+  onDismissActiveSession?: () => void;
 }
 
 export function TasksPage(props: TasksPageProps) {
@@ -496,6 +501,9 @@ export function TasksPage(props: TasksPageProps) {
     notificationPermission,
     onEnableNotifications,
     onOpenSearch,
+    activeSession,
+    onActiveSessionClick,
+    onDismissActiveSession,
   } = props;
 
   const [isDailyExpanded, setIsDailyExpanded] = useState(true);
@@ -686,6 +694,50 @@ export function TasksPage(props: TasksPageProps) {
                     d="m8.25 4.5 7.5 7.5-7.5 7.5"
                   />
                 </svg>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Active session banner */}
+        {activeSession && onActiveSessionClick && onDismissActiveSession && (
+          <div className="w-full px-5">
+            <Card className="border-border">
+              <CardContent className="flex items-center gap-3 p-3">
+                <div
+                  className="shrink-0 size-3 rounded-full"
+                  style={{ backgroundColor: activeSession.color }}
+                />
+                <button
+                  type="button"
+                  onClick={onActiveSessionClick}
+                  className="flex-1 text-left text-base text-foreground hover:opacity-80 transition-opacity"
+                >
+                  Active session: {activeSession.name}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDismissActiveSession();
+                  }}
+                  className="shrink-0 size-5 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Dismiss"
+                >
+                  <svg
+                    className="block size-full"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="1.5"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18 18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
               </CardContent>
             </Card>
           </div>

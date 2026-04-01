@@ -108,6 +108,7 @@ import {
   getCalendarConnection,
   connectGoogleCalendar
 } from "../lib/calendar";
+import { useActiveSession } from "../hooks/useActiveSession";
 
 interface Todo {
   id: number;
@@ -148,6 +149,7 @@ const ALL_TASKS_LIST_ID = -2;
 const listColors = ["#0B64F9", "#00C853", "#EF4123", "#FF6D00", "#FA8072"];
 
 export function TodoApp() {
+  const { activeSession, setActiveSession, clearActiveSession } = useActiveSession();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [lists, setLists] = useState<ListItem[]>([]);
   const [listFolders, setListFolders] = useState<ListFolder[]>([]);
@@ -1993,6 +1995,7 @@ export function TodoApp() {
 
   const handleSelectFocusSession = async (session: FocusSession, pendingTaskId?: number | null) => {
     setSelectedSession(session);
+    setActiveSession({ id: session.id, name: session.name, color: session.color });
     try {
       // Add the pending task before loading the session tasks
       if (pendingTaskId != null) {
@@ -3172,6 +3175,16 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             notificationPermission={notificationPermission}
             onEnableNotifications={handleEnableNotifications}
             onOpenSearch={() => setCurrentPage('search')}
+            activeSession={activeSession}
+            onActiveSessionClick={() => {
+              if (activeSession) {
+                const session = focusSessions.find((s) => s.id === activeSession.id);
+                if (session) {
+                  handleSelectFocusSession(session);
+                }
+              }
+            }}
+            onDismissActiveSession={clearActiveSession}
           />
             ) : currentPage === "search" ? (
         <SearchPage
@@ -3230,12 +3243,16 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           sessionTasks={selectedSessionTasks}
           allTodos={todos.filter((t) => !t.completed)}
           lists={lists}
-          onBack={() => setCurrentPage("focusSessions")}
+          onBack={() => {
+            clearActiveSession();
+            setCurrentPage("focusSessions");
+          }}
           onToggleTask={toggleTodo}
           onTaskClick={handleTaskClick}
           onUpdateSession={handleUpdateFocusSession}
           onDeleteSession={async (id) => {
             await handleDeleteFocusSession(id);
+            clearActiveSession();
             setCurrentPage("focusSessions");
           }}
           onAddTasksToSession={handleAddTasksToSession}
