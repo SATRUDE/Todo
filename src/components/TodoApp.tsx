@@ -30,9 +30,11 @@ import { FocusSessions } from "./FocusSessions";
 import { FocusSessionDetail } from "./FocusSessionDetail";
 import { TasksPage } from "./TasksPage";
 import { SearchPage } from "./SearchPage";
+import { ActiveSessionAlert } from "./ActiveSessionAlert";
 import { APP_VERSION } from "../lib/version";
 import { supabase } from "../lib/supabase";
 import { linkifyText } from "../lib/textUtils";
+import { useActiveSession } from "../hooks/useActiveSession";
 import { 
   fetchTasks, 
   createTask, 
@@ -161,6 +163,7 @@ export function TodoApp() {
   const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<FocusSession | null>(null);
   const [selectedSessionTasks, setSelectedSessionTasks] = useState<SessionTaskWithTodo[]>([]);
+  const { activeSession, setActiveSession, clearActiveSession } = useActiveSession();
   const [taskToAddToSession, setTaskToAddToSession] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
@@ -1993,6 +1996,11 @@ export function TodoApp() {
 
   const handleSelectFocusSession = async (session: FocusSession, pendingTaskId?: number | null) => {
     setSelectedSession(session);
+    setActiveSession({
+      sessionId: session.id,
+      sessionName: session.name,
+      sessionColor: session.color,
+    });
     try {
       // Add the pending task before loading the session tasks
       if (pendingTaskId != null) {
@@ -3172,6 +3180,17 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             notificationPermission={notificationPermission}
             onEnableNotifications={handleEnableNotifications}
             onOpenSearch={() => setCurrentPage('search')}
+            activeSessionName={activeSession?.sessionName}
+            activeSessionColor={activeSession?.sessionColor}
+            onGoToActiveSession={async () => {
+              if (activeSession) {
+                const session = focusSessions.find((s) => s.id === activeSession.sessionId);
+                if (session) {
+                  await handleSelectFocusSession(session);
+                }
+              }
+            }}
+            onDismissActiveSession={() => clearActiveSession()}
           />
             ) : currentPage === "search" ? (
         <SearchPage
@@ -3230,12 +3249,16 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           sessionTasks={selectedSessionTasks}
           allTodos={todos.filter((t) => !t.completed)}
           lists={lists}
-          onBack={() => setCurrentPage("focusSessions")}
+          onBack={() => {
+            clearActiveSession();
+            setCurrentPage("focusSessions");
+          }}
           onToggleTask={toggleTodo}
           onTaskClick={handleTaskClick}
           onUpdateSession={handleUpdateFocusSession}
           onDeleteSession={async (id) => {
             await handleDeleteFocusSession(id);
+            clearActiveSession();
             setCurrentPage("focusSessions");
           }}
           onAddTasksToSession={handleAddTasksToSession}
