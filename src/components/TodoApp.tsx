@@ -254,8 +254,10 @@ export function TodoApp() {
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const updateCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  // Bypass auth in dev mode (localhost)
+  const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const [isAuthenticated, setIsAuthenticated] = useState(isDev);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(!isDev);
   const [selectedTimeRange, setSelectedTimeRange] = useState<"today" | "tomorrow" | "week" | "month" | "allTime">("today");
   const [selectedListFilterIds, setSelectedListFilterIds] = useState<Set<number>>(new Set());
   const [isFilterListsModalOpen, setIsFilterListsModalOpen] = useState(false);
@@ -314,6 +316,13 @@ export function TodoApp() {
   // Check authentication status on mount
   useEffect(() => {
     const checkAuth = async () => {
+      // In dev mode (localhost), skip Supabase check and immediately authenticate
+      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        setIsAuthenticated(true);
+        setIsCheckingAuth(false);
+        return;
+      }
+      
       try {
         const { data: { session } } = await supabase.auth.getSession();
         setIsAuthenticated(!!session);
@@ -826,12 +835,17 @@ export function TodoApp() {
         setLoading(true);
         setConnectionError(null);
         
-        // Validate Supabase configuration
-        const configCheck = validateSupabaseConfig();
-        if (!configCheck.valid) {
-          setConnectionError(configCheck.error || 'Invalid Supabase configuration');
-          setLoading(false);
-          return;
+        // Skip Supabase validation in dev mode (localhost)
+        const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        
+        if (!isDev) {
+          // Validate Supabase configuration
+          const configCheck = validateSupabaseConfig();
+          if (!configCheck.valid) {
+            setConnectionError(configCheck.error || 'Invalid Supabase configuration');
+            setLoading(false);
+            return;
+          }
         }
         
         // Stage 1: Load critical data
@@ -858,6 +872,16 @@ export function TodoApp() {
 
     initialize();
   }, [isAuthenticated]);
+
+  // Validate active session when focus sessions are loaded
+  useEffect(() => {
+    if (activeSession && focusSessions.length > 0) {
+      const sessionExists = focusSessions.some((s) => s.id === activeSession.id);
+      if (!sessionExists) {
+        clearActiveSession();
+      }
+    }
+  }, [focusSessions, activeSession]);
 
   // Sync session task completion status when todos state changes
   useEffect(() => {
@@ -1986,6 +2010,9 @@ export function TodoApp() {
       if (selectedSession?.id === id) {
         setSelectedSession(null);
         setSelectedSessionTasks([]);
+      }
+      if (activeSession?.id === id) {
+        clearActiveSession();
       }
     } catch (error) {
       console.error('Error deleting focus session:', error);
@@ -3181,6 +3208,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 const session = focusSessions.find((s) => s.id === activeSession.id);
                 if (session) {
                   handleSelectFocusSession(session);
+                } else {
+                  clearActiveSession();
                 }
               }
             }}

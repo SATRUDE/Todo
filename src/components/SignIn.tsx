@@ -26,6 +26,12 @@ export function SignIn({ onSignIn }: SignInProps) {
   // Check for existing session on mount
   useEffect(() => {
     const checkSession = async () => {
+      // In development mode, bypass auth check and immediately sign in
+      if (isDev) {
+        onSignIn();
+        return;
+      }
+      
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {

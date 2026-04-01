@@ -10,6 +10,11 @@ const isDevelopment = () => {
 
 // Helper function to ensure user is authenticated (requires sign-in, or anonymous in dev)
 async function ensureAuthenticated(): Promise<string> {
+  // In development, return a fixed user ID to bypass auth for testing
+  if (isDevelopment()) {
+    return 'dev-user-id-12345';
+  }
+  
   const { data: { user }, error } = await supabase.auth.getUser()
   
   if (error) {
@@ -17,14 +22,6 @@ async function ensureAuthenticated(): Promise<string> {
   }
   
   if (!user) {
-    // In development, allow anonymous sign-in as fallback
-    if (isDevelopment()) {
-      const { data: { user: anonUser }, error: anonError } = await supabase.auth.signInAnonymously()
-      if (anonError || !anonUser) {
-        throw new Error(`Authentication error: ${anonError?.message || 'Failed to sign in anonymously'}`)
-      }
-      return anonUser.id
-    }
     throw new Error('User not authenticated. Please sign in.')
   }
   
@@ -1835,7 +1832,28 @@ export async function deleteMilestoneUpdate(id: number): Promise<void> {
 
 // ─── Focus Sessions ───────────────────────────────────────────────────────────
 
+// Local storage helpers for dev mode
+const DEV_SESSIONS_KEY = 'dev_focus_sessions';
+const DEV_SESSION_TASKS_KEY = 'dev_session_tasks';
+const DEV_ACTIVE_SESSION_KEY = 'dev_active_session';
+
+function getDevSessions(): FocusSession[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem(DEV_SESSIONS_KEY);
+  return stored ? JSON.parse(stored) : [];
+}
+
+function saveDevSessions(sessions: FocusSession[]): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(DEV_SESSIONS_KEY, JSON.stringify(sessions));
+}
+
 export async function fetchFocusSessions(): Promise<FocusSession[]> {
+  // In dev mode, use localStorage
+  if (isDevelopment()) {
+    return getDevSessions();
+  }
+  
   const userId = await ensureAuthenticated()
 
   const { data, error } = await supabase
@@ -1853,6 +1871,23 @@ export async function fetchFocusSessions(): Promise<FocusSession[]> {
 }
 
 export async function createFocusSession(name: string, color: string, notes?: string | null): Promise<FocusSession> {
+  // In dev mode, use localStorage
+  if (isDevelopment()) {
+    const sessions = getDevSessions();
+    const newSession: FocusSession = {
+      id: Date.now(), // Use timestamp as ID
+      user_id: 'dev-user-id-12345',
+      name: name.trim(),
+      color,
+      notes: notes ?? null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    sessions.unshift(newSession);
+    saveDevSessions(sessions);
+    return newSession;
+  }
+  
   const userId = await ensureAuthenticated()
 
   const { data, error } = await supabase
