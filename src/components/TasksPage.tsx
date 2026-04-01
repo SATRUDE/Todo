@@ -513,6 +513,14 @@ export function TasksPage(props: TasksPageProps) {
   const [isDailyExpanded, setIsDailyExpanded] = useState(true);
   const [collapsedDailyDates, setCollapsedDailyDates] = useState<Set<string>>(new Set());
 
+  // Debug active session props
+  console.log('[TasksPage] Active session props:', {
+    activeSessionName,
+    activeSessionColor,
+    hasNavigateCallback: !!onNavigateToActiveSession,
+    hasDismissCallback: !!onDismissActiveSession,
+  });
+
   const toggleDailyExpanded = (dateKey?: string) => {
     if (dateKey) {
       setCollapsedDailyDates((prev) => {

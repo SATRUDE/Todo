@@ -18,11 +18,14 @@ export function useActiveSession() {
     if (stored) {
       try {
         const data = JSON.parse(stored) as ActiveSessionData;
+        console.log('[useActiveSession] Loaded active session from localStorage:', data);
         setActiveSession(data);
       } catch (error) {
-        console.error('Error parsing active session:', error);
+        console.error('[useActiveSession] Error parsing active session:', error);
         localStorage.removeItem(ACTIVE_SESSION_KEY);
       }
+    } else {
+      console.log('[useActiveSession] No active session in localStorage');
     }
   }, []);
 
@@ -33,11 +36,13 @@ export function useActiveSession() {
       sessionColor,
       timestamp: Date.now(),
     };
+    console.log('[useActiveSession] Setting active session:', data);
     localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(data));
     setActiveSession(data);
   };
 
   const clearSession = () => {
+    console.log('[useActiveSession] Clearing active session');
     localStorage.removeItem(ACTIVE_SESSION_KEY);
     setActiveSession(null);
   };
