@@ -3172,6 +3172,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             notificationPermission={notificationPermission}
             onEnableNotifications={handleEnableNotifications}
             onOpenSearch={() => setCurrentPage('search')}
+            openSessionName={selectedSession ? selectedSession.name : null}
+            onOpenSessionClick={selectedSession ? () => {
+              setCurrentPage('focusSessionDetail');
+            } : undefined}
           />
             ) : currentPage === "search" ? (
         <SearchPage
