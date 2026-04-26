@@ -244,9 +244,9 @@ export function MilestoneDetail({
               
               {/* Bottom Sheet */}
               <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-                <div className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
+                <div className="bg-background flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
                   {/* Handle */}
-                  <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
+                  <div className="flex flex-col gap-[10px] items-center relative shrink-0 w-full">
                     <div className="h-[20px] relative shrink-0 w-[100px]">
                       <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
                         <g>
@@ -257,9 +257,9 @@ export function MilestoneDetail({
                   </div>
 
                   {/* Content */}
-                  <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full">
+                  <div className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full">
                     {/* Title and Description Section */}
-                    <div className="content-stretch flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
+                    <div className="flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
                       <textarea
                         ref={updateInputRef}
                         value={updateInputText}
@@ -278,8 +278,8 @@ export function MilestoneDetail({
                           }
                         }}
                         placeholder={editingUpdateId !== null ? "Edit update" : "Add update"}
-                        className={`font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[42px] ${
-                          updateInputText.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                        className={`font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-muted-foreground resize-none min-h-[42px] ${
+                          updateInputText.trim() ? 'text-foreground' : 'text-muted-foreground'
                         }`}
                         autoFocus
                         rows={1}
@@ -288,7 +288,7 @@ export function MilestoneDetail({
                     </div>
                     
                     {/* Buttons Container */}
-                    <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+                    <div className="flex flex-col gap-[16px] items-start relative shrink-0 w-full">
                       {/* Submit Button Row */}
                       <div className="flex gap-[10px] items-end justify-end w-full" style={{ justifyContent: 'flex-end', width: '100%' }}>
                         {/* Delete Button (only when editing) */}
@@ -317,7 +317,7 @@ export function MilestoneDetail({
                         )}
                         {/* Plus Button */}
                         <div 
-                          className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
+                          className="flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
                           style={{
                             width: '35px',
                             height: '35px',
@@ -364,10 +364,10 @@ export function MilestoneDetail({
       )}
       <div className="relative w-full">
         <div className="w-full">
-          <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
+          <div className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
             {/* Header */}
-            <div className="content-stretch flex items-center justify-between relative shrink-0 w-full gap-[16px]">
-              <div className="content-stretch flex gap-[16px] items-center relative shrink-0 min-w-0 flex-1">
+            <div className="flex items-center justify-between relative shrink-0 w-full gap-[16px]">
+              <div className="flex gap-[16px] items-center relative shrink-0 min-w-0 flex-1">
                 <div 
                   className="relative shrink-0 size-[32px] cursor-pointer flex-shrink-0"
                   onClick={onBack}
@@ -385,10 +385,10 @@ export function MilestoneDetail({
                   </svg>
                 </div>
                 <div 
-                  className="content-stretch flex flex-col items-start relative shrink-0 cursor-pointer min-w-0 flex-1 overflow-hidden"
+                  className="flex flex-col items-start relative shrink-0 cursor-pointer min-w-0 flex-1 overflow-hidden"
                   onClick={handleMilestoneClick}
                 >
-                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-white tracking-[-0.308px] break-words w-full">
+                  <p className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-white tracking-[-0.308px] break-words w-full">
                     {milestone.name}
                   </p>
                 </div>
@@ -409,7 +409,7 @@ export function MilestoneDetail({
             {/* Achieved Toggle */}
             <div className="mb-[12px]">
               <div 
-                className="bg-[rgba(225,230,238,0.1)] box-border flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
+                className="bg-secondary flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
                 onClick={handleToggleAchieved}
               >
                 {/* Toggle Switch */}
@@ -421,26 +421,26 @@ export function MilestoneDetail({
                     </g>
                   </svg>
                 </div>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Achieved</p>
+                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Achieved</p>
               </div>
             </div>
 
             {/* Description Section */}
             {milestone.description && milestone.description.trim() !== "" && (
-              <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+              <div className="flex flex-col gap-[16px] items-start relative shrink-0 w-full">
                 {/* Description Subheading */}
-                <div className="content-stretch flex items-center relative shrink-0">
+                <div className="flex items-center relative shrink-0">
                   <p 
-                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]"
+                    className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-nowrap tracking-[-0.154px]"
                     style={{ fontSize: '12px' }}
                   >
                     DESCRIPTION
                   </p>
                 </div>
                 {/* Description Text */}
-                <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                <div className="flex flex-col gap-[8px] items-start relative shrink-0 w-full">
                   <p 
-                    className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-white text-[18px] tracking-[-0.198px]"
+                    className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-white text-[18px] tracking-[-0.198px]"
                     style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}
                   >
                     {linkifyText(milestone.description)}
@@ -450,20 +450,20 @@ export function MilestoneDetail({
             )}
 
             {/* Tasks */}
-            <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
+            <div className="flex flex-col gap-[24px] items-start relative shrink-0 w-full">
               {tasks.length === 0 ? (
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] tracking-[-0.198px]">
                   No tasks yet. Click the + button to add one.
                 </p>
               ) : (
                 tasks.map((todo) => (
                   <div
                     key={todo.id}
-                    className="content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+                    className="flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer"
                     onClick={() => onTaskClick && onTaskClick(todo)}
                   >
                     {/* Task Name Row */}
-                    <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+                    <div className="flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
                       <div 
                         className="relative shrink-0 size-[24px] cursor-pointer"
                         onClick={(e) => {
@@ -491,8 +491,8 @@ export function MilestoneDetail({
                           )}
                         </svg>
                       </div>
-                      <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
-                        todo.completed ? "text-[#5b5d62] line-through" : "text-white"
+                      <p className={`font-normal font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
+                        todo.completed ? "text-muted-foreground line-through" : "text-white"
                       }`}>
                         {todo.text}
                       </p>
@@ -505,7 +505,7 @@ export function MilestoneDetail({
                         style={{ maxWidth: '100%', boxSizing: 'border-box' }}
                       >
                         <p 
-                          className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                          className="font-normal font-normal not-italic text-muted-foreground text-[14px] tracking-[-0.198px]"
                           style={{ 
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -523,7 +523,7 @@ export function MilestoneDetail({
                     <div className="flex gap-[8px] items-start flex-wrap pl-[32px]">
                       {/* Time */}
                       {todo.time && (
-                        <div className="box-border content-stretch flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">
+                        <div className="flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">
                           <div className="relative shrink-0 size-[20px]">
                             <svg
                               className="block size-full"
@@ -542,7 +542,7 @@ export function MilestoneDetail({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {todo.time}
                           </p>
                         </div>
@@ -550,7 +550,7 @@ export function MilestoneDetail({
 
                       {/* Day Due */}
                       {todo.deadline && (
-                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                        <div className="flex gap-[4px] items-center justify-center relative shrink-0">
                           <div className="relative shrink-0 size-[20px]">
                             <svg
                               className="block size-full"
@@ -569,7 +569,7 @@ export function MilestoneDetail({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {getDayOfWeek(todo.deadline.date)}
                           </p>
                         </div>
@@ -581,11 +581,11 @@ export function MilestoneDetail({
             </div>
 
             {/* Updates Section */}
-            <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
+            <div className="flex flex-col gap-[24px] items-start relative shrink-0 w-full">
               {/* Updates Header */}
-              <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
+              <div className="flex items-center justify-between relative shrink-0 w-full">
                 <p 
-                  className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]"
+                  className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-nowrap tracking-[-0.154px]"
                   style={{ fontSize: '12px' }}
                 >
                   UPDATES
@@ -605,25 +605,25 @@ export function MilestoneDetail({
 
               {/* Updates List */}
               {updates.length === 0 ? (
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] tracking-[-0.198px]">
                   No updates yet. Click the + button to add one.
                 </p>
               ) : (
-                <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+                <div className="flex flex-col gap-[16px] items-start relative shrink-0 w-full">
                   {updates.map((update) => (
                     <div
                       key={update.id}
-                      className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full"
+                      className="flex flex-col gap-[8px] items-start relative shrink-0 w-full"
                     >
                       {/* Update Content */}
-                      <div className="content-stretch flex gap-[8px] items-start relative shrink-0 w-full" style={{ minWidth: 0 }}>
+                      <div className="flex gap-[8px] items-start relative shrink-0 w-full" style={{ minWidth: 0 }}>
                         <div 
                           className="flex flex-col items-start relative shrink-0 cursor-pointer hover:opacity-80" 
                           style={{ flex: '1 1 0%', minWidth: 0, maxWidth: '100%' }}
                           onClick={() => handleEditUpdate(update)}
                         >
                           <p 
-                            className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-white text-[18px] tracking-[-0.198px]"
+                            className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-white text-[18px] tracking-[-0.198px]"
                             style={{ 
                               whiteSpace: 'pre-wrap', 
                               wordWrap: 'break-word',
@@ -636,7 +636,7 @@ export function MilestoneDetail({
                           </p>
                         </div>
                         {/* Delete button */}
-                        <div className="content-stretch flex gap-[8px] items-center relative shrink-0 flex-shrink-0">
+                        <div className="flex gap-[8px] items-center relative shrink-0 flex-shrink-0">
                           <div 
                             className="relative shrink-0 size-[24px] cursor-pointer hover:opacity-70"
                             onClick={(e) => {
@@ -655,7 +655,7 @@ export function MilestoneDetail({
                       {/* Update Date */}
                       {update.created_at && (
                         <p 
-                          className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                          className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] tracking-[-0.198px]"
                         >
                           {formatUpdateDate(update.created_at)}
                         </p>

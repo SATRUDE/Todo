@@ -551,10 +551,10 @@ export function Goals({
   return (
     <div className="relative shrink-0 w-full">
       <div className="w-full">
-        <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] pt-[30px] relative w-full h-fit" style={{ paddingBottom: '150px' }}>
+        <div className="flex flex-col gap-[32px] items-start px-[20px] pt-[30px] relative w-full h-fit" style={{ paddingBottom: '150px' }}>
           {/* Header */}
-          <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-            <div className="content-stretch flex items-center gap-[16px] relative shrink-0">
+          <div className="flex items-center justify-between relative shrink-0 w-full">
+            <div className="flex items-center gap-[16px] relative shrink-0">
               <div 
                 className="relative shrink-0 size-[32px] cursor-pointer"
                 onClick={onBack}
@@ -571,11 +571,11 @@ export function Goals({
                   </g>
                 </svg>
               </div>
-              <div className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre">
-                <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Goals</p>
+              <div className="flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre">
+                <p className="font-medium font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Goals</p>
               </div>
             </div>
-            <div className="content-stretch flex items-center gap-[12px] relative shrink-0">
+            <div className="flex items-center gap-[12px] relative shrink-0">
               {/* Plus Button */}
               <div 
                 className="relative shrink-0 size-[32px] cursor-pointer"
@@ -597,14 +597,14 @@ export function Goals({
           </div>
 
           {/* Goals count */}
-          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]">
+          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] text-nowrap tracking-[-0.198px]">
             {activeGoals.length}/4 Goals set
           </p>
 
           {/* Goals List */}
           <div className="flex flex-col gap-[24px] items-start w-full min-w-0">
             {goals.length === 0 ? (
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] tracking-[-0.198px]">
                 No goals yet. Click the + button in the top right to add one.
               </p>
             ) : (
@@ -625,7 +625,7 @@ export function Goals({
                       {/* Header: Due date and Status */}
                       <div className="flex items-center justify-between mb-[12px]">
                         {metrics.nextDueDate ? (
-                          <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px]" style={{ color: '#A1A1AA' }}>
+                          <p className="font-normal font-normal text-[14px]" style={{ color: '#A1A1AA' }}>
                             {formatDueDate(metrics.nextDueDate)}
                           </p>
                         ) : (
@@ -633,7 +633,7 @@ export function Goals({
                         )}
                         {metrics.status && (
                           <span
-                            className="font-['Inter:Medium',sans-serif] font-medium text-[13px] tracking-[-0.1px]"
+                            className="font-medium font-medium text-[13px] tracking-[-0.1px]"
                             style={{
                               padding: '4px 10px',
                               borderRadius: '6px',
@@ -657,19 +657,19 @@ export function Goals({
                       </div>
 
                       {/* Goal Title */}
-                      <h3 className="font-['Inter:Medium',sans-serif] font-medium text-[18px] text-white mb-[10px] tracking-[-0.198px] break-words min-w-0">
+                      <h3 className="font-medium font-medium text-[18px] text-white mb-[10px] tracking-[-0.198px] break-words min-w-0">
                         {goal.text}
                       </h3>
 
                       {/* Milestone Progress */}
                       {metrics.totalMilestones > 0 && (
-                        <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] mb-[8px]" style={{ color: '#A1A1AA' }}>
+                        <p className="font-normal font-normal text-[14px] mb-[8px]" style={{ color: '#A1A1AA' }}>
                           {metrics.completedMilestones}/{metrics.totalMilestones} milestones completed
                         </p>
                       )}
 
                       {/* Recent Activity */}
-                      <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px]" style={{ color: '#5b5d62' }}>
+                      <p className="font-normal font-normal text-[14px]" style={{ color: '#5b5d62' }}>
                         {metrics.recentCompletedTasks} task{metrics.recentCompletedTasks !== 1 ? 's' : ''} completed in last week
                       </p>
                     </div>
@@ -702,7 +702,7 @@ export function Goals({
                     </div>
                     {/* Goal Name */}
                     <div className="basis-0 flex flex-col grow items-start min-h-px min-w-0 overflow-hidden">
-                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[18px] text-[#5b5d62] tracking-[-0.198px] break-words min-w-0">
+                      <p className="font-normal font-normal leading-[1.5] not-italic text-[18px] text-muted-foreground tracking-[-0.198px] break-words min-w-0">
                         {goal.text}
                       </p>
                     </div>

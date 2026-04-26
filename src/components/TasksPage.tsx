@@ -389,7 +389,7 @@ function GoalStatusBadge({
   const styles = {
     "On track": "bg-emerald-500/20 text-emerald-400",
     "At risk": "bg-amber-500/20 text-amber-400",
-    Failing: "bg-red-500/20 text-red-400",
+    Failing: "bg-destructive/20 text-red-400",
   };
   return (
     <Badge

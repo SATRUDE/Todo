@@ -64,7 +64,7 @@ export function SelectListModal({ isOpen, onClose, lists, selectedListId, onSele
                   <div className="relative shrink-0 size-6 flex items-center justify-center">
                     {selectedListId === list.id ? (
                       <div className="size-6 rounded-full border-2 border-blue-500 flex items-center justify-center">
-                        <div className="size-3 rounded-full bg-blue-500" />
+                        <div className="size-3 rounded-full bg-primary" />
                       </div>
                     ) : (
                       <div className="size-6 rounded-full border-2 border-border" />

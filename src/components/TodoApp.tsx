@@ -3069,7 +3069,7 @@ export function TodoApp() {
 
   if (loading) {
     return (
-      <div className="bg-background box-border content-stretch flex flex-col items-center justify-center pb-0 pt-[60px] px-0 relative size-full min-h-screen">
+      <div className="bg-background flex flex-col items-center justify-center pb-0 pt-[60px] px-0 relative size-full min-h-screen">
         <p className="text-white text-lg">Loading...</p>
       </div>
     );
@@ -3077,7 +3077,7 @@ export function TodoApp() {
 
   if (connectionError) {
     return (
-      <div className="bg-background box-border content-stretch flex flex-col items-center justify-center pb-0 pt-[60px] px-0 relative size-full min-h-screen">
+      <div className="bg-background flex flex-col items-center justify-center pb-0 pt-[60px] px-0 relative size-full min-h-screen">
         <div className="max-w-md mx-auto px-6">
           <div className="bg-[#EF4123] text-white p-6 rounded-lg mb-4">
             <h2 className="text-xl font-semibold mb-2">⚠️ Connection Error</h2>
@@ -3098,7 +3098,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           </div>
           <button 
             onClick={() => window.location.reload()} 
-            className="w-full bg-blue-500 text-primary-foreground py-2 px-4 rounded hover:bg-blue-600 transition-opacity"
+            className="w-full bg-primary text-primary-foreground py-2 px-4 rounded hover:bg-primary/90 transition-opacity"
           >
             Retry Connection
           </button>
@@ -3108,7 +3108,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
   }
 
   return (
-    <div className="bg-background box-border content-stretch flex flex-col items-center justify-start pt-[60px] pb-[100px] px-0 relative w-full min-h-screen overflow-x-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
+    <div className="bg-background flex flex-col items-center justify-start pt-[60px] pb-[100px] px-0 relative w-full min-h-screen overflow-x-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
       {/* Main Content Container - 700px max-width on desktop, centered */}
       <div className="w-full desktop-container">
         {currentPage === "today" ? (
@@ -3383,7 +3383,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
       ) : currentPage === "goals" ? (
         isSecondaryDataLoading ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-[#e1e6ee]">Loading goals...</div>
+            <div className="text-foreground">Loading goals...</div>
           </div>
         ) : (
           <Goals 

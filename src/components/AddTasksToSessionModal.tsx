@@ -112,7 +112,7 @@ export function AddTasksToSessionModal({
   // Today first
   const todayTasks = tasksByList.get("today");
   if (todayTasks && todayTasks.length > 0) {
-    groups.push({ key: "today", label: <span className="text-[#5b5d62]">Today</span>, tasks: todayTasks });
+    groups.push({ key: "today", label: <span className="text-muted-foreground">Today</span>, tasks: todayTasks });
   }
 
   // Named lists
@@ -126,7 +126,7 @@ export function AddTasksToSessionModal({
   // Unassigned last
   const unassignedTasks = tasksByList.get("unassigned");
   if (unassignedTasks && unassignedTasks.length > 0) {
-    groups.push({ key: "unassigned", label: <span className="text-[#5b5d62]">Unassigned</span>, tasks: unassignedTasks });
+    groups.push({ key: "unassigned", label: <span className="text-muted-foreground">Unassigned</span>, tasks: unassignedTasks });
   }
 
   return createPortal(
@@ -140,7 +140,7 @@ export function AddTasksToSessionModal({
 
       {/* Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="bg-[#110c10] flex flex-col rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet" style={{ maxHeight: "85vh" }}>
+        <div className="bg-background flex flex-col rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet" style={{ maxHeight: "85vh" }}>
           {/* Handle */}
           <div className="flex justify-center pt-5 pb-2 shrink-0">
             <div className="h-[20px] w-[100px]">
@@ -155,7 +155,7 @@ export function AddTasksToSessionModal({
             <h2 className="text-xl font-medium text-white">Add tasks to session</h2>
             <button
               type="button"
-              className="size-8 flex items-center justify-center text-[#e1e6ee] hover:opacity-70"
+              className="size-8 flex items-center justify-center text-foreground hover:opacity-70"
               onClick={onClose}
             >
               <X className="size-5" />
@@ -165,13 +165,13 @@ export function AddTasksToSessionModal({
           {/* Search */}
           <div className="px-5 pb-3 shrink-0">
             <div className="flex items-center gap-2 bg-[rgba(225,230,238,0.08)] rounded-xl px-3 py-2">
-              <Search className="size-4 text-[#5b5d62] shrink-0" />
+              <Search className="size-4 text-muted-foreground shrink-0" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search tasks..."
-                className="flex-1 bg-transparent text-white text-base outline-none placeholder:text-[#5b5d62]"
+                className="flex-1 bg-transparent text-white text-base outline-none placeholder:text-muted-foreground"
               />
             </div>
           </div>
@@ -179,7 +179,7 @@ export function AddTasksToSessionModal({
           {/* Task list */}
           <div className="flex-1 overflow-y-auto px-5 pb-4">
             {groups.length === 0 ? (
-              <p className="text-[#5b5d62] text-base text-center py-8">No tasks available to add.</p>
+              <p className="text-muted-foreground text-base text-center py-8">No tasks available to add.</p>
             ) : (
               <div className="flex flex-col gap-5">
                 {groups.map(({ key, label, tasks }) => (
@@ -203,7 +203,7 @@ export function AddTasksToSessionModal({
                             </svg>
                           )}
                         </div>
-                        <span className="text-base text-[#e1e6ee] truncate">{task.text}</span>
+                        <span className="text-base text-foreground truncate">{task.text}</span>
                       </button>
                     ))}
                   </div>

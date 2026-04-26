@@ -334,7 +334,7 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
                     onTaskClick({ ...suggestion, eventId: suggestion.event.id });
                   }
                 }}
-                className="px-4 py-2 bg-blue-500 text-primary-foreground text-base rounded-lg border-none cursor-pointer hover:bg-blue-600 flex items-center gap-2 transition-opacity"
+                className="px-4 py-2 bg-primary text-primary-foreground text-base rounded-lg border-none cursor-pointer hover:bg-primary/90 flex items-center gap-2 transition-opacity"
               >
                 <span>Add</span>
                 <svg className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">

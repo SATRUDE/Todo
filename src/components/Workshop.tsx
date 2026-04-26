@@ -309,7 +309,7 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
     >
       <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden" style={{ backgroundColor: '#110c10' }}>
         {/* Header */}
-        <div className="content-stretch flex items-center gap-[16px] relative shrink-0 w-full px-[20px] pt-[20px] pb-[12px]">
+        <div className="flex items-center gap-[16px] relative shrink-0 w-full px-[20px] pt-[20px] pb-[12px]">
           <div 
             className="relative shrink-0 size-[32px] cursor-pointer"
             onClick={onBack}
@@ -326,10 +326,10 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
               </g>
             </svg>
           </div>
-          <div className="content-stretch flex flex-col items-start relative shrink-0 flex-1">
-            <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">Workshop</p>
+          <div className="flex flex-col items-start relative shrink-0 flex-1">
+            <p className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">Workshop</p>
             {lastSyncTime && (
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] text-[14px] text-[#A1A1AA] mt-[4px]">
+              <p className="font-normal font-normal leading-[1.5] text-[14px] text-muted-foreground mt-[4px]">
                 Last synced: {lastSyncTime.toLocaleString()}
               </p>
             )}
@@ -380,16 +380,16 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
                     }}
                   ></div>
                 </div>
-                <p className="font-['Inter:Regular',sans-serif] font-normal text-[#E1E6EE] text-[16px]">Generating report...</p>
+                <p className="font-normal font-normal text-foreground text-[16px]">Generating report...</p>
               </div>
             ) : error ? (
-              <div className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[12px]">
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] text-[16px] text-[#E1E6EE]">
+              <div className="bg-card border border-border rounded-[12px] px-[16px] py-[12px]">
+                <p className="font-normal font-normal leading-[1.5] text-[16px] text-foreground">
                   {error}
                 </p>
                 <button
                   onClick={generateReport}
-                  className="mt-[12px] bg-[rgba(225,230,238,0.1)] hover:bg-[rgba(225,230,238,0.15)] px-[16px] py-[8px] rounded-[8px] text-[#E1E6EE] text-[14px]"
+                  className="mt-[12px] bg-secondary hover:bg-secondary/90 px-[16px] py-[8px] rounded-[8px] text-foreground text-[14px]"
                 >
                   Try Again
                 </button>
@@ -397,7 +397,7 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
             ) : reportSections.length > 0 ? (
               reportSections.map((section, index) => (
                 <div key={index} className="flex flex-col gap-[12px]">
-                  <h2 className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] text-[22px] text-white tracking-[-0.242px]">
+                  <h2 className="font-medium font-medium leading-[1.5] text-[22px] text-white tracking-[-0.242px]">
                     {section.title}
                   </h2>
                   {section.insights && section.insights.length > 0 ? (
@@ -406,9 +406,9 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
                       {section.insights.map((insightSection, sectionIndex) => (
                         <div 
                           key={sectionIndex} 
-                          className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[16px]"
+                          className="bg-card border border-border rounded-[12px] px-[16px] py-[16px]"
                         >
-                          <h3 className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] text-[18px] text-white tracking-[-0.198px] mb-[12px]">
+                          <h3 className="font-medium font-medium leading-[1.5] text-[18px] text-white tracking-[-0.198px] mb-[12px]">
                             {insightSection.title}
                           </h3>
                           <ul className="flex flex-col gap-[8px] list-none pl-0">
@@ -419,7 +419,7 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
                               >
                                 <span className="text-white mt-[4px] shrink-0">•</span>
                                 <p 
-                                  className="font-['Inter:Regular',sans-serif] font-normal leading-[1.6] text-[16px] break-words flex-1"
+                                  className="font-normal font-normal leading-[1.6] text-[16px] break-words flex-1"
                                   style={{ color: '#A1A1AA' }}
                                 >
                                   {insight}
@@ -432,9 +432,9 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
                     </div>
                   ) : (
                     // Fallback: Render as single block if no insights parsed
-                    <div className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[16px]">
+                    <div className="bg-card border border-border rounded-[12px] px-[16px] py-[16px]">
                       <p 
-                        className="font-['Inter:Regular',sans-serif] font-normal leading-[1.6] text-[16px] whitespace-pre-wrap break-words"
+                        className="font-normal font-normal leading-[1.6] text-[16px] whitespace-pre-wrap break-words"
                         style={{ color: '#A1A1AA' }}
                       >
                         {section.content}
@@ -444,8 +444,8 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
                 </div>
               ))
             ) : (
-              <div className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[12px]">
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] text-[16px] text-[#E1E6EE]">
+              <div className="bg-card border border-border rounded-[12px] px-[16px] py-[12px]">
+                <p className="font-normal font-normal leading-[1.5] text-[16px] text-foreground">
                   No report available. Click the refresh button to generate one.
                 </p>
               </div>

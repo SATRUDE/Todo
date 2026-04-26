@@ -168,7 +168,7 @@ export function TaskNoteModal({ isOpen, onClose, taskId, notesForTask, onAddNote
                             type="button"
                             onClick={handleSaveEdit}
                             disabled={!editContent.trim() || isSaving}
-                            className="rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-card"
+                            className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:bg-primary/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
                           >
                             Save
                           </button>
@@ -235,7 +235,7 @@ export function TaskNoteModal({ isOpen, onClose, taskId, notesForTask, onAddNote
                   type="button"
                   onClick={handleSave}
                   disabled={!noteContent.trim() || isSaving}
-                  className="self-end rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-card"
+                  className="self-end rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
                 >
                   Save
                 </button>

@@ -475,9 +475,9 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     onEdit: (id: number) => void;
   }) {
     return (
-      <div className="content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer">
+      <div className="flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer">
         {/* Task Name Row */}
-        <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+        <div className="flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
           {/* Checkbox */}
           <div 
             className="relative shrink-0 size-6 cursor-pointer text-foreground"
@@ -532,7 +532,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
         <div 
-          className="bg-card box-border flex max-h-[90vh] flex-col gap-10 overflow-hidden rounded-t-xl pb-[60px] pt-5 w-full desktop-bottom-sheet"
+          className="bg-card flex max-h-[90vh] flex-col gap-10 overflow-hidden rounded-t-xl pb-[60px] pt-5 w-full desktop-bottom-sheet"
         >
           {/* Handle */}
           <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
@@ -549,7 +549,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
             style={{ maxHeight: 'calc(90vh - 120px)' }}
           >
             {/* Title and Description Section */}
-            <div className="content-stretch flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
+            <div className="flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
               {/* Task Name Input */}
               <textarea
                 ref={taskInputRef}
@@ -796,7 +796,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
             {/* Notes Section - Below description, click opens notes bottom sheet */}
             {onAddNote && (
               <div
-                className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
+                className="flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
                 onClick={() => setIsNoteModalOpen(true)}
               >
                 {notesForTask.length > 0 ? (
@@ -835,7 +835,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
 
             {/* Image Section - Under description */}
             {imageUrl && (
-              <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+              <div className="flex flex-col gap-[8px] items-start relative shrink-0 w-full">
                 <div className="relative w-full max-w-md">
                   <img 
                     src={imageUrl} 
@@ -859,7 +859,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
 
             {/* Subtasks Section - Only show when subtasks exist */}
             {subtasks.length > 0 && (
-              <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full px-0 py-0">
+              <div className="flex flex-col gap-[12px] items-start relative shrink-0 w-full px-0 py-0">
                 <div className="flex items-center justify-between w-full">
                   <label className="font-normal leading-relaxed text-foreground text-lg tracking-tight">
                     Subtasks
@@ -897,7 +897,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
             )}
 
             {/* Buttons Container */}
-            <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+            <div className="flex flex-col gap-[16px] items-start relative shrink-0 w-full">
               {/* Button Row */}
               <div className="content-center flex flex-wrap gap-[8px] items-center relative shrink-0 w-full">
                 {/* Task Type Button - opens modal to select type */}
@@ -1119,7 +1119,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
               {/* Content */}
               <div className="flex shrink-0 w-full flex-col gap-8 px-5">
                 {/* Title and Description Section */}
-                <div className="content-stretch flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
+                <div className="flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
                   <textarea
                     ref={subtaskInputRef}
                     value={subtaskInputText}
@@ -1148,7 +1148,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                 </div>
                 
                 {/* Buttons Container */}
-                <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+                <div className="flex flex-col gap-[16px] items-start relative shrink-0 w-full">
                   {/* Submit Button Row */}
                   <div className="flex gap-[10px] items-end justify-end w-full" style={{ justifyContent: 'flex-end', width: '100%' }}>
                     {/* Delete Button (only when editing) */}

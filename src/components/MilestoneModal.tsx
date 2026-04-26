@@ -188,9 +188,9 @@ export function MilestoneModal({
       
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
+        <div className="bg-background flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
           {/* Handle */}
-          <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
+          <div className="flex flex-col gap-[10px] items-center relative shrink-0 w-full">
             <div className="h-[20px] relative shrink-0 w-[100px]">
               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
                 <g>
@@ -201,9 +201,9 @@ export function MilestoneModal({
           </div>
 
           {/* Content */}
-          <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full">
+          <div className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full">
             {/* Title Section */}
-            <div className="content-stretch flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
+            <div className="flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
               {/* Milestone Name Input */}
               <textarea
                 ref={nameInputRef}
@@ -218,8 +218,8 @@ export function MilestoneModal({
                 }}
                 onKeyPress={handleKeyPress}
                 placeholder="Milestone name"
-                className={`font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[42px] ${
-                  milestoneName.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                className={`font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-muted-foreground resize-none min-h-[42px] ${
+                  milestoneName.trim() ? 'text-foreground' : 'text-muted-foreground'
                 }`}
                 autoFocus
                 rows={1}
@@ -238,8 +238,8 @@ export function MilestoneModal({
                   }
                 }}
                 placeholder="Description"
-                className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] tracking-[-0.198px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[28px] ${
-                  milestoneDescription.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                className={`font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] tracking-[-0.198px] bg-transparent border-none outline-none w-full placeholder:text-muted-foreground resize-none min-h-[28px] ${
+                  milestoneDescription.trim() ? 'text-foreground' : 'text-muted-foreground'
                 }`}
                 rows={1}
                 style={{ overflow: 'hidden' }}
@@ -247,12 +247,12 @@ export function MilestoneModal({
             </div>
 
             {/* Buttons Container */}
-            <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+            <div className="flex flex-col gap-[16px] items-start relative shrink-0 w-full">
               {/* Button Row */}
               <div className="content-center flex flex-wrap gap-[8px] items-center relative shrink-0 w-full">
                 {/* Deadline Button */}
                 <div 
-                  className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                  className="bg-secondary flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-secondary/90"
                   onClick={() => setIsDeadlineOpen(true)}
                 >
                   <div className="relative shrink-0" style={{ width: '20px', height: '20px' }}>
@@ -260,7 +260,7 @@ export function MilestoneModal({
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
                     </svg>
                   </div>
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getDeadlineText()}</p>
+                  <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getDeadlineText()}</p>
                 </div>
 
                 {/* Trash Icon - Only show for existing milestones */}
@@ -281,7 +281,7 @@ export function MilestoneModal({
               {/* Submit Button Row */}
               <div className="flex gap-[10px] items-end justify-end w-full" style={{ justifyContent: 'flex-end', width: '100%' }}>
                 <div 
-                  className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
+                  className="flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
                   style={{
                     width: '35px',
                     height: '35px',

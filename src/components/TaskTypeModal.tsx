@@ -162,7 +162,7 @@ export function TaskTypeModal({
                   )}
                   {option.label}
                   {isSelected && (
-                    <span className="ml-auto size-5 shrink-0 text-blue-500">
+                    <span className="ml-auto size-5 shrink-0 text-primary">
                       <svg fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                       </svg>

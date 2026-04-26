@@ -74,7 +74,7 @@ export function FilterListsModal({ isOpen, onClose, lists, folders = [], selecte
     >
       <div className="relative shrink-0 size-6 flex items-center justify-center">
         {localSelectedIds.has(list.id) ? (
-          <div className="size-6 rounded-md border-2 border-blue-500 bg-blue-500 flex items-center justify-center">
+          <div className="size-6 rounded-md border-2 border-blue-500 bg-primary flex items-center justify-center">
             <svg className="size-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 13l4 4L19 7" />
             </svg>
@@ -187,7 +187,7 @@ export function FilterListsModal({ isOpen, onClose, lists, folders = [], selecte
               <div className="flex justify-end w-full mt-4 pt-2">
                 <Button
                   size="icon"
-                  className="size-9 rounded-full bg-blue-500 text-primary-foreground hover:bg-blue-600 focus-visible:ring-violet-500/30"
+                  className="size-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-violet-500/30"
                   onClick={handleApply}
                   aria-label="Apply filter"
                 >
