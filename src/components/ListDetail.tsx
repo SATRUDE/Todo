@@ -183,10 +183,10 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
             {/* Date Filter Pill */}
             {dateFilter && isCompletedList && onClearDateFilter && (
               <div 
-                className="bg-[rgba(225,230,238,0.1)] flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer w-fit"
+                className="bg-secondary flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer w-fit"
                 onClick={onClearDateFilter}
               >
-                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
                   Today
                 </p>
                 <div className="relative shrink-0 size-[20px]">
@@ -226,10 +226,10 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
 
                 return (
                   <div 
-                    className="bg-[rgba(225,230,238,0.1)] flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer w-fit"
+                    className="bg-secondary flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer w-fit"
                     onClick={onClearDateFilter}
                   >
-                    <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                    <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
                       {getTimeRangeLabel()}
                     </p>
                     <div className="relative shrink-0 size-[20px]">
@@ -281,7 +281,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                 <div className="flex items-start justify-between relative shrink-0 w-full">
                   <div className="flex items-center relative shrink-0">
                     <p 
-                      className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
+                      className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-nowrap tracking-[-0.154px]"
                       style={{ fontSize: '12px' }}
                       ref={(el) => {
                         // #region agent log
@@ -300,7 +300,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                     onClick={() => setIsRemindersExpanded(!isRemindersExpanded)}
                   >
                     <div className="flex items-center relative shrink-0">
-                      <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
+                      <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
                         {reminders.length}
                       </p>
                     </div>
@@ -368,7 +368,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                                   </g>
                                 </svg>
                               </div>
-                              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
+                              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[16px] text-nowrap tracking-[-0.176px]">
                                 {todo.deadline?.time || todo.time}
                               </p>
                             </div>
@@ -382,7 +382,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                             style={{ maxWidth: '100%', boxSizing: 'border-box' }}
                           >
                             <p 
-                              className="font-normal font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                              className="font-normal font-normal not-italic text-muted-foreground text-[14px] tracking-[-0.198px]"
                               style={{ 
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -416,7 +416,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                                   />
                                 </svg>
                               </div>
-                              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                                 {noteCount} {noteCount === 1 ? 'note' : 'notes'}
                               </p>
                             </div>
@@ -470,7 +470,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                       </div>
                     )}
                     <p className={`font-normal font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
-                      todo.completed ? "text-[#5b5d62] line-through" : "text-white"
+                      todo.completed ? "text-muted-foreground line-through" : "text-white"
                     }`}>
                       {todo.text}
                     </p>
@@ -483,7 +483,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                       style={{ maxWidth: '100%', boxSizing: 'border-box' }}
                     >
                       <p 
-                        className="font-normal font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                        className="font-normal font-normal not-italic text-muted-foreground text-[14px] tracking-[-0.198px]"
                         style={{ 
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -520,7 +520,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                             </g>
                           </svg>
                         </div>
-                        <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                        <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
                           {todo.time}
                         </p>
                       </div>
@@ -547,7 +547,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                             </g>
                           </svg>
                         </div>
-                        <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                        <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                           {getDayOfWeek(todo.deadline.date)}
                         </p>
                       </div>
@@ -576,7 +576,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                               </g>
                             </svg>
                           </div>
-                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {list.name}
                           </p>
                         </div>
@@ -600,7 +600,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                               </g>
                             </svg>
                           </div>
-                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {milestone.name}
                           </p>
                         </div>
@@ -630,7 +630,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                               </g>
                             </svg>
                           </div>
-                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {subtaskCount}
                           </p>
                         </div>
@@ -658,7 +658,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                               />
                             </svg>
                           </div>
-                              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                                 {noteCount} {noteCount === 1 ? 'note' : 'notes'}
                               </p>
                         </div>

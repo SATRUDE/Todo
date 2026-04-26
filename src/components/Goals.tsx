@@ -597,14 +597,14 @@ export function Goals({
           </div>
 
           {/* Goals count */}
-          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]">
+          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] text-nowrap tracking-[-0.198px]">
             {activeGoals.length}/4 Goals set
           </p>
 
           {/* Goals List */}
           <div className="flex flex-col gap-[24px] items-start w-full min-w-0">
             {goals.length === 0 ? (
-              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] tracking-[-0.198px]">
                 No goals yet. Click the + button in the top right to add one.
               </p>
             ) : (
@@ -702,7 +702,7 @@ export function Goals({
                     </div>
                     {/* Goal Name */}
                     <div className="basis-0 flex flex-col grow items-start min-h-px min-w-0 overflow-hidden">
-                      <p className="font-normal font-normal leading-[1.5] not-italic text-[18px] text-[#5b5d62] tracking-[-0.198px] break-words min-w-0">
+                      <p className="font-normal font-normal leading-[1.5] not-italic text-[18px] text-muted-foreground tracking-[-0.198px] break-words min-w-0">
                         {goal.text}
                       </p>
                     </div>

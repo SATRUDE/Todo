@@ -151,7 +151,7 @@ export function GoalDetailModal({
       
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="bg-[#110c10] flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
+        <div className="bg-background flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
           {/* Handle */}
           <div className="flex flex-col gap-[10px] items-center relative shrink-0 w-full">
             <div className="h-[20px] relative shrink-0 w-[100px]">
@@ -181,8 +181,8 @@ export function GoalDetailModal({
                     }}
                     onKeyPress={handleKeyPress}
                     placeholder="Goal name"
-                    className={`font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[42px] ${
-                      goalInput.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                    className={`font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-muted-foreground resize-none min-h-[42px] ${
+                      goalInput.trim() ? 'text-foreground' : 'text-muted-foreground'
                     }`}
                     autoFocus
                     rows={1}
@@ -201,8 +201,8 @@ export function GoalDetailModal({
                       }
                     }}
                     placeholder="Description"
-                    className={`font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] tracking-[-0.198px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[28px] ${
-                      goalDescription.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                    className={`font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] tracking-[-0.198px] bg-transparent border-none outline-none w-full placeholder:text-muted-foreground resize-none min-h-[28px] ${
+                      goalDescription.trim() ? 'text-foreground' : 'text-muted-foreground'
                     }`}
                     rows={1}
                     style={{ overflow: 'hidden' }}
@@ -215,7 +215,7 @@ export function GoalDetailModal({
                   <div className="flex flex-wrap gap-[8px] items-center relative shrink-0 w-full">
                     {/* Deadline Button */}
                     <div 
-                      className="bg-[rgba(225,230,238,0.1)] flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(225,230,238,0.15)]"
+                      className="bg-secondary flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-secondary/90"
                       onClick={() => setIsDeadlineOpen(true)}
                     >
                       <div className="relative shrink-0 size-[20px]">
@@ -225,12 +225,12 @@ export function GoalDetailModal({
                           </g>
                         </svg>
                       </div>
-                      <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getDeadlineText()}</p>
+                      <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{getDeadlineText()}</p>
                     </div>
 
                     {/* Active Toggle */}
                     <div 
-                      className="bg-[rgba(225,230,238,0.1)] flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
+                      className="bg-secondary flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
                       onClick={() => setIsActive(!isActive)}
                     >
                       {/* Toggle Switch */}
@@ -242,7 +242,7 @@ export function GoalDetailModal({
                           </g>
                         </svg>
                       </div>
-                      <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Active</p>
+                      <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Active</p>
                     </div>
 
                     {/* Trash Icon - Only show for existing goals */}

@@ -247,7 +247,7 @@ export function ReviewMissedDeadlinesModal({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" data-node-id="36:508">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" data-node-id="36:508">
                             {getDayOfWeek(todo.deadline.date)}
                           </p>
                         </div>
@@ -274,7 +274,7 @@ export function ReviewMissedDeadlinesModal({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" data-node-id="36:512">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" data-node-id="36:512">
                             {list.name}
                           </p>
                         </div>

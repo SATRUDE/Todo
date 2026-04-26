@@ -244,7 +244,7 @@ export function MilestoneDetail({
               
               {/* Bottom Sheet */}
               <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-                <div className="bg-[#110c10] flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
+                <div className="bg-background flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
                   {/* Handle */}
                   <div className="flex flex-col gap-[10px] items-center relative shrink-0 w-full">
                     <div className="h-[20px] relative shrink-0 w-[100px]">
@@ -278,8 +278,8 @@ export function MilestoneDetail({
                           }
                         }}
                         placeholder={editingUpdateId !== null ? "Edit update" : "Add update"}
-                        className={`font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62] resize-none min-h-[42px] ${
-                          updateInputText.trim() ? 'text-[#e1e6ee]' : 'text-[#5b5d62]'
+                        className={`font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-muted-foreground resize-none min-h-[42px] ${
+                          updateInputText.trim() ? 'text-foreground' : 'text-muted-foreground'
                         }`}
                         autoFocus
                         rows={1}
@@ -409,7 +409,7 @@ export function MilestoneDetail({
             {/* Achieved Toggle */}
             <div className="mb-[12px]">
               <div 
-                className="bg-[rgba(225,230,238,0.1)] flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
+                className="bg-secondary flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
                 onClick={handleToggleAchieved}
               >
                 {/* Toggle Switch */}
@@ -421,7 +421,7 @@ export function MilestoneDetail({
                     </g>
                   </svg>
                 </div>
-                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Achieved</p>
+                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Achieved</p>
               </div>
             </div>
 
@@ -431,7 +431,7 @@ export function MilestoneDetail({
                 {/* Description Subheading */}
                 <div className="flex items-center relative shrink-0">
                   <p 
-                    className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]"
+                    className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-nowrap tracking-[-0.154px]"
                     style={{ fontSize: '12px' }}
                   >
                     DESCRIPTION
@@ -452,7 +452,7 @@ export function MilestoneDetail({
             {/* Tasks */}
             <div className="flex flex-col gap-[24px] items-start relative shrink-0 w-full">
               {tasks.length === 0 ? (
-                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] tracking-[-0.198px]">
                   No tasks yet. Click the + button to add one.
                 </p>
               ) : (
@@ -492,7 +492,7 @@ export function MilestoneDetail({
                         </svg>
                       </div>
                       <p className={`font-normal font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
-                        todo.completed ? "text-[#5b5d62] line-through" : "text-white"
+                        todo.completed ? "text-muted-foreground line-through" : "text-white"
                       }`}>
                         {todo.text}
                       </p>
@@ -505,7 +505,7 @@ export function MilestoneDetail({
                         style={{ maxWidth: '100%', boxSizing: 'border-box' }}
                       >
                         <p 
-                          className="font-normal font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                          className="font-normal font-normal not-italic text-muted-foreground text-[14px] tracking-[-0.198px]"
                           style={{ 
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -542,7 +542,7 @@ export function MilestoneDetail({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {todo.time}
                           </p>
                         </div>
@@ -569,7 +569,7 @@ export function MilestoneDetail({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {getDayOfWeek(todo.deadline.date)}
                           </p>
                         </div>
@@ -585,7 +585,7 @@ export function MilestoneDetail({
               {/* Updates Header */}
               <div className="flex items-center justify-between relative shrink-0 w-full">
                 <p 
-                  className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]"
+                  className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-nowrap tracking-[-0.154px]"
                   style={{ fontSize: '12px' }}
                 >
                   UPDATES
@@ -605,7 +605,7 @@ export function MilestoneDetail({
 
               {/* Updates List */}
               {updates.length === 0 ? (
-                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] tracking-[-0.198px]">
                   No updates yet. Click the + button to add one.
                 </p>
               ) : (
@@ -655,7 +655,7 @@ export function MilestoneDetail({
                       {/* Update Date */}
                       {update.created_at && (
                         <p 
-                          className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                          className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] tracking-[-0.198px]"
                         >
                           {formatUpdateDate(update.created_at)}
                         </p>

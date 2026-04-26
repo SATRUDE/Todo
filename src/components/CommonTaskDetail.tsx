@@ -86,7 +86,7 @@ export function CommonTaskDetail({
                   </g>
                 </svg>
               </div>
-              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px]">
+              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px]">
                 Error: Common task not found
               </p>
             </div>
@@ -199,7 +199,7 @@ export function CommonTaskDetail({
             {/* Tasks List */}
             <div className="flex flex-col gap-[24px] items-start relative shrink-0 w-full">
               {matchingTasks.length === 0 ? (
-                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] tracking-[-0.198px]">
                   No tasks created from this common task yet.
                 </p>
               ) : (
@@ -239,7 +239,7 @@ export function CommonTaskDetail({
                         </svg>
                       </div>
                       <p className={`font-normal font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
-                        todo.completed ? "text-[#5b5d62] line-through" : "text-white"
+                        todo.completed ? "text-muted-foreground line-through" : "text-white"
                       }`}>
                         {todo.text}
                       </p>
@@ -252,7 +252,7 @@ export function CommonTaskDetail({
                         style={{ maxWidth: '100%', boxSizing: 'border-box' }}
                       >
                         <p 
-                          className="font-normal font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                          className="font-normal font-normal not-italic text-muted-foreground text-[14px] tracking-[-0.198px]"
                           style={{ 
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -289,7 +289,7 @@ export function CommonTaskDetail({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {todo.time}
                           </p>
                         </div>
@@ -316,7 +316,7 @@ export function CommonTaskDetail({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {formatDate(todo.deadline.date)}
                           </p>
                         </div>
@@ -345,7 +345,7 @@ export function CommonTaskDetail({
                                 </g>
                               </svg>
                             </div>
-                            <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                            <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                               {list.name}
                             </p>
                           </div>

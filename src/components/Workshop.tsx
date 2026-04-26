@@ -329,7 +329,7 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
           <div className="flex flex-col items-start relative shrink-0 flex-1">
             <p className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">Workshop</p>
             {lastSyncTime && (
-              <p className="font-normal font-normal leading-[1.5] text-[14px] text-[#A1A1AA] mt-[4px]">
+              <p className="font-normal font-normal leading-[1.5] text-[14px] text-muted-foreground mt-[4px]">
                 Last synced: {lastSyncTime.toLocaleString()}
               </p>
             )}
@@ -380,16 +380,16 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
                     }}
                   ></div>
                 </div>
-                <p className="font-normal font-normal text-[#E1E6EE] text-[16px]">Generating report...</p>
+                <p className="font-normal font-normal text-foreground text-[16px]">Generating report...</p>
               </div>
             ) : error ? (
-              <div className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[12px]">
-                <p className="font-normal font-normal leading-[1.5] text-[16px] text-[#E1E6EE]">
+              <div className="bg-card border border-border rounded-[12px] px-[16px] py-[12px]">
+                <p className="font-normal font-normal leading-[1.5] text-[16px] text-foreground">
                   {error}
                 </p>
                 <button
                   onClick={generateReport}
-                  className="mt-[12px] bg-[rgba(225,230,238,0.1)] hover:bg-[rgba(225,230,238,0.15)] px-[16px] py-[8px] rounded-[8px] text-[#E1E6EE] text-[14px]"
+                  className="mt-[12px] bg-secondary hover:bg-secondary/90 px-[16px] py-[8px] rounded-[8px] text-foreground text-[14px]"
                 >
                   Try Again
                 </button>
@@ -406,7 +406,7 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
                       {section.insights.map((insightSection, sectionIndex) => (
                         <div 
                           key={sectionIndex} 
-                          className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[16px]"
+                          className="bg-card border border-border rounded-[12px] px-[16px] py-[16px]"
                         >
                           <h3 className="font-medium font-medium leading-[1.5] text-[18px] text-white tracking-[-0.198px] mb-[12px]">
                             {insightSection.title}
@@ -432,7 +432,7 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
                     </div>
                   ) : (
                     // Fallback: Render as single block if no insights parsed
-                    <div className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[16px]">
+                    <div className="bg-card border border-border rounded-[12px] px-[16px] py-[16px]">
                       <p 
                         className="font-normal font-normal leading-[1.6] text-[16px] whitespace-pre-wrap break-words"
                         style={{ color: '#A1A1AA' }}
@@ -444,8 +444,8 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
                 </div>
               ))
             ) : (
-              <div className="bg-[#1f2022] border border-[#2a2b2d] rounded-[12px] px-[16px] py-[12px]">
-                <p className="font-normal font-normal leading-[1.5] text-[16px] text-[#E1E6EE]">
+              <div className="bg-card border border-border rounded-[12px] px-[16px] py-[12px]">
+                <p className="font-normal font-normal leading-[1.5] text-[16px] text-foreground">
                   No report available. Click the refresh button to generate one.
                 </p>
               </div>

@@ -45,7 +45,7 @@ export function SelectMilestoneModal({ isOpen, onClose, milestones, selectedMile
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
         <div 
-          className="bg-[#110c10] flex flex-col rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet" 
+          className="bg-background flex flex-col rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet" 
           style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
         >
           {/* Handle */}
@@ -66,11 +66,11 @@ export function SelectMilestoneModal({ isOpen, onClose, milestones, selectedMile
           >
             {/* Content */}
             <div className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
-              <p className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[20px] text-nowrap tracking-[-0.22px] whitespace-pre">Add to milestone</p>
+              <p className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-foreground text-[20px] text-nowrap tracking-[-0.22px] whitespace-pre">Add to milestone</p>
               
               {/* Milestone Items */}
               {milestones.length === 0 ? (
-                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] tracking-[-0.198px]">
                   No milestones available
                 </p>
               ) : (
@@ -98,8 +98,8 @@ export function SelectMilestoneModal({ isOpen, onClose, milestones, selectedMile
                       </div>
                       {/* Milestone Info */}
                       <div className="flex flex-col gap-[2px] items-start relative shrink-0">
-                        <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{milestone.name}</p>
-                        <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.154px] whitespace-pre">{milestone.goalName}</p>
+                        <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">{milestone.name}</p>
+                        <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[14px] text-nowrap tracking-[-0.154px] whitespace-pre">{milestone.goalName}</p>
                       </div>
                     </div>
                   </div>

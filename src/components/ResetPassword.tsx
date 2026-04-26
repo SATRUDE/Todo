@@ -119,7 +119,7 @@ export function ResetPassword({ onPasswordReset, onCancel }: ResetPasswordProps)
 
   return createPortal(
     <div className="fixed inset-0 z-[10000] pointer-events-auto">
-      <div className="bg-[#110c10] flex flex-col items-center justify-center pb-0 pt-[60px] px-[20px] relative size-full min-h-screen">
+      <div className="bg-background flex flex-col items-center justify-center pb-0 pt-[60px] px-[20px] relative size-full min-h-screen">
         <div className="flex flex-col gap-[40px] items-center max-w-[400px] w-full">
           <div className="flex flex-col gap-[24px] items-stretch relative shrink-0 w-full">
             <h1 className="font-medium font-medium leading-[1.2] not-italic relative shrink-0 text-[32px] text-[#e1e6ee] tracking-[-0.352px] text-center">
@@ -146,7 +146,7 @@ export function ResetPassword({ onPasswordReset, onCancel }: ResetPasswordProps)
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your new password"
                     disabled={isLoading}
-                    className="bg-[rgba(225,230,238,0.1)] flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full font-normal font-normal text-[18px] text-[#e1e6ee] placeholder:text-[#5b5d62] border-none outline-none focus:bg-[rgba(225,230,238,0.15)] disabled:opacity-50"
+                    className="bg-secondary flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full font-normal font-normal text-[18px] text-[#e1e6ee] placeholder:text-[#5b5d62] border-none outline-none focus:bg-secondary/90 disabled:opacity-50"
                     autoFocus
                   />
                 </div>
@@ -163,7 +163,7 @@ export function ResetPassword({ onPasswordReset, onCancel }: ResetPasswordProps)
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm your new password"
                     disabled={isLoading}
-                    className="bg-[rgba(225,230,238,0.1)] flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full font-normal font-normal text-[18px] text-[#e1e6ee] placeholder:text-[#5b5d62] border-none outline-none focus:bg-[rgba(225,230,238,0.15)] disabled:opacity-50"
+                    className="bg-secondary flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full font-normal font-normal text-[18px] text-[#e1e6ee] placeholder:text-[#5b5d62] border-none outline-none focus:bg-secondary/90 disabled:opacity-50"
                     onKeyPress={(e) => {
                       if (e.key === 'Enter' && !isLoading && password.trim() && confirmPassword.trim()) {
                         handleSubmit(e as any);

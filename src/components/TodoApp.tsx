@@ -3383,7 +3383,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
       ) : currentPage === "goals" ? (
         isSecondaryDataLoading ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-[#e1e6ee]">Loading goals...</div>
+            <div className="text-foreground">Loading goals...</div>
           </div>
         ) : (
           <Goals 

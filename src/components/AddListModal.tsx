@@ -123,7 +123,7 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
       
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="bg-[#110c10] flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
+        <div className="bg-background flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
           {/* Handle */}
           <div className="flex flex-col gap-[10px] items-center relative shrink-0 w-full">
             <div className="h-[20px] relative shrink-0 w-[100px]">
@@ -146,14 +146,14 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
                   onChange={(e) => setListInput(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Add List"
-                  className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62]"
+                  className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-muted-foreground"
                   autoFocus
                 />
 
                 {/* Shared Toggle and Delete Button */}
                 <div className="flex gap-[8px] items-start justify-between relative shrink-0 w-full">
                   <div 
-                    className="bg-[rgba(225,230,238,0.1)] flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer"
+                    className="bg-secondary flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer"
                     onClick={() => setIsShared(!isShared)}
                   >
                     {/* Toggle Switch */}
@@ -165,7 +165,7 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
                         </g>
                       </svg>
                     </div>
-                    <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Share</p>
+                    <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Share</p>
                   </div>
 
                   {/* Delete Button - only show when editing */}

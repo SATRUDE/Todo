@@ -264,7 +264,7 @@ export function GoalDetail({
                 </div>
               )}
               {goalExplanation && (
-                <p className="font-normal font-normal leading-[1.45] text-[#e1e6ee] text-[15px] tracking-[-0.15px]">
+                <p className="font-normal font-normal leading-[1.45] text-foreground text-[15px] tracking-[-0.15px]">
                   {goalExplanation}
                 </p>
               )}
@@ -274,7 +274,7 @@ export function GoalDetail({
           {/* Goal Description */}
           {goal.description && goal.description.trim() !== "" && (
             <div className="flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] tracking-[-0.198px]">
                 {linkifyText(goal.description)}
               </p>
             </div>
@@ -285,7 +285,7 @@ export function GoalDetail({
             {/* Milestones Subheading */}
             <div className="flex items-center relative shrink-0">
               <p 
-                className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]"
+                className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-nowrap tracking-[-0.154px]"
                 style={{ fontSize: '12px' }}
               >
                 MILESTONES
@@ -299,7 +299,7 @@ export function GoalDetail({
               
               if (activeMilestones.length === 0 && achievedMilestones.length === 0) {
                 return (
-                  <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+                  <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] tracking-[-0.198px]">
                     No milestones yet. Click the + button to add one.
                   </p>
                 );
@@ -325,7 +325,7 @@ export function GoalDetail({
                 >
                   <div className="flex flex-col gap-[10px] items-start relative shrink-0 w-full">
                     <div className="flex items-center relative shrink-0 w-full min-w-0">
-                      <p className="basis-0 font-normal font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-[#e1e6ee] text-[18px] tracking-[-0.198px] break-words">
+                      <p className="basis-0 font-normal font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-foreground text-[18px] tracking-[-0.198px] break-words">
                         {milestone.name}
                       </p>
                     </div>
@@ -352,7 +352,7 @@ export function GoalDetail({
                             </svg>
                           </div>
                           <div className="flex items-center relative shrink-0">
-                            <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px]">
+                            <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] text-nowrap tracking-[-0.198px]">
                               {daysUntil} day{daysUntil !== 1 ? 's' : ''}
                             </p>
                           </div>
@@ -368,7 +368,7 @@ export function GoalDetail({
                     <>
                       <div className="flex items-center relative shrink-0 w-full" style={{ marginTop: '32px' }}>
                         <p 
-                          className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]"
+                          className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-nowrap tracking-[-0.154px]"
                           style={{ fontSize: '12px' }}
                         >
                           ACHIEVED
@@ -390,7 +390,7 @@ export function GoalDetail({
                         >
                           <div className="flex flex-col gap-[10px] items-start relative shrink-0 w-full">
                             <div className="flex items-center relative shrink-0 w-full min-w-0">
-                              <p className="basis-0 font-normal font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px] line-through break-words">
+                              <p className="basis-0 font-normal font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-muted-foreground text-[18px] tracking-[-0.198px] line-through break-words">
                                 {milestone.name}
                               </p>
                             </div>
@@ -417,7 +417,7 @@ export function GoalDetail({
                                     </svg>
                                   </div>
                                   <div className="flex items-center relative shrink-0">
-                                    <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]">
+                                    <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-muted-foreground text-[18px] text-nowrap tracking-[-0.198px]">
                                       {daysUntil} day{daysUntil !== 1 ? 's' : ''}
                                     </p>
                                   </div>
