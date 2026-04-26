@@ -17,9 +17,11 @@ Runs every minute that:
 
 Runs at 9am, 1pm, 5pm, and 9pm that:
 1. Finds overdue todos (deadline passed, not completed)
-2. Sends a summary notification: "You have N overdue items to address"
-3. Throttled to at most one per user every 4 hours
-4. **Quiet hours:** Never runs between 10pm and 9am
+2. **Excludes reminders and daily tasks** from the overdue count
+3. **Uses Norwegian timezone** (Europe/Oslo) for deadline comparison (configurable via `REMINDER_TIMEZONE`)
+4. Sends a summary notification: "You have N overdue items to address"
+5. Throttled to at most one per user every 4 hours
+6. **Quiet hours:** Never runs between 10pm and 9am
 
 ## Configuration
 
@@ -61,7 +63,7 @@ Set these in your Vercel project settings:
    - `VAPID_PRIVATE_KEY` - Private VAPID key for push notifications
 
 3. **Optional:**
-   - `REMINDER_TIMEZONE` - IANA timezone for quiet hours (e.g. `America/Los_Angeles`). Default: UTC.
+   - `REMINDER_TIMEZONE` - IANA timezone for quiet hours and overdue deadline comparisons (e.g. `Europe/Oslo` for Norwegian time). Default: `Europe/Oslo`.
 
 ## Setting Up in Vercel
 
