@@ -456,6 +456,10 @@ export interface TasksPageProps {
   notificationPermission?: NotificationPermission;
   onEnableNotifications?: () => void;
   onOpenSearch?: () => void;
+  
+  // Open session
+  openSessionName?: string | null;
+  onOpenSessionClick?: () => void;
 }
 
 export function TasksPage(props: TasksPageProps) {
@@ -496,6 +500,8 @@ export function TasksPage(props: TasksPageProps) {
     notificationPermission,
     onEnableNotifications,
     onOpenSearch,
+    openSessionName,
+    onOpenSessionClick,
   } = props;
 
   const [isDailyExpanded, setIsDailyExpanded] = useState(true);
@@ -574,6 +580,48 @@ export function TasksPage(props: TasksPageProps) {
             </button>
           </div>
         </div>
+
+        {/* Open session banner */}
+        {openSessionName && onOpenSessionClick && (
+          <div className="w-full px-5">
+            <Card
+              className="cursor-pointer hover:opacity-90 border-violet-500/20 bg-violet-500/10"
+              onClick={onOpenSessionClick}
+            >
+              <CardContent className="flex items-center gap-3 p-3">
+                <svg
+                  className="size-5 shrink-0 text-violet-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth="1.5"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"
+                  />
+                </svg>
+                <p className="flex-1 text-base text-foreground">
+                  Open session: <span className="font-medium">{openSessionName}</span>
+                </p>
+                <svg
+                  className="size-5 shrink-0 text-violet-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth="1.5"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m8.25 4.5 7.5 7.5-7.5 7.5"
+                  />
+                </svg>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Notification banner */}
         {notificationPermission !== "granted" &&
