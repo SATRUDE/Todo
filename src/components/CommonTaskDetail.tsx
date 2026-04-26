@@ -68,8 +68,8 @@ export function CommonTaskDetail({
     return (
       <div className="relative shrink-0 w-full">
         <div className="w-full">
-          <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] pt-[30px] relative w-full">
-            <div className="content-stretch flex items-center gap-[16px] relative shrink-0 w-full">
+          <div className="flex flex-col gap-[32px] items-start px-[20px] pt-[30px] relative w-full">
+            <div className="flex items-center gap-[16px] relative shrink-0 w-full">
               <div 
                 className="relative shrink-0 size-[32px] cursor-pointer"
                 onClick={onBack}
@@ -86,7 +86,7 @@ export function CommonTaskDetail({
                   </g>
                 </svg>
               </div>
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px]">
+              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px]">
                 Error: Common task not found
               </p>
             </div>
@@ -165,10 +165,10 @@ export function CommonTaskDetail({
     <>
       <div className="relative shrink-0 w-full">
         <div className="w-full">
-          <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] pt-[30px] relative w-full h-fit" style={{ paddingBottom: '150px' }}>
+          <div className="flex flex-col gap-[32px] items-start px-[20px] pt-[30px] relative w-full h-fit" style={{ paddingBottom: '150px' }}>
             {/* Header */}
-            <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-              <div className="content-stretch flex gap-[16px] items-center relative shrink-0">
+            <div className="flex items-center justify-between relative shrink-0 w-full">
+              <div className="flex gap-[16px] items-center relative shrink-0">
                 <div 
                   className="relative shrink-0 size-[32px] cursor-pointer"
                   onClick={onBack}
@@ -186,10 +186,10 @@ export function CommonTaskDetail({
                   </svg>
                 </div>
                 <div 
-                  className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre cursor-pointer"
+                  className="flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre cursor-pointer"
                   onClick={handleTitleClick}
                 >
-                  <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">
+                  <p className="font-medium font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">
                     {commonTask.text}
                   </p>
                 </div>
@@ -197,20 +197,20 @@ export function CommonTaskDetail({
             </div>
 
             {/* Tasks List */}
-            <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
+            <div className="flex flex-col gap-[24px] items-start relative shrink-0 w-full">
               {matchingTasks.length === 0 ? (
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
                   No tasks created from this common task yet.
                 </p>
               ) : (
                 matchingTasks.map((todo) => (
                   <div
                     key={todo.id}
-                    className="content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+                    className="flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer"
                     onClick={() => onTaskClick && onTaskClick(todo)}
                   >
                     {/* Task Name Row */}
-                    <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+                    <div className="flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
                       <div 
                         className="relative shrink-0 size-[24px] cursor-pointer"
                         onClick={(e) => {
@@ -238,7 +238,7 @@ export function CommonTaskDetail({
                           )}
                         </svg>
                       </div>
-                      <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
+                      <p className={`font-normal font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
                         todo.completed ? "text-[#5b5d62] line-through" : "text-white"
                       }`}>
                         {todo.text}
@@ -252,7 +252,7 @@ export function CommonTaskDetail({
                         style={{ maxWidth: '100%', boxSizing: 'border-box' }}
                       >
                         <p 
-                          className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                          className="font-normal font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
                           style={{ 
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -267,10 +267,10 @@ export function CommonTaskDetail({
                     )}
 
                     {/* Metadata Row */}
-                    <div className="content-stretch flex gap-[8px] items-start relative shrink-0 pl-[32px]">
+                    <div className="flex gap-[8px] items-start relative shrink-0 pl-[32px]">
                       {/* Time */}
                       {todo.time && (
-                        <div className="box-border content-stretch flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">
+                        <div className="flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">
                           <div className="relative shrink-0 size-[20px]">
                             <svg
                               className="block size-full"
@@ -289,7 +289,7 @@ export function CommonTaskDetail({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {todo.time}
                           </p>
                         </div>
@@ -297,7 +297,7 @@ export function CommonTaskDetail({
 
                       {/* Day Due */}
                       {todo.deadline && (
-                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                        <div className="flex gap-[4px] items-center justify-center relative shrink-0">
                           <div className="relative shrink-0 size-[20px]">
                             <svg
                               className="block size-full"
@@ -316,7 +316,7 @@ export function CommonTaskDetail({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {formatDate(todo.deadline.date)}
                           </p>
                         </div>
@@ -326,7 +326,7 @@ export function CommonTaskDetail({
                       {(() => {
                         const list = getListById(todo.listId);
                         return list ? (
-                          <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                          <div className="flex gap-[4px] items-center justify-center relative shrink-0">
                             <div className="relative shrink-0 size-[20px]">
                               <svg
                                 className="block size-full"
@@ -345,7 +345,7 @@ export function CommonTaskDetail({
                                 </g>
                               </svg>
                             </div>
-                            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                            <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                               {list.name}
                             </p>
                           </div>

@@ -298,10 +298,10 @@ export function RadialTimePicker({ selectedTime, onTimeChange }: RadialTimePicke
 
   return (
     <div className="bg-secondary border border-border rounded-lg flex gap-16 items-center justify-center p-5 w-full">
-      <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0">
+      <div className="flex flex-col gap-[10px] items-center relative shrink-0">
         {renderTimeColumn('hours', hours)}
       </div>
-      <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0">
+      <div className="flex flex-col gap-[10px] items-center relative shrink-0">
         {renderTimeColumn('minutes', minutes)}
       </div>
     </div>

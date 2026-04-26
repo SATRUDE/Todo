@@ -119,24 +119,24 @@ export function ResetPassword({ onPasswordReset, onCancel }: ResetPasswordProps)
 
   return createPortal(
     <div className="fixed inset-0 z-[10000] pointer-events-auto">
-      <div className="bg-[#110c10] box-border content-stretch flex flex-col items-center justify-center pb-0 pt-[60px] px-[20px] relative size-full min-h-screen">
-        <div className="box-border content-stretch flex flex-col gap-[40px] items-center max-w-[400px] w-full">
-          <div className="content-stretch flex flex-col gap-[24px] items-stretch relative shrink-0 w-full">
-            <h1 className="font-['Inter:Medium',sans-serif] font-medium leading-[1.2] not-italic relative shrink-0 text-[32px] text-[#e1e6ee] tracking-[-0.352px] text-center">
+      <div className="bg-[#110c10] flex flex-col items-center justify-center pb-0 pt-[60px] px-[20px] relative size-full min-h-screen">
+        <div className="flex flex-col gap-[40px] items-center max-w-[400px] w-full">
+          <div className="flex flex-col gap-[24px] items-stretch relative shrink-0 w-full">
+            <h1 className="font-medium font-medium leading-[1.2] not-italic relative shrink-0 text-[32px] text-[#e1e6ee] tracking-[-0.352px] text-center">
               Reset Password
             </h1>
 
             {isVerifying ? (
-              <div className="content-stretch flex items-center justify-center relative shrink-0 w-full py-[24px]">
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[16px] text-[#e1e6ee] tracking-[-0.176px]">
+              <div className="flex items-center justify-center relative shrink-0 w-full py-[24px]">
+                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[16px] text-[#e1e6ee] tracking-[-0.176px]">
                   Verifying reset link...
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="content-stretch flex flex-col gap-[24px] items-stretch relative shrink-0 w-full">
+              <form onSubmit={handleSubmit} className="flex flex-col gap-[24px] items-stretch relative shrink-0 w-full">
                 {/* New Password Input */}
-                <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                  <label htmlFor="newPassword" className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[16px] text-[#e1e6ee] tracking-[-0.176px]">
+                <div className="flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                  <label htmlFor="newPassword" className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[16px] text-[#e1e6ee] tracking-[-0.176px]">
                     New Password
                   </label>
                   <input
@@ -146,14 +146,14 @@ export function ResetPassword({ onPasswordReset, onCancel }: ResetPasswordProps)
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your new password"
                     disabled={isLoading}
-                    className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full font-['Inter:Regular',sans-serif] font-normal text-[18px] text-[#e1e6ee] placeholder:text-[#5b5d62] border-none outline-none focus:bg-[rgba(225,230,238,0.15)] disabled:opacity-50"
+                    className="bg-[rgba(225,230,238,0.1)] flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full font-normal font-normal text-[18px] text-[#e1e6ee] placeholder:text-[#5b5d62] border-none outline-none focus:bg-[rgba(225,230,238,0.15)] disabled:opacity-50"
                     autoFocus
                   />
                 </div>
 
                 {/* Confirm Password Input */}
-                <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                  <label htmlFor="confirmPassword" className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[16px] text-[#e1e6ee] tracking-[-0.176px]">
+                <div className="flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                  <label htmlFor="confirmPassword" className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[16px] text-[#e1e6ee] tracking-[-0.176px]">
                     Confirm Password
                   </label>
                   <input
@@ -163,7 +163,7 @@ export function ResetPassword({ onPasswordReset, onCancel }: ResetPasswordProps)
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm your new password"
                     disabled={isLoading}
-                    className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full font-['Inter:Regular',sans-serif] font-normal text-[18px] text-[#e1e6ee] placeholder:text-[#5b5d62] border-none outline-none focus:bg-[rgba(225,230,238,0.15)] disabled:opacity-50"
+                    className="bg-[rgba(225,230,238,0.1)] flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full font-normal font-normal text-[18px] text-[#e1e6ee] placeholder:text-[#5b5d62] border-none outline-none focus:bg-[rgba(225,230,238,0.15)] disabled:opacity-50"
                     onKeyPress={(e) => {
                       if (e.key === 'Enter' && !isLoading && password.trim() && confirmPassword.trim()) {
                         handleSubmit(e as any);
@@ -174,12 +174,12 @@ export function ResetPassword({ onPasswordReset, onCancel }: ResetPasswordProps)
 
                 {/* Message */}
                 {message && (
-                  <div className={`box-border content-stretch flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full ${
+                  <div className={`flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full ${
                     message.type === 'success' 
                       ? 'bg-[rgba(0,200,83,0.1)] text-[#e1e6ee]' 
                       : 'bg-[rgba(239,65,35,0.1)] text-[#e1e6ee]'
                   }`}>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[16px] tracking-[-0.176px]">
+                    <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[16px] tracking-[-0.176px]">
                       {message.text}
                     </p>
                   </div>
@@ -189,7 +189,7 @@ export function ResetPassword({ onPasswordReset, onCancel }: ResetPasswordProps)
                 <button
                   type="submit"
                   disabled={isLoading || !password.trim() || !confirmPassword.trim()}
-                  className="bg-[#0b64f9] box-border content-stretch flex items-center justify-center px-[24px] py-[12px] relative rounded-[8px] shrink-0 w-full font-['Inter:Medium',sans-serif] font-medium text-[18px] text-white tracking-[-0.198px] cursor-pointer hover:bg-[#0954d0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="bg-[#0b64f9] flex items-center justify-center px-[24px] py-[12px] relative rounded-[8px] shrink-0 w-full font-medium font-medium text-[18px] text-white tracking-[-0.198px] cursor-pointer hover:bg-[#0954d0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isLoading ? 'Updating password...' : 'Update Password'}
                 </button>
@@ -199,7 +199,7 @@ export function ResetPassword({ onPasswordReset, onCancel }: ResetPasswordProps)
                   type="button"
                   onClick={onCancel}
                   disabled={isLoading}
-                  className="bg-transparent box-border content-stretch flex items-center justify-center px-[24px] py-[12px] relative rounded-[8px] shrink-0 w-full font-['Inter:Regular',sans-serif] font-normal text-[18px] text-[#5b5d62] tracking-[-0.198px] cursor-pointer hover:text-[#e1e6ee] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="bg-transparent flex items-center justify-center px-[24px] py-[12px] relative rounded-[8px] shrink-0 w-full font-normal font-normal text-[18px] text-[#5b5d62] tracking-[-0.198px] cursor-pointer hover:text-[#e1e6ee] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Cancel
                 </button>

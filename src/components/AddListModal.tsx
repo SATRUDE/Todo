@@ -123,9 +123,9 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
       
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
+        <div className="bg-[#110c10] flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
           {/* Handle */}
-          <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
+          <div className="flex flex-col gap-[10px] items-center relative shrink-0 w-full">
             <div className="h-[20px] relative shrink-0 w-[100px]">
               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
                 <g>
@@ -138,7 +138,7 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
           {/* Content */}
           <div className="relative shrink-0 w-full flex flex-col gap-[32px]">
             <div className="size-full">
-              <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
+              <div className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
                 {/* Input Field */}
                 <input
                   type="text"
@@ -146,14 +146,14 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
                   onChange={(e) => setListInput(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Add List"
-                  className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62]"
+                  className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62]"
                   autoFocus
                 />
 
                 {/* Shared Toggle and Delete Button */}
-                <div className="content-stretch flex gap-[8px] items-start justify-between relative shrink-0 w-full">
+                <div className="flex gap-[8px] items-start justify-between relative shrink-0 w-full">
                   <div 
-                    className="bg-[rgba(225,230,238,0.1)] box-border content-stretch flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer"
+                    className="bg-[rgba(225,230,238,0.1)] flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer"
                     onClick={() => setIsShared(!isShared)}
                   >
                     {/* Toggle Switch */}
@@ -165,7 +165,7 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
                         </g>
                       </svg>
                     </div>
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Share</p>
+                    <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Share</p>
                   </div>
 
                   {/* Delete Button - only show when editing */}
@@ -187,7 +187,7 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
 
             {/* Folder picker - full-width block with 16px padding (no overflow clip) */}
             {folders.length > 0 ? (
-              <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" style={{ paddingLeft: 16, paddingRight: 16 }}>
+              <div className="flex flex-col gap-[8px] items-start relative shrink-0 w-full" style={{ paddingLeft: 16, paddingRight: 16 }}>
                 <div ref={folderChipsRowRef} className="flex flex-wrap items-center w-full" style={{ gap: 16 }}>
                   <button
                     ref={firstChipRef}
@@ -226,7 +226,7 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
             ) : null}
 
             <div className="size-full">
-              <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
+              <div className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
                 {/* Color Picker */}
                 <div className="content-start flex flex-wrap gap-[16px] items-start relative shrink-0 w-full">
                   {colors.map((color) => (
@@ -248,7 +248,7 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
                 {/* Submit Button Row */}
                 <div className="flex gap-[10px] items-end justify-end w-full" style={{ justifyContent: 'flex-end', width: '100%' }}>
                   <div 
-                    className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
+                    className="flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
                     style={{
                       width: '35px',
                       height: '35px',

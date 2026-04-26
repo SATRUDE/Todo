@@ -137,7 +137,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
     <>
       <div className="relative w-full">
         <div className="w-full">
-          <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
+          <div className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
             {/* Header */}
             <div className="flex items-center justify-between w-full min-w-0">
               <div className="flex gap-[16px] items-center min-w-0 flex-1">
@@ -161,7 +161,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                   className="flex flex-col items-start min-w-0 flex-1 overflow-hidden cursor-pointer"
                   onClick={() => !isCompletedList && !isAllTasksList && setIsEditListModalOpen(true)}
                 >
-                  <p className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic text-[28px] text-white tracking-[-0.308px] break-words min-w-0 w-full">
+                  <p className="font-medium font-medium leading-[1.5] not-italic text-[28px] text-white tracking-[-0.308px] break-words min-w-0 w-full">
                     {listName}
                   </p>
                 </div>
@@ -183,10 +183,10 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
             {/* Date Filter Pill */}
             {dateFilter && isCompletedList && onClearDateFilter && (
               <div 
-                className="bg-[rgba(225,230,238,0.1)] box-border flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer w-fit"
+                className="bg-[rgba(225,230,238,0.1)] flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer w-fit"
                 onClick={onClearDateFilter}
               >
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
                   Today
                 </p>
                 <div className="relative shrink-0 size-[20px]">
@@ -226,10 +226,10 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
 
                 return (
                   <div 
-                    className="bg-[rgba(225,230,238,0.1)] box-border flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer w-fit"
+                    className="bg-[rgba(225,230,238,0.1)] flex gap-[8px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer w-fit"
                     onClick={onClearDateFilter}
                   >
-                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                    <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
                       {getTimeRangeLabel()}
                     </p>
                     <div className="relative shrink-0 size-[20px]">
@@ -257,7 +257,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
             {/* Reminders Box */}
             {reminders.length > 0 && (
               <div 
-                className="content-stretch flex flex-col gap-[10px] items-start px-[16px] relative mb-[24px]"
+                className="flex flex-col gap-[10px] items-start px-[16px] relative mb-[24px]"
                 style={{ 
                   backgroundColor: '#1f2022',
                   paddingTop: '16px',
@@ -278,10 +278,10 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                 }}
               >
                 {/* Header */}
-                <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
-                  <div className="content-stretch flex items-center relative shrink-0">
+                <div className="flex items-start justify-between relative shrink-0 w-full">
+                  <div className="flex items-center relative shrink-0">
                     <p 
-                      className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
+                      className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-nowrap tracking-[-0.154px]"
                       style={{ fontSize: '12px' }}
                       ref={(el) => {
                         // #region agent log
@@ -296,11 +296,11 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                     </p>
                   </div>
                   <div 
-                    className="content-stretch flex gap-[16px] items-start justify-end relative shrink-0 cursor-pointer"
+                    className="flex gap-[16px] items-start justify-end relative shrink-0 cursor-pointer"
                     onClick={() => setIsRemindersExpanded(!isRemindersExpanded)}
                   >
-                    <div className="content-stretch flex items-center relative shrink-0">
-                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
+                    <div className="flex items-center relative shrink-0">
+                      <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]" style={{ fontSize: '12px' }}>
                         {reminders.length}
                       </p>
                     </div>
@@ -324,11 +324,11 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
 
                 {/* Reminders List */}
                 {isRemindersExpanded && (
-                  <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                  <div className="flex flex-col gap-[8px] items-start relative shrink-0 w-full">
                     {reminders.map((todo) => (
                       <div
                         key={todo.id}
-                        className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
+                        className="flex flex-col gap-[8px] items-start relative shrink-0 w-full cursor-pointer"
                         onClick={() => onTaskClick && onTaskClick(todo)}
                       >
                         {/* Reminder Row */}
@@ -340,7 +340,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                             </svg>
                           </div>
                           <div className="basis-0 flex flex-col grow items-start min-h-px min-w-0 overflow-hidden">
-                            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic text-[18px] text-white tracking-[-0.198px] break-words min-w-0">
+                            <p className="font-normal font-normal leading-[1.5] not-italic text-[18px] text-white tracking-[-0.198px] break-words min-w-0">
                               {todo.text}
                             </p>
                           </div>
@@ -348,8 +348,8 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                         
                         {/* Time */}
                         {(todo.deadline?.time || todo.time) && (
-                          <div className="content-stretch flex items-start relative shrink-0">
-                            <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
+                          <div className="flex items-start relative shrink-0">
+                            <div className="flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0">
                               <div className="relative shrink-0 size-[20px]">
                                 <svg
                                   className="block size-full"
@@ -368,7 +368,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                                   </g>
                                 </svg>
                               </div>
-                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
+                              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.176px]">
                                 {todo.deadline?.time || todo.time}
                               </p>
                             </div>
@@ -382,7 +382,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                             style={{ maxWidth: '100%', boxSizing: 'border-box' }}
                           >
                             <p 
-                              className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                              className="font-normal font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
                               style={{ 
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -399,7 +399,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                         {(() => {
                           const noteCount = getNoteCount?.(todo.id) ?? 0;
                           return noteCount > 0 ? (
-                            <div className="content-stretch flex gap-[4px] items-center justify-center pl-[32px] relative shrink-0">
+                            <div className="flex gap-[4px] items-center justify-center pl-[32px] relative shrink-0">
                               <div className="relative shrink-0 size-[20px]">
                                 <svg
                                   className="block size-full"
@@ -416,7 +416,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                                   />
                                 </svg>
                               </div>
-                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                                 {noteCount} {noteCount === 1 ? 'note' : 'notes'}
                               </p>
                             </div>
@@ -430,15 +430,15 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
             )}
 
             {/* Tasks */}
-            <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
+            <div className="flex flex-col gap-[24px] items-start relative shrink-0 w-full">
               {regularTasks.map((todo) => (
                 <div
                   key={todo.id}
-                  className="content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer"
+                  className="flex flex-col gap-[4px] items-start justify-center relative shrink-0 w-full cursor-pointer"
                   onClick={() => onTaskClick && onTaskClick(todo)}
                 >
                   {/* Task Name Row */}
-                  <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
+                  <div className="flex gap-[8px] items-center relative shrink-0 w-full min-w-0">
                     {/* Only show checkbox for tasks, not reminders */}
                     {todo.type !== 'reminder' && (
                       <div 
@@ -469,7 +469,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                         </svg>
                       </div>
                     )}
-                    <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
+                    <p className={`font-normal font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
                       todo.completed ? "text-[#5b5d62] line-through" : "text-white"
                     }`}>
                       {todo.text}
@@ -483,7 +483,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                       style={{ maxWidth: '100%', boxSizing: 'border-box' }}
                     >
                       <p 
-                        className="font-['Inter:Regular',sans-serif] font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
+                        className="font-normal font-normal not-italic text-[#5b5d62] text-[14px] tracking-[-0.198px]"
                         style={{ 
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -501,7 +501,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                   <div className="flex gap-[8px] items-start flex-wrap pl-[32px]">
                     {/* Time */}
                     {todo.time && (
-                      <div className="box-border content-stretch flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">
+                      <div className="flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">
                         <div className="relative shrink-0 size-[20px]">
                           <svg
                             className="block size-full"
@@ -520,7 +520,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                             </g>
                           </svg>
                         </div>
-                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                        <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[16px] text-nowrap tracking-[-0.198px] whitespace-pre">
                           {todo.time}
                         </p>
                       </div>
@@ -528,7 +528,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
 
                     {/* Day Due */}
                     {todo.deadline && (
-                      <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                      <div className="flex gap-[4px] items-center justify-center relative shrink-0">
                         <div className="relative shrink-0 size-[20px]">
                           <svg
                             className="block size-full"
@@ -547,7 +547,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                             </g>
                           </svg>
                         </div>
-                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                        <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                           {getDayOfWeek(todo.deadline.date)}
                         </p>
                       </div>
@@ -557,7 +557,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                     {(() => {
                       const list = getListById(todo.listId);
                       return list ? (
-                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                        <div className="flex gap-[4px] items-center justify-center relative shrink-0">
                           <div className="relative shrink-0 size-[20px]">
                             <svg
                               className="block size-full"
@@ -576,7 +576,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                               </g>
                             </svg>
                           </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {list.name}
                           </p>
                         </div>
@@ -587,7 +587,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                     {(() => {
                       const milestone = getMilestoneById(todo.milestoneId);
                       return milestone ? (
-                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                        <div className="flex gap-[4px] items-center justify-center relative shrink-0">
                           <div className="relative shrink-0 size-[20px]">
                             <svg
                               className="block size-full"
@@ -600,7 +600,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                               </g>
                             </svg>
                           </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {milestone.name}
                           </p>
                         </div>
@@ -611,7 +611,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                     {(() => {
                       const subtaskCount = getSubtaskCount(todo.id);
                       return subtaskCount > 0 ? (
-                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                        <div className="flex gap-[4px] items-center justify-center relative shrink-0">
                           <div className="relative shrink-0 size-[20px]">
                             <svg
                               className="block size-full"
@@ -630,7 +630,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                               </g>
                             </svg>
                           </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                             {subtaskCount}
                           </p>
                         </div>
@@ -641,7 +641,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                     {(() => {
                       const noteCount = getNoteCount?.(todo.id) ?? 0;
                       return noteCount > 0 ? (
-                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
+                        <div className="flex gap-[4px] items-center justify-center relative shrink-0">
                           <div className="relative shrink-0 size-[20px]">
                             <svg
                               className="block size-full"
@@ -658,7 +658,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                               />
                             </svg>
                           </div>
-                              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
+                              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[14px] text-nowrap tracking-[-0.198px] whitespace-pre">
                                 {noteCount} {noteCount === 1 ? 'note' : 'notes'}
                               </p>
                         </div>

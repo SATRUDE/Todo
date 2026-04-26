@@ -184,10 +184,10 @@ export function GoalDetail({
   return (
     <div className="relative shrink-0 w-full">
       <div className="w-full">
-        <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] pt-[30px] relative w-full h-fit" style={{ paddingBottom: '150px' }}>
+        <div className="flex flex-col gap-[32px] items-start px-[20px] pt-[30px] relative w-full h-fit" style={{ paddingBottom: '150px' }}>
           {/* Header */}
-          <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-            <div className="content-stretch flex items-center gap-[16px] relative shrink-0">
+          <div className="flex items-center justify-between relative shrink-0 w-full">
+            <div className="flex items-center gap-[16px] relative shrink-0">
               <div 
                 className="relative shrink-0 size-[32px] cursor-pointer"
                 onClick={onBack}
@@ -205,10 +205,10 @@ export function GoalDetail({
                 </svg>
               </div>
               <div 
-                className="content-stretch flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre cursor-pointer"
+                className="flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre cursor-pointer"
                 onClick={handleGoalClick}
               >
-                <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">
+                <p className="font-medium font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">
                   {goal.text}
                 </p>
               </div>
@@ -235,13 +235,13 @@ export function GoalDetail({
           {/* AI score + explanation (from DB, same as today-page card; updated when recalibrated) */}
           {goal?.id && (goalStatus || goalExplanation) && (
             <div
-              className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full"
+              className="flex flex-col gap-[10px] items-start relative shrink-0 w-full"
               style={{ padding: '14px 16px', backgroundColor: '#1F2022', borderRadius: '10px' }}
             >
               {goalStatus && (
-                <div className="content-stretch flex items-center gap-[8px] relative shrink-0">
+                <div className="flex items-center gap-[8px] relative shrink-0">
                   <span
-                    className="font-['Inter:Medium',sans-serif] font-medium text-[13px] tracking-[-0.1px]"
+                    className="font-medium font-medium text-[13px] tracking-[-0.1px]"
                     style={{
                       padding: '4px 10px',
                       borderRadius: '6px',
@@ -264,7 +264,7 @@ export function GoalDetail({
                 </div>
               )}
               {goalExplanation && (
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.45] text-[#e1e6ee] text-[15px] tracking-[-0.15px]">
+                <p className="font-normal font-normal leading-[1.45] text-[#e1e6ee] text-[15px] tracking-[-0.15px]">
                   {goalExplanation}
                 </p>
               )}
@@ -273,19 +273,19 @@ export function GoalDetail({
 
           {/* Goal Description */}
           {goal.description && goal.description.trim() !== "" && (
-            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+            <div className="flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+              <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
                 {linkifyText(goal.description)}
               </p>
             </div>
           )}
 
           {/* Milestones Section */}
-          <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+          <div className="flex flex-col gap-[16px] items-start relative shrink-0 w-full">
             {/* Milestones Subheading */}
-            <div className="content-stretch flex items-center relative shrink-0">
+            <div className="flex items-center relative shrink-0">
               <p 
-                className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]"
+                className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]"
                 style={{ fontSize: '12px' }}
               >
                 MILESTONES
@@ -299,7 +299,7 @@ export function GoalDetail({
               
               if (activeMilestones.length === 0 && achievedMilestones.length === 0) {
                 return (
-                  <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
+                  <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px]">
                     No milestones yet. Click the + button to add one.
                   </p>
                 );
@@ -311,7 +311,7 @@ export function GoalDetail({
                   {activeMilestones.map((milestone) => (
                 <div
                   key={milestone.id}
-                  className="content-stretch flex flex-col items-start justify-center relative shrink-0 w-full cursor-pointer"
+                  className="flex flex-col items-start justify-center relative shrink-0 w-full cursor-pointer"
                   style={{ padding: '16px', backgroundColor: '#1F2022', borderRadius: '8px' }}
                   onClick={() => {
                     if (onSelectMilestone) {
@@ -323,9 +323,9 @@ export function GoalDetail({
                     }
                   }}
                 >
-                  <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
-                    <div className="content-stretch flex items-center relative shrink-0 w-full min-w-0">
-                      <p className="basis-0 font-['Inter:Regular',sans-serif] font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-[#e1e6ee] text-[18px] tracking-[-0.198px] break-words">
+                  <div className="flex flex-col gap-[10px] items-start relative shrink-0 w-full">
+                    <div className="flex items-center relative shrink-0 w-full min-w-0">
+                      <p className="basis-0 font-normal font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-[#e1e6ee] text-[18px] tracking-[-0.198px] break-words">
                         {milestone.name}
                       </p>
                     </div>
@@ -334,7 +334,7 @@ export function GoalDetail({
                       if (daysUntil === null) return null;
                       
                       return (
-                        <div className="content-stretch flex gap-[10px] items-start relative shrink-0">
+                        <div className="flex gap-[10px] items-start relative shrink-0">
                           <div className="relative shrink-0 size-[24px]">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -351,8 +351,8 @@ export function GoalDetail({
                               />
                             </svg>
                           </div>
-                          <div className="content-stretch flex items-center relative shrink-0">
-                            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px]">
+                          <div className="flex items-center relative shrink-0">
+                            <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#e1e6ee] text-[18px] text-nowrap tracking-[-0.198px]">
                               {daysUntil} day{daysUntil !== 1 ? 's' : ''}
                             </p>
                           </div>
@@ -366,9 +366,9 @@ export function GoalDetail({
                   {/* Achieved Milestones Section */}
                   {achievedMilestones.length > 0 && (
                     <>
-                      <div className="content-stretch flex items-center relative shrink-0 w-full" style={{ marginTop: '32px' }}>
+                      <div className="flex items-center relative shrink-0 w-full" style={{ marginTop: '32px' }}>
                         <p 
-                          className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]"
+                          className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-nowrap tracking-[-0.154px]"
                           style={{ fontSize: '12px' }}
                         >
                           ACHIEVED
@@ -377,7 +377,7 @@ export function GoalDetail({
                       {achievedMilestones.map((milestone) => (
                         <div
                           key={milestone.id}
-                          className="content-stretch flex flex-col items-start justify-center relative shrink-0 w-full cursor-pointer opacity-60"
+                          className="flex flex-col items-start justify-center relative shrink-0 w-full cursor-pointer opacity-60"
                           style={{ padding: '16px', backgroundColor: '#1F2022', borderRadius: '8px' }}
                           onClick={() => {
                             if (onSelectMilestone) {
@@ -388,9 +388,9 @@ export function GoalDetail({
                             }
                           }}
                         >
-                          <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
-                            <div className="content-stretch flex items-center relative shrink-0 w-full min-w-0">
-                              <p className="basis-0 font-['Inter:Regular',sans-serif] font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px] line-through break-words">
+                          <div className="flex flex-col gap-[10px] items-start relative shrink-0 w-full">
+                            <div className="flex items-center relative shrink-0 w-full min-w-0">
+                              <p className="basis-0 font-normal font-normal grow leading-[1.5] min-h-px min-w-px not-italic relative shrink-0 text-[#5b5d62] text-[18px] tracking-[-0.198px] line-through break-words">
                                 {milestone.name}
                               </p>
                             </div>
@@ -399,7 +399,7 @@ export function GoalDetail({
                               if (daysUntil === null) return null;
                               
                               return (
-                                <div className="content-stretch flex gap-[10px] items-start relative shrink-0">
+                                <div className="flex gap-[10px] items-start relative shrink-0">
                                   <div className="relative shrink-0 size-[24px]">
                                     <svg
                                       xmlns="http://www.w3.org/2000/svg"
@@ -416,8 +416,8 @@ export function GoalDetail({
                                       />
                                     </svg>
                                   </div>
-                                  <div className="content-stretch flex items-center relative shrink-0">
-                                    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]">
+                                  <div className="flex items-center relative shrink-0">
+                                    <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px]">
                                       {daysUntil} day{daysUntil !== 1 ? 's' : ''}
                                     </p>
                                   </div>

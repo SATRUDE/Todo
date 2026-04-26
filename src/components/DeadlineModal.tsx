@@ -299,7 +299,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
                         onClick={() => handleDayToggle(day)}
                         className={`px-4 py-2 rounded-lg font-normal text-base transition-colors ${
                           selectedDays.includes(day)
-                            ? 'bg-blue-500 text-primary-foreground'
+                            ? 'bg-primary text-primary-foreground'
                             : 'bg-secondary text-foreground hover:bg-accent'
                         }`}
                       >
@@ -337,7 +337,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
               <button
                 type="button"
                 onClick={handleConfirm}
-                className="flex-1 rounded-lg px-6 py-3 font-medium text-lg bg-blue-500 hover:bg-blue-600 text-primary-foreground transition-colors"
+                className="flex-1 rounded-lg px-6 py-3 font-medium text-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
               >
                 Confirm
               </button>

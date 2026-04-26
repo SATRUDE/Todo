@@ -164,7 +164,7 @@ export function Notes({
                 type="button"
                 onClick={handleAdd}
                 disabled={!newContent.trim() || isSubmitting}
-                className="mt-3 self-end rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-card"
+                className="mt-3 self-end rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-card"
               >
                 Add note
               </button>
@@ -217,7 +217,7 @@ export function Notes({
                           type="button"
                           onClick={handleSaveEdit}
                           disabled={!editContent.trim() || isSubmitting}
-                          className="rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:bg-blue-600 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-card"
+                          className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:bg-primary/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-card"
                         >
                           Save
                         </button>

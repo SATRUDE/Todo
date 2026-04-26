@@ -112,7 +112,7 @@ export function ReviewMissedDeadlinesModal({
 
           {/* Scrollable Content */}
           <div 
-            className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full" 
+            className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full" 
             data-node-id="36:485"
             style={{ 
               overflowY: 'auto', 
@@ -122,13 +122,13 @@ export function ReviewMissedDeadlinesModal({
               overflowX: 'hidden' 
             }}
           >
-            <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full pb-[40px]" data-node-id="36:495">
+            <div className="flex flex-col gap-[24px] items-start relative shrink-0 w-full pb-[40px]" data-node-id="36:495">
               {missedDeadlines.map((todo) => {
                 const list = getListById(todo.listId);
                 return (
-                  <div key={todo.id} className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full" data-node-id="36:496">
+                  <div key={todo.id} className="flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-full" data-node-id="36:496">
                     {/* Task Name Row */}
-                    <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full min-w-0" data-node-id="36:497">
+                    <div className="flex gap-[8px] items-center relative shrink-0 w-full min-w-0" data-node-id="36:497">
                       {/* Checkbox */}
                       <div
                         className="relative shrink-0 size-[24px] cursor-pointer"
@@ -151,7 +151,7 @@ export function ReviewMissedDeadlinesModal({
                             stroke="currentColor"
                             strokeWidth="1.5"
                             fill={todo.completed ? "currentColor" : "none"}
-                            className={todo.completed ? "text-blue-500" : "text-border"}
+                            className={todo.completed ? "text-primary" : "text-border"}
                           />
                           {todo.completed && (
                             <path
@@ -201,7 +201,7 @@ export function ReviewMissedDeadlinesModal({
                     <div className="flex gap-[8px] items-start flex-wrap" data-node-id="36:500">
                       {/* Time */}
                       {todo.deadline?.time && todo.deadline.time.trim() !== "" && (
-                        <div className="box-border content-stretch flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0" data-node-id="36:501">
+                        <div className="flex gap-[4px] items-center justify-center pl-[32px] pr-0 py-0 relative shrink-0" data-node-id="36:501">
                           <div className="relative shrink-0 size-[24px] text-muted-foreground" data-node-id="36:502">
                             <svg
                               className="block size-full"
@@ -228,7 +228,7 @@ export function ReviewMissedDeadlinesModal({
 
                       {/* Day Due */}
                       {todo.deadline && (
-                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0" data-node-id="36:505">
+                        <div className="flex gap-[4px] items-center justify-center relative shrink-0" data-node-id="36:505">
                           <div className="relative shrink-0 size-[20px] text-muted-foreground" data-node-id="36:506">
                             <svg
                               className="block size-full"
@@ -247,7 +247,7 @@ export function ReviewMissedDeadlinesModal({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" data-node-id="36:508">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" data-node-id="36:508">
                             {getDayOfWeek(todo.deadline.date)}
                           </p>
                         </div>
@@ -255,7 +255,7 @@ export function ReviewMissedDeadlinesModal({
 
                       {/* List */}
                       {list && (
-                        <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0" data-node-id="36:509">
+                        <div className="flex gap-[4px] items-center justify-center relative shrink-0" data-node-id="36:509">
                           <div className="relative shrink-0 size-[24px]" data-node-id="36:510">
                             <svg
                               className="block size-full"
@@ -274,7 +274,7 @@ export function ReviewMissedDeadlinesModal({
                               </g>
                             </svg>
                           </div>
-                          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" data-node-id="36:512">
+                          <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[#5b5d62] text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" data-node-id="36:512">
                             {list.name}
                           </p>
                         </div>
@@ -282,10 +282,10 @@ export function ReviewMissedDeadlinesModal({
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="36:545">
+                    <div className="flex gap-[8px] items-start relative shrink-0" data-node-id="36:545">
                       {/* New Deadline Button */}
                       <div 
-                        className="bg-[rgba(11,100,249,0.25)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(11,100,249,0.3)] transition-colors"
+                        className="bg-[rgba(11,100,249,0.25)] flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(11,100,249,0.3)] transition-colors"
                         onClick={() => {
                           if (onNewDeadlineClick) {
                             onNewDeadlineClick(todo);
@@ -313,7 +313,7 @@ export function ReviewMissedDeadlinesModal({
                           </svg>
                         </div>
                         <p 
-                          className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" 
+                          className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" 
                           style={{ color: '#4b93f8' }}
                           data-node-id="36:535"
                         >
@@ -323,7 +323,7 @@ export function ReviewMissedDeadlinesModal({
 
                       {/* Delete Button */}
                       <div 
-                        className="bg-[rgba(239,65,35,0.2)] box-border content-stretch flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(239,65,35,0.25)] transition-colors"
+                        className="bg-[rgba(239,65,35,0.2)] flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(239,65,35,0.25)] transition-colors"
                         onClick={() => {
                           onDeleteTask(todo.id);
                         }}
@@ -349,7 +349,7 @@ export function ReviewMissedDeadlinesModal({
                           </svg>
                         </div>
                         <p 
-                          className="font-['Inter:Regular',sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" 
+                          className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" 
                           style={{ color: '#ef4123' }}
                           data-node-id="36:540"
                         >

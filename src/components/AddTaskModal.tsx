@@ -582,7 +582,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
                 {/* Title and Description Section */}
                 {!voiceSuccessAdded && !voiceTask.isListening && !voiceProcessing && (
                 <>
-                <div className="content-stretch flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
+                <div className="flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
                   {isBulkAddMode ? (
                     <textarea
                       value={taskInput}
@@ -640,7 +640,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
 
                 {/* Image Section - Under description */}
                 {imageUrl && !isBulkAddMode && (
-                  <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                  <div className="flex flex-col gap-[8px] items-start relative shrink-0 w-full">
                     <div className="relative w-full max-w-md">
                       <img 
                         src={imageUrl} 
@@ -662,7 +662,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
                 )}
                 
                 {/* Buttons Container */}
-                <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+                <div className="flex flex-col gap-[16px] items-start relative shrink-0 w-full">
                   {/* Button Row */}
                   <div className="content-center flex flex-wrap gap-[8px] items-center relative shrink-0 w-full">
                     {/* Task Type Button - opens modal to select type */}

@@ -87,9 +87,9 @@ export function CreateSessionModal({
 
       {/* Bottom Sheet */}
       <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="bg-[#110c10] box-border content-stretch flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
+        <div className="bg-[#110c10] flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
           {/* Handle */}
-          <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0 w-full">
+          <div className="flex flex-col gap-[10px] items-center relative shrink-0 w-full">
             <div className="h-[20px] relative shrink-0 w-[100px]">
               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
                 <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
@@ -99,7 +99,7 @@ export function CreateSessionModal({
 
           {/* Content */}
           <div className="relative shrink-0 w-full flex flex-col gap-[32px]">
-            <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
+            <div className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
               {/* Name Input */}
               <input
                 type="text"
@@ -107,12 +107,12 @@ export function CreateSessionModal({
                 onChange={(e) => setNameInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Session name"
-                className="font-['Inter:Medium',sans-serif] font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62]"
+                className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-[#5b5d62]"
                 autoFocus
               />
 
               {/* Delete button row */}
-              <div className="content-stretch flex gap-[8px] items-center justify-between relative shrink-0 w-full">
+              <div className="flex gap-[8px] items-center justify-between relative shrink-0 w-full">
                 <div />
                 {editingSession && (
                   <div
@@ -128,7 +128,7 @@ export function CreateSessionModal({
             </div>
 
             {/* Color Picker + Submit */}
-            <div className="box-border content-stretch flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
+            <div className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
               <div className="content-start flex flex-wrap gap-[16px] items-start relative shrink-0 w-full">
                 {SESSION_COLORS.map((color) => (
                   <div
@@ -149,7 +149,7 @@ export function CreateSessionModal({
               {/* Submit Button */}
               <div className="flex gap-[10px] items-end justify-end w-full">
                 <div
-                  className="box-border flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
+                  className="flex items-center justify-center overflow-clip rounded-[100px] cursor-pointer hover:opacity-90 transition-opacity"
                   style={{
                     width: "35px",
                     height: "35px",
