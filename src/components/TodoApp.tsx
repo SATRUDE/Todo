@@ -88,6 +88,7 @@ import {
   createFocusSession,
   updateFocusSession,
   deleteFocusSession,
+  setSessionOpen,
   fetchSessionTasks,
   addTaskToSession,
   removeTaskFromSession,
@@ -1994,7 +1995,10 @@ export function TodoApp() {
   const handleSelectFocusSession = async (session: FocusSession, pendingTaskId?: number | null) => {
     setSelectedSession(session);
     try {
-      // Add the pending task before loading the session tasks
+      const updatedSession = await setSessionOpen(session.id, true);
+      setFocusSessions((prev) => prev.map((s) => (s.id === session.id ? updatedSession : { ...s, is_open: false })));
+      setSelectedSession(updatedSession);
+      
       if (pendingTaskId != null) {
         await addTaskToSession(session.id, pendingTaskId);
         setTaskToAddToSession(null);
@@ -3172,9 +3176,12 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             notificationPermission={notificationPermission}
             onEnableNotifications={handleEnableNotifications}
             onOpenSearch={() => setCurrentPage('search')}
-            openSessionName={selectedSession ? selectedSession.name : null}
-            onOpenSessionClick={selectedSession ? () => {
-              setCurrentPage('focusSessionDetail');
+            openSessionName={focusSessions.find(s => s.is_open)?.name || null}
+            onOpenSessionClick={focusSessions.find(s => s.is_open) ? () => {
+              const openSession = focusSessions.find(s => s.is_open);
+              if (openSession) {
+                handleSelectFocusSession(openSession);
+              }
             } : undefined}
           />
             ) : currentPage === "search" ? (
