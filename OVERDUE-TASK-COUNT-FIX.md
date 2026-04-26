@@ -45,9 +45,11 @@ The bug was in `/api/reminders-overdue.js` which is responsible for sending peri
    if (todo.daily_task_id !== undefined && todo.daily_task_id !== null) return false;
    ```
 
-4. **Corrected "no time" logic**:
-   - A task due on April 26 (no time) becomes overdue on April 27 at 00:00 Norwegian time
-   - Previously it would only become overdue after 23:59:59 on April 26 UTC
+4. **Corrected timezone for "no time" logic**:
+   - Tasks with no time are due for the entire day and become overdue after 23:59:59 of that day
+   - Now uses Norwegian timezone instead of UTC for the comparison
+   - A task due on April 26 (no time) is NOT overdue until April 26 23:59:59 Norwegian time has passed
+   - Previously used UTC for comparison, causing incorrect overdue detection depending on timezone offset
 
 ### Correct Behavior
 
@@ -56,7 +58,7 @@ The overdue count now correctly:
 | Scenario | Old Behavior | New Behavior |
 |----------|-------------|--------------|
 | Task due yesterday, no time | Overdue ✅ | Overdue ✅ |
-| Task due today, no time | Overdue ❌ (after 23:59 UTC) | NOT overdue ✅ |
+| Task due today, no time | Depends on UTC offset | NOT overdue ✅ (due until 23:59:59 Norwegian time) |
 | Task due today at 08:00, current time 12:00 | Depends on UTC offset | Overdue ✅ (Norwegian time) |
 | Task due today at 23:00, current time 12:00 | Depends on UTC offset | NOT overdue ✅ (Norwegian time) |
 | Reminder task (overdue deadline) | Counted ❌ | Excluded ✅ |

@@ -44,41 +44,68 @@ function isTodoOverdue(todo) {
   const [year, month, day] = todo.deadline_date.split('-').map(Number);
 
   if (!todo.deadline_time || todo.deadline_time.trim() === '') {
-    // If no time specified, the task is overdue at the start of the next day (in Norwegian timezone)
-    // This means a task due on April 26 becomes overdue on April 27 at 00:00 Norwegian time
-    const deadlineDate = new Date(year, month - 1, day);
+    // If no time specified, the task is due for the entire day and becomes overdue after 23:59:59 of that day (in Norwegian timezone)
+    // This means a task due on April 26 is NOT overdue until April 26 23:59:59 has passed (in Norwegian time)
     
-    // Get current date in Norwegian timezone (YYYY-MM-DD format)
-    const formatter = new Intl.DateTimeFormat('en-CA', {
+    // Get current datetime in Norwegian timezone
+    const nowInNorwegianTz = new Intl.DateTimeFormat('en-CA', {
       timeZone: tz,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    });
-    const currentDateStr = formatter.format(now);
-    const [currentYear, currentMonth, currentDay] = currentDateStr.split('-').map(Number);
-    const currentDate = new Date(currentYear, currentMonth - 1, currentDay);
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).formatToParts(now);
     
-    // Task is overdue if the current date (in Norwegian timezone) is AFTER the deadline date
-    return currentDate > deadlineDate;
+    const currentNorwegianDateTime = {};
+    nowInNorwegianTz.forEach(part => {
+      if (part.type !== 'literal') {
+        currentNorwegianDateTime[part.type] = parseInt(part.value, 10);
+      }
+    });
+    
+    // Compare dates first
+    if (currentNorwegianDateTime.year > year) return true;
+    if (currentNorwegianDateTime.year < year) return false;
+    if (currentNorwegianDateTime.month > month) return true;
+    if (currentNorwegianDateTime.month < month) return false;
+    if (currentNorwegianDateTime.day > day) return true;
+    
+    // Same date or earlier - not overdue yet (task is due until end of that day)
+    return false;
   }
 
   const [hours, minutes] = todo.deadline_time.split(':').map(Number);
   if (isNaN(hours) || isNaN(minutes)) {
-    // Invalid time format - treat as no time (overdue at start of next day)
-    const deadlineDate = new Date(year, month - 1, day);
-    
-    const formatter = new Intl.DateTimeFormat('en-CA', {
+    // Invalid time format - treat as no time (due until end of that day)
+    const nowInNorwegianTz = new Intl.DateTimeFormat('en-CA', {
       timeZone: tz,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    });
-    const currentDateStr = formatter.format(now);
-    const [currentYear, currentMonth, currentDay] = currentDateStr.split('-').map(Number);
-    const currentDate = new Date(currentYear, currentMonth - 1, currentDay);
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).formatToParts(now);
     
-    return currentDate > deadlineDate;
+    const currentNorwegianDateTime = {};
+    nowInNorwegianTz.forEach(part => {
+      if (part.type !== 'literal') {
+        currentNorwegianDateTime[part.type] = parseInt(part.value, 10);
+      }
+    });
+    
+    // Compare dates
+    if (currentNorwegianDateTime.year > year) return true;
+    if (currentNorwegianDateTime.year < year) return false;
+    if (currentNorwegianDateTime.month > month) return true;
+    if (currentNorwegianDateTime.month < month) return false;
+    if (currentNorwegianDateTime.day > day) return true;
+    
+    return false;
   }
 
   // Task has both date and time - need to compare exact datetime in Norwegian timezone
