@@ -33,28 +33,128 @@ function isWithinQuietHours() {
 
 /**
  * Check if a todo is overdue (deadline has passed, not completed)
+ * Uses Norwegian timezone (Europe/Oslo) for all comparisons
  */
 function isTodoOverdue(todo) {
   if (!todo.deadline_date) return false;
 
+  const tz = process.env.REMINDER_TIMEZONE || 'Europe/Oslo';
   const now = new Date();
+  
   const [year, month, day] = todo.deadline_date.split('-').map(Number);
 
   if (!todo.deadline_time || todo.deadline_time.trim() === '') {
-    // If no time specified, the deadline is the end of that day in UTC
-    const endOfDeadlineDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-    return now > endOfDeadlineDay;
+    // If no time specified, the task is due for the entire day and becomes overdue after 23:59:59 of that day (in Norwegian timezone)
+    // This means a task due on April 26 is NOT overdue until April 26 23:59:59 has passed (in Norwegian time)
+    
+    // Get current datetime in Norwegian timezone
+    const nowInNorwegianTz = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).formatToParts(now);
+    
+    const currentNorwegianDateTime = {};
+    nowInNorwegianTz.forEach(part => {
+      if (part.type !== 'literal') {
+        currentNorwegianDateTime[part.type] = parseInt(part.value, 10);
+      }
+    });
+    
+    // Compare dates first
+    if (currentNorwegianDateTime.year > year) return true;
+    if (currentNorwegianDateTime.year < year) return false;
+    if (currentNorwegianDateTime.month > month) return true;
+    if (currentNorwegianDateTime.month < month) return false;
+    if (currentNorwegianDateTime.day > day) return true;
+    
+    // Same date or earlier - not overdue yet (task is due until end of that day)
+    return false;
   }
 
   const [hours, minutes] = todo.deadline_time.split(':').map(Number);
   if (isNaN(hours) || isNaN(minutes)) {
-    // Invalid time format - treat as end of day
-    const endOfDeadlineDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-    return now > endOfDeadlineDay;
+    // Invalid time format - treat as no time (due until end of that day)
+    const nowInNorwegianTz = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).formatToParts(now);
+    
+    const currentNorwegianDateTime = {};
+    nowInNorwegianTz.forEach(part => {
+      if (part.type !== 'literal') {
+        currentNorwegianDateTime[part.type] = parseInt(part.value, 10);
+      }
+    });
+    
+    // Compare dates
+    if (currentNorwegianDateTime.year > year) return true;
+    if (currentNorwegianDateTime.year < year) return false;
+    if (currentNorwegianDateTime.month > month) return true;
+    if (currentNorwegianDateTime.month < month) return false;
+    if (currentNorwegianDateTime.day > day) return true;
+    
+    return false;
   }
 
-  const deadlineDateTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
-  return now >= deadlineDateTime;
+  // Task has both date and time - need to compare exact datetime in Norwegian timezone
+  // The deadline_time is stored in the user's local timezone (Norwegian time)
+  // We need to create a datetime object that represents the deadline in Norwegian timezone
+  
+  // Create a date string in ISO format for the deadline date
+  const deadlineDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const deadlineTimeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+  
+  // Parse the deadline in Norwegian timezone
+  // We create a localized date string and parse it as if it were in Norwegian time
+  const deadlineDateTimeStr = `${deadlineDateStr}T${deadlineTimeStr}`;
+  
+  // Create a Date object for the deadline
+  // We'll use Intl.DateTimeFormat to get the current time in Norwegian timezone
+  // and compare it with the deadline
+  const nowInNorwegianTz = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+  
+  const currentNorwegianDateTime = {};
+  nowInNorwegianTz.forEach(part => {
+    if (part.type !== 'literal') {
+      currentNorwegianDateTime[part.type] = parseInt(part.value, 10);
+    }
+  });
+  
+  // Compare dates first
+  if (currentNorwegianDateTime.year > year) return true;
+  if (currentNorwegianDateTime.year < year) return false;
+  if (currentNorwegianDateTime.month > month) return true;
+  if (currentNorwegianDateTime.month < month) return false;
+  if (currentNorwegianDateTime.day > day) return true;
+  if (currentNorwegianDateTime.day < day) return false;
+  
+  // Same date, compare time
+  if (currentNorwegianDateTime.hour > hours) return true;
+  if (currentNorwegianDateTime.hour < hours) return false;
+  if (currentNorwegianDateTime.minute >= minutes) return true;
+  
+  return false;
 }
 
 async function sendOverdueNotification(subscription, count, supabase) {
@@ -125,7 +225,17 @@ module.exports = async function handler(req, res) {
       throw new Error(`Failed to fetch todos: ${todosError.message}`);
     }
 
-    const overdueTodos = (todos || []).filter(isTodoOverdue);
+    // Filter out reminders and daily tasks, then check for overdue
+    const overdueTodos = (todos || []).filter(todo => {
+      // Exclude reminders - they should not show as overdue
+      if (todo.type === 'reminder') return false;
+      
+      // Exclude daily tasks - they should be deleted and replaced, not shown as overdue
+      if (todo.daily_task_id !== undefined && todo.daily_task_id !== null) return false;
+      
+      // Check if the task is actually overdue
+      return isTodoOverdue(todo);
+    });
     if (overdueTodos.length === 0) {
       return res.status(200).json({
         success: true,
