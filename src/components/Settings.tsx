@@ -12,6 +12,7 @@ import {
   getCalendarConnection,
   CalendarConnection,
 } from "../lib/calendar";
+import { fetchAiInstructions, saveAiInstructions } from "../lib/database";
 
 interface SettingsProps {
   onBack: () => void;
@@ -31,10 +32,12 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
   const [isConnecting, setIsConnecting] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const isDark = theme === "dark";
-  const [aiInstructions, setAiInstructions] = useState(
-    () => localStorage.getItem('ai_instructions') || ''
-  );
+  const [aiInstructions, setAiInstructions] = useState('');
   const [aiInstructionsSaved, setAiInstructionsSaved] = useState(false);
+
+  useEffect(() => {
+    fetchAiInstructions().then(setAiInstructions).catch(() => {});
+  }, []);
 
   // Check for calendar connection on mount and handle OAuth callback
   useEffect(() => {
@@ -211,9 +214,12 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
                   setAiInstructionsSaved(false);
                 }}
                 onBlur={() => {
-                  localStorage.setItem('ai_instructions', aiInstructions);
-                  setAiInstructionsSaved(true);
-                  setTimeout(() => setAiInstructionsSaved(false), 2000);
+                  saveAiInstructions(aiInstructions)
+                    .then(() => {
+                      setAiInstructionsSaved(true);
+                      setTimeout(() => setAiInstructionsSaved(false), 2000);
+                    })
+                    .catch(() => {});
                 }}
                 placeholder={`Tell the AI about yourself so it can give better answers.\n\nExamples:\n• I live in Oslo, Norway. I fly from Oslo Airport (OSL).\n• Show prices in NOK.\n• I prefer direct flights when possible.`}
                 rows={5}

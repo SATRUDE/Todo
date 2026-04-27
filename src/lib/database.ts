@@ -2116,6 +2116,25 @@ export async function fetchMilestoneUpdatesForMilestones(milestoneIds: number[])
   return data || []
 }
 
+// ─── User Settings ────────────────────────────────────────────────────────────
+
+export async function fetchAiInstructions(): Promise<string> {
+  const userId = await ensureAuthenticated()
+  const { data } = await (supabase as any)
+    .from('user_settings')
+    .select('ai_instructions')
+    .eq('user_id', userId)
+    .maybeSingle()
+  return data?.ai_instructions ?? ''
+}
+
+export async function saveAiInstructions(instructions: string): Promise<void> {
+  const userId = await ensureAuthenticated()
+  await (supabase as any)
+    .from('user_settings')
+    .upsert({ user_id: userId, ai_instructions: instructions }, { onConflict: 'user_id' })
+}
+
 // ─── Task Comments (AI Agent) ─────────────────────────────────────────────────
 
 export async function fetchTaskComments(todoId: number): Promise<TaskComment[]> {

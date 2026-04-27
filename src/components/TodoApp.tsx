@@ -98,6 +98,7 @@ import {
   type SessionTaskWithTodo,
   fetchTaskComments,
   addTaskComment,
+  fetchAiInstructions,
   type TaskComment
 } from "../lib/database";
 import { 
@@ -177,6 +178,7 @@ export function TodoApp() {
   const [sessionsForSelectedTask, setSessionsForSelectedTask] = useState<FocusSession[]>([]);
   const [commentsForTask, setCommentsForTask] = useState<TaskComment[]>([]);
   const [assigningTaskIds, setAssigningTaskIds] = useState<Set<number>>(new Set());
+  const [aiInstructions, setAiInstructions] = useState('');
   const [currentPage, setCurrentPage] = useState<Page>("today");
   const [selectedList, setSelectedList] = useState<ListItem | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
@@ -443,13 +445,18 @@ export function TodoApp() {
     setIsSecondaryDataLoading(true);
 
     try {
-      const [commonTasksData, dailyTasksData, goalsData, notesData, sessionsData] = await Promise.allSettled([
+      const [commonTasksData, dailyTasksData, goalsData, notesData, sessionsData, aiInstructionsData] = await Promise.allSettled([
         fetchCommonTasks(),
         fetchDailyTasks(),
         fetchGoals(),
         fetchNotes(),
-        fetchFocusSessions()
+        fetchFocusSessions(),
+        fetchAiInstructions()
       ]);
+
+      if (aiInstructionsData.status === 'fulfilled') {
+        setAiInstructions(aiInstructionsData.value);
+      }
 
       const commonTasksResult = commonTasksData.status === 'fulfilled' ? commonTasksData.value : [];
       const dailyTasksResult = dailyTasksData.status === 'fulfilled' ? dailyTasksData.value : [];
@@ -2572,7 +2579,7 @@ export function TodoApp() {
           taskText: task.text,
           taskDescription: task.description || '',
           conversationHistory: [],
-          customInstructions: localStorage.getItem('ai_instructions') || '',
+          customInstructions: aiInstructions,
         }),
       });
       if (!res.ok) throw new Error('Agent request failed');
@@ -2617,7 +2624,7 @@ export function TodoApp() {
           taskText: task.text,
           taskDescription: task.description || '',
           conversationHistory,
-          customInstructions: localStorage.getItem('ai_instructions') || '',
+          customInstructions: aiInstructions,
         }),
       });
       if (!res.ok) throw new Error('Agent request failed');
