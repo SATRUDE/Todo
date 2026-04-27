@@ -37,16 +37,28 @@ async function webSearch(query) {
   return JSON.stringify({ answer: data.answer || null, results });
 }
 
+function toSkyscannerDate(isoDate) {
+  // YYYY-MM-DD → YYMMDD (Skyscanner's format)
+  const [year, month, day] = isoDate.split('-');
+  return year.slice(2) + month + day;
+}
+
 function buildFlightSearchLink({ origin_iata, destination_iata, outbound_date, return_date }) {
-  const o = origin_iata.trim().toUpperCase();
-  const d = destination_iata.trim().toUpperCase();
-  const base = `https://www.kayak.com/flights/${o}-${d}/${outbound_date}`;
-  return return_date?.trim() ? `${base}/${return_date}` : base;
+  const o = origin_iata.trim().toLowerCase();
+  const d = destination_iata.trim().toLowerCase();
+  const out = toSkyscannerDate(outbound_date);
+  if (return_date?.trim()) {
+    const ret = toSkyscannerDate(return_date);
+    return `https://www.skyscanner.net/transport/flights/${o}/${d}/${out}/${ret}/`;
+  }
+  return `https://www.skyscanner.net/transport/flights/${o}/${d}/${out}/`;
 }
 
 function buildHotelSearchLink({ city, checkin_date, checkout_date, adults = 1 }) {
-  const slug = encodeURIComponent(city.trim());
-  return `https://www.kayak.com/hotels/${slug}/${checkin_date}/${checkout_date}/${adults}adults`;
+  const slug = city.trim().toLowerCase().replace(/\s+/g, '-');
+  const cin = toSkyscannerDate(checkin_date);
+  const cout = toSkyscannerDate(checkout_date);
+  return `https://www.skyscanner.net/hotels/${slug}/${cin}/${cout}/?adults=${adults}`;
 }
 
 // ── Tool definitions ─────────────────────────────────────────────────────────
@@ -70,7 +82,7 @@ const tools = [
     type: 'function',
     function: {
       name: 'build_flight_search_link',
-      description: 'Constructs a working Kayak flight search URL from IATA codes and dates. ALWAYS call this tool to generate flight links — never write flight URLs yourself.',
+      description: 'Constructs a working Skyscanner flight search URL from IATA codes and dates. ALWAYS call this tool to generate flight links — never write flight URLs yourself.',
       parameters: {
         type: 'object',
         properties: {
@@ -87,7 +99,7 @@ const tools = [
     type: 'function',
     function: {
       name: 'build_hotel_search_link',
-      description: 'Constructs a working Kayak hotel search URL. ALWAYS call this tool to generate hotel links — never write hotel URLs yourself.',
+      description: 'Constructs a working Skyscanner hotel search URL. ALWAYS call this tool to generate hotel links — never write hotel URLs yourself.',
       parameters: {
         type: 'object',
         properties: {
