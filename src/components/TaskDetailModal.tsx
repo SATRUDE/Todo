@@ -77,16 +77,13 @@ interface TaskDetailModalProps {
   onConvertToCommonTask?: (taskId: number) => void | Promise<void>;
   sessionsForTask?: Array<{ id: number; name: string; color: string }>;
   onAddToSession?: (taskId: number) => void;
-<<<<<<< feat/ai-agent
   comments?: TaskComment[];
   isAssigning?: boolean;
   onAssignToAgent?: (taskId: number) => Promise<void>;
   onSendComment?: (taskId: number, content: string) => Promise<void>;
-=======
   predecessorChain?: Todo[];
   onFollowUp?: (taskId: number) => void;
   onTaskChainClick?: (task: Todo) => void;
->>>>>>> main
 }
 
 // Helper function to get all text nodes in an element
@@ -106,11 +103,7 @@ function getTextNodes(element: Node): Text[] {
   return textNodes;
 }
 
-<<<<<<< feat/ai-agent
-export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks, onConvertToDailyTask, onConvertToCommonTask, sessionsForTask = [], onAddToSession, comments = [], isAssigning = false, onAssignToAgent, onSendComment }: TaskDetailModalProps) {
-=======
-export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks, onConvertToDailyTask, onConvertToCommonTask, sessionsForTask = [], onAddToSession, predecessorChain = [], onFollowUp, onTaskChainClick }: TaskDetailModalProps) {
->>>>>>> main
+export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks, onConvertToDailyTask, onConvertToCommonTask, sessionsForTask = [], onAddToSession, comments = [], isAssigning = false, onAssignToAgent, onSendComment, predecessorChain = [], onFollowUp, onTaskChainClick }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
   const [taskDescription, setTaskDescription] = useState(task.description || "");
   const [imageUrl, setImageUrl] = useState<string | null>(task.imageUrl || null);
@@ -1047,7 +1040,6 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                   </button>
                 )}
 
-<<<<<<< feat/ai-agent
                 {/* Assign to AI Button */}
                 {onAssignToAgent && task.id >= 0 && comments.length === 0 && !isAssigning && (
                   <button
@@ -1062,12 +1054,8 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                   </button>
                 )}
 
-                {/* Add Subtask Button */}
-                {onCreateSubtask && (
-=======
                 {/* Follow Up Button */}
                 {onFollowUp && task.id >= 0 && (
->>>>>>> main
                   <button
                     type="button"
                     className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"

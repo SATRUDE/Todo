@@ -178,14 +178,11 @@ export function TodoApp() {
   const [taskForDeadlineUpdate, setTaskForDeadlineUpdate] = useState<Todo | null>(null);
   const [selectedTask, setSelectedTask] = useState<Todo | null>(null);
   const [sessionsForSelectedTask, setSessionsForSelectedTask] = useState<FocusSession[]>([]);
-<<<<<<< feat/ai-agent
   const [commentsForTask, setCommentsForTask] = useState<TaskComment[]>([]);
   const [assigningTaskIds, setAssigningTaskIds] = useState<Set<number>>(new Set());
   const [aiInstructions, setAiInstructions] = useState('');
-=======
   const [predecessorChain, setPredecessorChain] = useState<Todo[]>([]);
   const [followUpOfTaskId, setFollowUpOfTaskId] = useState<number | null>(null);
->>>>>>> main
   const [currentPage, setCurrentPage] = useState<Page>("today");
   const [selectedList, setSelectedList] = useState<ListItem | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
@@ -2568,18 +2565,14 @@ export function TodoApp() {
     setCommentsForTask([]);
     if (task.id >= 0) {
       fetchSessionsForTask(task.id).then(setSessionsForSelectedTask).catch(() => setSessionsForSelectedTask([]));
-<<<<<<< feat/ai-agent
       fetchTaskComments(task.id).then(setCommentsForTask).catch(() => setCommentsForTask([]));
-=======
       fetchPredecessorChain(task.id).then(setPredecessorChain).catch(() => setPredecessorChain([]));
->>>>>>> main
     } else {
       setSessionsForSelectedTask([]);
       setPredecessorChain([]);
     }
   };
 
-<<<<<<< feat/ai-agent
   const handleAssignToAgent = async (taskId: number) => {
     const task = todos.find(t => t.id === taskId);
     if (!task) return;
@@ -2655,18 +2648,14 @@ export function TodoApp() {
         return next;
       });
     }
-=======
+  };
+
   const handleFollowUpTask = async (taskId: number) => {
-    // Complete the current task
     await toggleTodo(taskId);
-    // Close the task detail
     setIsTaskDetailOpen(false);
     setSelectedTask(null);
-    // Store the predecessor ID so AddTaskModal can link the new task
     setFollowUpOfTaskId(taskId);
-    // Open AddTaskModal
     setIsModalOpen(true);
->>>>>>> main
   };
 
   const getTasksForMilestone = (milestoneId: number) => {
