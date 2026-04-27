@@ -1990,6 +1990,20 @@ export async function addTaskToSession(sessionId: number, taskId: number): Promi
   return data
 }
 
+export async function updateSessionTaskOrders(sessionId: number, orderedTaskIds: number[]): Promise<void> {
+  const userId = await ensureAuthenticated()
+  await Promise.all(
+    orderedTaskIds.map((taskId, index) =>
+      supabase
+        .from('session_tasks')
+        .update({ sort_order: index })
+        .eq('session_id', sessionId)
+        .eq('task_id', taskId)
+        .eq('user_id', userId)
+    )
+  )
+}
+
 export async function removeTaskFromSession(sessionId: number, taskId: number): Promise<void> {
   const userId = await ensureAuthenticated()
 

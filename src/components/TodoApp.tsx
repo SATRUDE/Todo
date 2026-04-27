@@ -92,6 +92,7 @@ import {
   fetchSessionTasks,
   addTaskToSession,
   removeTaskFromSession,
+  updateSessionTaskOrders,
   type FocusSession,
   type SessionTaskWithTodo
 } from "../lib/database";
@@ -2025,6 +2026,19 @@ export function TodoApp() {
     }
   };
 
+  const handleReorderSessionTasks = async (sessionId: number, orderedTaskIds: number[]) => {
+    // Optimistically reorder local state so the UI snaps immediately
+    setSelectedSessionTasks((prev) => {
+      const map = new Map(prev.map((st) => [st.task_id, st]));
+      return orderedTaskIds.map((id, index) => ({ ...map.get(id)!, sort_order: index }));
+    });
+    try {
+      await updateSessionTaskOrders(sessionId, orderedTaskIds);
+    } catch (error) {
+      console.error('Error reordering session tasks:', error);
+    }
+  };
+
   const handleAddTasksToSession = async (taskIds: number[]) => {
     if (!selectedSession) return;
     try {
@@ -3265,6 +3279,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onAddTasksToSession={handleAddTasksToSession}
           onRemoveTaskFromSession={handleRemoveTaskFromSession}
           onCloseSession={handleCloseSession}
+          onReorderTasks={handleReorderSessionTasks}
         />
       ) : currentPage === "dashboard" ? (
         <Dashboard
