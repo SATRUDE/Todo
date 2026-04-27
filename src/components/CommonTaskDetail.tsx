@@ -47,6 +47,7 @@ interface CommonTaskDetailProps {
   onDeleteCommonTask: (id: number) => Promise<void>;
   onAddTaskToList: (task: CommonTask, listId: number) => Promise<void>;
   lists: ListItem[];
+  upcomingDates?: Date[];
 }
 
 export function CommonTaskDetail({
@@ -58,6 +59,7 @@ export function CommonTaskDetail({
   onUpdateCommonTask,
   onDeleteCommonTask,
   onAddTaskToList,
+  upcomingDates = [],
   lists
 }: CommonTaskDetailProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -195,6 +197,30 @@ export function CommonTaskDetail({
                 </div>
               </div>
             </div>
+
+            {/* Upcoming scheduled dates */}
+            {upcomingDates.length > 0 && (
+              <div className="flex flex-col gap-2 w-full">
+                <p className="text-sm text-muted-foreground tracking-tight">Upcoming</p>
+                <div className="flex flex-wrap gap-2">
+                  {upcomingDates.map((date, i) => {
+                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+                    let label: string;
+                    if (date.getTime() === today.getTime()) label = 'Today';
+                    else if (date.getTime() === tomorrow.getTime()) label = 'Tomorrow';
+                    else label = `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+                    return (
+                      <span key={i} className="rounded-full bg-secondary px-3 py-1 text-sm text-foreground">
+                        {label}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Tasks List */}
             <div className="flex flex-col gap-[24px] items-start relative shrink-0 w-full">
