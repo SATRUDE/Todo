@@ -25,6 +25,7 @@ interface FocusSession {
   name: string;
   color: string;
   notes?: string | null;
+  is_open?: boolean;
 }
 
 interface SessionTaskWithTodo {
@@ -47,6 +48,7 @@ interface FocusSessionDetailProps {
   onDeleteSession: (id: number) => void;
   onAddTasksToSession: (taskIds: number[]) => void;
   onRemoveTaskFromSession: (taskId: number) => void;
+  onCloseSession?: (id: number) => void;
 }
 
 export function FocusSessionDetail({
@@ -61,6 +63,7 @@ export function FocusSessionDetail({
   onDeleteSession,
   onAddTasksToSession,
   onRemoveTaskFromSession,
+  onCloseSession,
 }: FocusSessionDetailProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddTasksModalOpen, setIsAddTasksModalOpen] = useState(false);
@@ -222,6 +225,17 @@ export function FocusSessionDetail({
                 );
               })}
             </div>
+          )}
+          {/* Close session button */}
+          {session.is_open && onCloseSession && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full text-muted-foreground"
+              onClick={() => onCloseSession(session.id)}
+            >
+              Close session
+            </Button>
           )}
         </div>
       </div>

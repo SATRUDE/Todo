@@ -2015,6 +2015,16 @@ export function TodoApp() {
     setCurrentPage('focusSessionDetail');
   };
 
+  const handleCloseSession = async (id: number) => {
+    try {
+      const updatedSession = await setSessionOpen(id, false);
+      setFocusSessions((prev) => prev.map((s) => (s.id === id ? updatedSession : s)));
+      setSelectedSession(updatedSession);
+    } catch (error) {
+      console.error('Error closing session:', error);
+    }
+  };
+
   const handleAddTasksToSession = async (taskIds: number[]) => {
     if (!selectedSession) return;
     try {
@@ -3254,6 +3264,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           }}
           onAddTasksToSession={handleAddTasksToSession}
           onRemoveTaskFromSession={handleRemoveTaskFromSession}
+          onCloseSession={handleCloseSession}
         />
       ) : currentPage === "dashboard" ? (
         <Dashboard
