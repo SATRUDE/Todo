@@ -19,36 +19,33 @@ export function linkifyText(text: string): React.ReactNode {
       parts.push(text.substring(lastIndex, match.index));
     }
     
-    // Extract the URL
-    let url = match[0];
-    
+    // Extract the URL and strip trailing punctuation that's not part of the URL
+    const rawMatch = match[0];
+    const displayUrl = rawMatch.replace(/[.,;:!?)\]>]+$/, '');
+
     // Add protocol if missing
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      if (url.startsWith('www.')) {
-        url = 'https://' + url;
-      } else {
-        url = 'https://' + url;
-      }
-    }
-    
+    const href = displayUrl.startsWith('http://') || displayUrl.startsWith('https://')
+      ? displayUrl
+      : 'https://' + displayUrl;
+
     // Create clickable link
     parts.push(
       React.createElement(
         'a',
         {
           key: match.index,
-          href: url,
+          href,
           target: '_blank',
           rel: 'noopener noreferrer',
           className: 'text-[#5b5d62] underline break-all',
           style: { textDecoration: 'underline', color: '#5b5d62' },
           onClick: (e: React.MouseEvent<HTMLAnchorElement>) => e.stopPropagation()
         },
-        match[0]
+        displayUrl
       )
     );
-    
-    lastIndex = match.index + match[0].length;
+
+    lastIndex = match.index + rawMatch.length;
   }
   
   // Add remaining text

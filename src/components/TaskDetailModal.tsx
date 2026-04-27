@@ -1,4 +1,4 @@
-import { useState, useEffect, KeyboardEvent, useRef, ChangeEvent } from "react";
+import { useState, useEffect, KeyboardEvent, useRef, ChangeEvent, Fragment } from "react";
 import { createPortal } from "react-dom";
 import svgPaths from "../imports/svg-e51h379o38";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
@@ -45,6 +45,14 @@ interface Todo {
   type?: 'task' | 'reminder';
 }
 
+interface TaskComment {
+  id: number;
+  todo_id: number;
+  author: 'ai' | 'user';
+  content: string;
+  created_at?: string;
+}
+
 interface TaskDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -69,6 +77,10 @@ interface TaskDetailModalProps {
   onConvertToCommonTask?: (taskId: number) => void | Promise<void>;
   sessionsForTask?: Array<{ id: number; name: string; color: string }>;
   onAddToSession?: (taskId: number) => void;
+  comments?: TaskComment[];
+  isAssigning?: boolean;
+  onAssignToAgent?: (taskId: number) => Promise<void>;
+  onSendComment?: (taskId: number, content: string) => Promise<void>;
   predecessorChain?: Todo[];
   onFollowUp?: (taskId: number) => void;
   onTaskChainClick?: (task: Todo) => void;
@@ -91,7 +103,7 @@ function getTextNodes(element: Node): Text[] {
   return textNodes;
 }
 
-export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks, onConvertToDailyTask, onConvertToCommonTask, sessionsForTask = [], onAddToSession, predecessorChain = [], onFollowUp, onTaskChainClick }: TaskDetailModalProps) {
+export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks, onConvertToDailyTask, onConvertToCommonTask, sessionsForTask = [], onAddToSession, comments = [], isAssigning = false, onAssignToAgent, onSendComment, predecessorChain = [], onFollowUp, onTaskChainClick }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
   const [taskDescription, setTaskDescription] = useState(task.description || "");
   const [imageUrl, setImageUrl] = useState<string | null>(task.imageUrl || null);
@@ -111,6 +123,8 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   const [newSubtaskText, setNewSubtaskText] = useState('');
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isTaskTypeModalOpen, setIsTaskTypeModalOpen] = useState(false);
+  const [followUpText, setFollowUpText] = useState('');
+  const followUpRef = useRef<HTMLTextAreaElement>(null);
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
   const descriptionInputRef = useRef<HTMLDivElement>(null);
   const newSubtaskInputRef = useRef<HTMLInputElement>(null);
@@ -125,6 +139,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
       setNewSubtaskText('');
       setIsNoteModalOpen(false);
       setIsTaskTypeModalOpen(false);
+      setFollowUpText('');
       return;
     }
     setTaskInput(task.text);
@@ -1025,6 +1040,20 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                   </button>
                 )}
 
+                {/* Assign to AI Button */}
+                {onAssignToAgent && task.id >= 0 && comments.length === 0 && !isAssigning && (
+                  <button
+                    type="button"
+                    className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
+                    onClick={() => onAssignToAgent(task.id)}
+                  >
+                    <svg className="size-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                    </svg>
+                    Assign to AI
+                  </button>
+                )}
+
                 {/* Follow Up Button */}
                 {onFollowUp && task.id >= 0 && (
                   <button
@@ -1085,6 +1114,88 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                 </button>
               </div>
             </div>
+
+            {/* Agent Comment Thread */}
+            {(isAssigning || comments.length > 0) && (
+              <div className="flex flex-col gap-3 w-full">
+                <p className="text-sm text-muted-foreground tracking-tight">AI Agent</p>
+
+                {/* Working indicator */}
+                {isAssigning && (
+                  <div className="rounded-xl bg-secondary px-4 py-3 w-full">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex gap-1">
+                        <span className="size-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="size-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="size-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                      <p className="text-sm text-muted-foreground">Searching the web...</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Comment bubbles */}
+                {comments.map(comment => (
+                  <div
+                    key={comment.id}
+                    className={`rounded-xl px-4 py-3 w-full ${
+                      comment.author === 'user' ? 'bg-blue-500/10 ml-4' : 'bg-secondary'
+                    }`}
+                  >
+                    <p className="text-xs text-muted-foreground mb-1.5 font-medium">
+                      {comment.author === 'ai' ? 'AI' : 'You'}
+                    </p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                      {linkifyText(comment.content)}
+                    </p>
+                  </div>
+                ))}
+
+                {/* Follow-up input — only when there are comments and not currently working */}
+                {comments.length > 0 && !isAssigning && onSendComment && (
+                  <div className="flex gap-2 items-end">
+                    <textarea
+                      ref={followUpRef}
+                      value={followUpText}
+                      onChange={(e) => {
+                        setFollowUpText(e.target.value);
+                        if (followUpRef.current) {
+                          followUpRef.current.style.height = 'auto';
+                          followUpRef.current.style.height = followUpRef.current.scrollHeight + 'px';
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey && followUpText.trim()) {
+                          e.preventDefault();
+                          onSendComment(task.id, followUpText.trim());
+                          setFollowUpText('');
+                        }
+                      }}
+                      placeholder="Ask a follow-up question..."
+                      rows={1}
+                      className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none min-h-[44px] leading-relaxed"
+                      style={{ overflow: 'hidden' }}
+                    />
+                    <button
+                      type="button"
+                      disabled={!followUpText.trim()}
+                      onClick={() => {
+                        if (!followUpText.trim()) return;
+                        onSendComment(task.id, followUpText.trim());
+                        setFollowUpText('');
+                      }}
+                      className={`flex size-10 shrink-0 items-center justify-center rounded-full transition-opacity ${
+                        followUpText.trim() ? 'bg-blue-500 text-white' : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      <svg className="size-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -96,7 +96,11 @@ import {
   removeTaskFromSession,
   updateSessionTaskOrders,
   type FocusSession,
-  type SessionTaskWithTodo
+  type SessionTaskWithTodo,
+  fetchTaskComments,
+  addTaskComment,
+  fetchAiInstructions,
+  type TaskComment
 } from "../lib/database";
 import { 
   requestNotificationPermission, 
@@ -174,6 +178,9 @@ export function TodoApp() {
   const [taskForDeadlineUpdate, setTaskForDeadlineUpdate] = useState<Todo | null>(null);
   const [selectedTask, setSelectedTask] = useState<Todo | null>(null);
   const [sessionsForSelectedTask, setSessionsForSelectedTask] = useState<FocusSession[]>([]);
+  const [commentsForTask, setCommentsForTask] = useState<TaskComment[]>([]);
+  const [assigningTaskIds, setAssigningTaskIds] = useState<Set<number>>(new Set());
+  const [aiInstructions, setAiInstructions] = useState('');
   const [predecessorChain, setPredecessorChain] = useState<Todo[]>([]);
   const [followUpOfTaskId, setFollowUpOfTaskId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("today");
@@ -442,13 +449,18 @@ export function TodoApp() {
     setIsSecondaryDataLoading(true);
 
     try {
-      const [commonTasksData, dailyTasksData, goalsData, notesData, sessionsData] = await Promise.allSettled([
+      const [commonTasksData, dailyTasksData, goalsData, notesData, sessionsData, aiInstructionsData] = await Promise.allSettled([
         fetchCommonTasks(),
         fetchDailyTasks(),
         fetchGoals(),
         fetchNotes(),
-        fetchFocusSessions()
+        fetchFocusSessions(),
+        fetchAiInstructions()
       ]);
+
+      if (aiInstructionsData.status === 'fulfilled') {
+        setAiInstructions(aiInstructionsData.value);
+      }
 
       const commonTasksResult = commonTasksData.status === 'fulfilled' ? commonTasksData.value : [];
       const dailyTasksResult = dailyTasksData.status === 'fulfilled' ? dailyTasksData.value : [];
@@ -2550,8 +2562,10 @@ export function TodoApp() {
   const handleTaskClick = (task: Todo) => {
     setSelectedTask(task);
     setIsTaskDetailOpen(true);
+    setCommentsForTask([]);
     if (task.id >= 0) {
       fetchSessionsForTask(task.id).then(setSessionsForSelectedTask).catch(() => setSessionsForSelectedTask([]));
+      fetchTaskComments(task.id).then(setCommentsForTask).catch(() => setCommentsForTask([]));
       fetchPredecessorChain(task.id).then(setPredecessorChain).catch(() => setPredecessorChain([]));
     } else {
       setSessionsForSelectedTask([]);
@@ -2559,15 +2573,88 @@ export function TodoApp() {
     }
   };
 
+  const handleAssignToAgent = async (taskId: number) => {
+    const task = todos.find(t => t.id === taskId);
+    if (!task) return;
+
+    setAssigningTaskIds(prev => new Set(prev).add(taskId));
+    try {
+      const res = await fetch('/api/agent-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskText: task.text,
+          taskDescription: task.description || '',
+          conversationHistory: [],
+          customInstructions: aiInstructions,
+        }),
+      });
+      if (!res.ok) throw new Error('Agent request failed');
+      const data = await res.json();
+      const newComment = await addTaskComment(taskId, data.comment, 'ai');
+      setCommentsForTask(prev => [...prev, newComment]);
+    } catch (err) {
+      console.error('[agent] Error:', err);
+    } finally {
+      setAssigningTaskIds(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  };
+
+  const handleSendAgentComment = async (taskId: number, content: string) => {
+    const task = todos.find(t => t.id === taskId);
+    if (!task) return;
+
+    const previousComments = [...commentsForTask];
+
+    const tempId = -Date.now();
+    const tempComment: TaskComment = { id: tempId, todo_id: taskId, author: 'user', content };
+    setCommentsForTask(prev => [...prev, tempComment]);
+    setAssigningTaskIds(prev => new Set(prev).add(taskId));
+
+    try {
+      const savedUserComment = await addTaskComment(taskId, content, 'user');
+      setCommentsForTask(prev => prev.map(c => c.id === tempId ? savedUserComment : c));
+
+      const conversationHistory = [...previousComments, savedUserComment].map(c => ({
+        author: c.author,
+        content: c.content,
+      }));
+
+      const res = await fetch('/api/agent-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskText: task.text,
+          taskDescription: task.description || '',
+          conversationHistory,
+          customInstructions: aiInstructions,
+        }),
+      });
+      if (!res.ok) throw new Error('Agent request failed');
+      const data = await res.json();
+      const aiComment = await addTaskComment(taskId, data.comment, 'ai');
+      setCommentsForTask(prev => [...prev, aiComment]);
+    } catch (err) {
+      console.error('[agent follow-up] Error:', err);
+      setCommentsForTask(prev => prev.filter(c => c.id !== tempId));
+    } finally {
+      setAssigningTaskIds(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  };
+
   const handleFollowUpTask = async (taskId: number) => {
-    // Complete the current task
     await toggleTodo(taskId);
-    // Close the task detail
     setIsTaskDetailOpen(false);
     setSelectedTask(null);
-    // Store the predecessor ID so AddTaskModal can link the new task
     setFollowUpOfTaskId(taskId);
-    // Open AddTaskModal
     setIsModalOpen(true);
   };
 
@@ -4014,6 +4101,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
             // Store the task so user can add it after selecting/creating a session
             setTaskToAddToSession(taskId);
           }}
+          comments={commentsForTask}
+          isAssigning={selectedTask ? assigningTaskIds.has(selectedTask.id) : false}
+          onAssignToAgent={handleAssignToAgent}
+          onSendComment={handleSendAgentComment}
         />
       )}
 
