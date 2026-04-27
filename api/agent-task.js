@@ -157,7 +157,7 @@ async function stripDeadLinks(text) {
     urls.get(url).add(match[0]);
   }
   while ((match = bareUrlRegex.exec(text)) !== null) {
-    const url = match[0];
+    const url = match[0].replace(/[.,;:!?)\]>]+$/, '');
     if (!urls.has(url)) urls.set(url, new Set());
     urls.get(url).add(match[0]);
   }
