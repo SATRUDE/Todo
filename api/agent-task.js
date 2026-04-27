@@ -1,9 +1,9 @@
 /**
  * Vercel serverless function: AI agent for task delegation.
- * Uses Claude Opus 4.7 with Tavily web search and deterministic link construction.
+ * Uses GPT-4o with Tavily web search and deterministic link construction.
  */
 
-const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
 
 function parseBody(req) {
   if (!req.body) return null;
@@ -53,42 +53,51 @@ function buildHotelSearchLink({ city, checkin_date, checkout_date, adults = 1 })
 
 const tools = [
   {
-    name: 'web_search',
-    description: 'Search the web for current information — prices, schedules, availability, news, or any real-time data.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'The search query' },
+    type: 'function',
+    function: {
+      name: 'web_search',
+      description: 'Search the web for current information — prices, schedules, availability, news, or any real-time data.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'The search query' },
+        },
+        required: ['query'],
       },
-      required: ['query'],
     },
   },
   {
-    name: 'build_flight_search_link',
-    description: 'Constructs a working Kayak flight search URL from IATA codes and dates. ALWAYS call this tool to generate flight links — never write flight URLs yourself.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        origin_iata: { type: 'string', description: '3-letter IATA airport code for origin, e.g. OSL' },
-        destination_iata: { type: 'string', description: '3-letter IATA airport code for destination, e.g. LGW' },
-        outbound_date: { type: 'string', description: 'Departure date in YYYY-MM-DD format' },
-        return_date: { type: 'string', description: 'Return date in YYYY-MM-DD format. Leave empty for one-way.' },
+    type: 'function',
+    function: {
+      name: 'build_flight_search_link',
+      description: 'Constructs a working Kayak flight search URL from IATA codes and dates. ALWAYS call this tool to generate flight links — never write flight URLs yourself.',
+      parameters: {
+        type: 'object',
+        properties: {
+          origin_iata: { type: 'string', description: '3-letter IATA airport code for origin, e.g. OSL' },
+          destination_iata: { type: 'string', description: '3-letter IATA airport code for destination, e.g. LGW' },
+          outbound_date: { type: 'string', description: 'Departure date in YYYY-MM-DD format' },
+          return_date: { type: 'string', description: 'Return date in YYYY-MM-DD format. Leave empty for one-way.' },
+        },
+        required: ['origin_iata', 'destination_iata', 'outbound_date'],
       },
-      required: ['origin_iata', 'destination_iata', 'outbound_date'],
     },
   },
   {
-    name: 'build_hotel_search_link',
-    description: 'Constructs a working Kayak hotel search URL. ALWAYS call this tool to generate hotel links — never write hotel URLs yourself.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        city: { type: 'string', description: 'City name, e.g. London' },
-        checkin_date: { type: 'string', description: 'Check-in date in YYYY-MM-DD format' },
-        checkout_date: { type: 'string', description: 'Check-out date in YYYY-MM-DD format' },
-        adults: { type: 'number', description: 'Number of adults (default 1)' },
+    type: 'function',
+    function: {
+      name: 'build_hotel_search_link',
+      description: 'Constructs a working Kayak hotel search URL. ALWAYS call this tool to generate hotel links — never write hotel URLs yourself.',
+      parameters: {
+        type: 'object',
+        properties: {
+          city: { type: 'string', description: 'City name, e.g. London' },
+          checkin_date: { type: 'string', description: 'Check-in date in YYYY-MM-DD format' },
+          checkout_date: { type: 'string', description: 'Check-out date in YYYY-MM-DD format' },
+          adults: { type: 'number', description: 'Number of adults (default 1)' },
+        },
+        required: ['city', 'checkin_date', 'checkout_date'],
       },
-      required: ['city', 'checkin_date', 'checkout_date'],
     },
   },
 ];
@@ -168,8 +177,8 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured. Add it to your Vercel environment variables.' });
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(500).json({ error: 'OPENAI_API_KEY not configured.' });
   }
   if (!process.env.TAVILY_API_KEY) {
     return res.status(500).json({ error: 'TAVILY_API_KEY not configured. Get a free key at tavily.com.' });
@@ -182,7 +191,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'taskText is required' });
   }
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
   const systemContent = customInstructions?.trim()
     ? `${SYSTEM_PROMPT}\n\nUser context:\n${customInstructions.trim()}`
@@ -192,7 +201,10 @@ module.exports = async function handler(req, res) {
     ? `${taskText}\n\nContext: ${taskDescription}`
     : taskText;
 
-  const messages = [{ role: 'user', content: firstUserMessage }];
+  const messages = [
+    { role: 'system', content: systemContent },
+    { role: 'user', content: firstUserMessage },
+  ];
   for (const msg of conversationHistory) {
     if (msg.author && msg.content) {
       messages.push({
@@ -211,51 +223,47 @@ module.exports = async function handler(req, res) {
     while (iterations < MAX_ITERATIONS) {
       iterations++;
 
-      const response = await anthropic.messages.create({
-        model: 'claude-opus-4-7',
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
         max_tokens: 2048,
         tools,
         messages,
-        system: systemContent,
       });
 
-      if (response.stop_reason === 'end_turn') {
-        finalComment = response.content
-          .filter(b => b.type === 'text')
-          .map(b => b.text)
-          .join('\n')
-          .trim();
+      const choice = response.choices[0];
+
+      if (choice.finish_reason === 'stop') {
+        finalComment = choice.message.content?.trim() || '';
         break;
       }
 
-      if (response.stop_reason === 'tool_use') {
-        messages.push({ role: 'assistant', content: response.content });
-        const toolResults = [];
+      if (choice.finish_reason === 'tool_calls') {
+        messages.push(choice.message);
 
-        for (const block of response.content) {
-          if (block.type !== 'tool_use') continue;
+        for (const toolCall of choice.message.tool_calls || []) {
+          let args;
+          try { args = JSON.parse(toolCall.function.arguments); } catch { args = {}; }
 
           let result;
-          if (block.name === 'web_search') {
-            searches.push(block.input.query);
-            result = await webSearch(block.input.query);
-          } else if (block.name === 'build_flight_search_link') {
-            result = buildFlightSearchLink(block.input);
-          } else if (block.name === 'build_hotel_search_link') {
-            result = buildHotelSearchLink(block.input);
+          if (toolCall.function.name === 'web_search') {
+            searches.push(args.query);
+            result = await webSearch(args.query);
+          } else if (toolCall.function.name === 'build_flight_search_link') {
+            result = buildFlightSearchLink(args);
+          } else if (toolCall.function.name === 'build_hotel_search_link') {
+            result = buildHotelSearchLink(args);
           } else {
             result = 'Unknown tool';
           }
 
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: block.id,
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
             content: result,
           });
         }
-
-        messages.push({ role: 'user', content: toolResults });
       } else {
+        finalComment = choice.message.content?.trim() || '';
         break;
       }
     }
