@@ -27,21 +27,28 @@ interface MilestoneWithGoal {
   goalName: string;
 }
 
+interface SessionItem {
+  id: number;
+  name: string;
+  color: string;
+}
+
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddTask: (task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder', imageUrl?: string | null) => void | Promise<number | void>;
+  onAddTask: (task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder', imageUrl?: string | null, sessionId?: number) => void | Promise<number | void>;
   onUpdateTask?: (id: number, task: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder') => Promise<void>;
   onDeleteTask?: (id: number) => Promise<void>;
   lists?: ListItem[];
   defaultListId?: number;
   milestones?: MilestoneWithGoal[];
   defaultMilestoneId?: number;
+  sessions?: SessionItem[];
   onNavigateToDailyTasks?: () => void;
   onNavigateToCommonTasks?: () => void;
 }
 
-export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDeleteTask, lists = [], defaultListId, milestones = [], defaultMilestoneId, onNavigateToDailyTasks, onNavigateToCommonTasks }: AddTaskModalProps) {
+export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDeleteTask, lists = [], defaultListId, milestones = [], defaultMilestoneId, sessions = [], onNavigateToDailyTasks, onNavigateToCommonTasks }: AddTaskModalProps) {
   const getDefaultDeadline = () => {
     const today = new Date();
     return { date: today, time: "", recurring: undefined };
@@ -72,6 +79,8 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
     type: 'task' | 'reminder';
   } | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
+  const [isSelectSessionOpen, setIsSelectSessionOpen] = useState(false);
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -182,6 +191,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
       setVoiceProcessing(false);
       setVoiceProcessingTranscript("");
       setEditingTaskId(null);
+      setSelectedSessionId(null);
     }
   }, [isOpen, defaultListId, defaultMilestoneId]);
 
@@ -200,7 +210,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
         setEditingTaskId(null);
         onClose();
       } else {
-        await onAddTask(taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined, taskType, imageUrl);
+        await onAddTask(taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline || undefined, taskType, imageUrl, selectedSessionId || undefined);
         setTaskInput("");
         setSelectedListId(null);
         setSelectedMilestoneId(null);
@@ -208,6 +218,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
         setTaskDescription("");
         setTaskType('task');
         setImageUrl(null);
+        setSelectedSessionId(null);
         onClose();
       }
     }
@@ -707,6 +718,21 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
                       {getSelectedListName()}
                     </button>
 
+                    {/* Session Button */}
+                    {sessions.length > 0 && (
+                      <button
+                        type="button"
+                        className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
+                        onClick={() => setIsSelectSessionOpen(true)}
+                        style={selectedSessionId ? { borderWidth: 2, borderStyle: 'solid', borderColor: sessions.find(s => s.id === selectedSessionId)?.color ?? 'transparent' } : {}}
+                      >
+                        <svg className="size-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke={selectedSessionId ? (sessions.find(s => s.id === selectedSessionId)?.color ?? 'currentColor') : 'currentColor'}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+                        </svg>
+                        {selectedSessionId ? (sessions.find(s => s.id === selectedSessionId)?.name ?? 'Session') : 'Session'}
+                      </button>
+                    )}
+
                     {/* Milestone Button */}
                     {milestones.length > 0 && (
                       <button
@@ -863,6 +889,43 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
         currentType={taskType}
         onSelectType={handleSelectTaskType}
       />
+
+      {/* Session Picker */}
+      {isSelectSessionOpen && (
+        <div className="absolute inset-0 z-[10002] flex items-end justify-center pointer-events-auto">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setIsSelectSessionOpen(false)} />
+          <div className="relative w-full max-w-lg rounded-t-xl bg-card px-5 pt-5 pb-8 flex flex-col gap-4">
+            <p className="text-lg font-medium text-foreground">Assign to session</p>
+            <div className="flex flex-col gap-2">
+              {selectedSessionId && (
+                <button
+                  type="button"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-muted-foreground hover:bg-secondary transition-colors text-base"
+                  onClick={() => { setSelectedSessionId(null); setIsSelectSessionOpen(false); }}
+                >
+                  None
+                </button>
+              )}
+              {sessions.map(session => (
+                <button
+                  key={session.id}
+                  type="button"
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors text-base ${selectedSessionId === session.id ? 'bg-secondary' : 'hover:bg-secondary'}`}
+                  onClick={() => { setSelectedSessionId(session.id); setIsSelectSessionOpen(false); }}
+                >
+                  <span className="size-3 rounded-full shrink-0" style={{ backgroundColor: session.color }} />
+                  <span className="text-foreground">{session.name}</span>
+                  {selectedSessionId === session.id && (
+                    <svg className="ml-auto size-4 text-foreground shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hidden file input for image upload */}
       <input
