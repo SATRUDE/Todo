@@ -2573,37 +2573,6 @@ export function TodoApp() {
     }
   };
 
-  const handleAssignToAgent = async (taskId: number) => {
-    const task = todos.find(t => t.id === taskId);
-    if (!task) return;
-
-    setAssigningTaskIds(prev => new Set(prev).add(taskId));
-    try {
-      const res = await fetch('/api/agent-task', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          taskText: task.text,
-          taskDescription: task.description || '',
-          conversationHistory: [],
-          customInstructions: aiInstructions,
-        }),
-      });
-      if (!res.ok) throw new Error('Agent request failed');
-      const data = await res.json();
-      const newComment = await addTaskComment(taskId, data.comment, 'ai');
-      setCommentsForTask(prev => [...prev, newComment]);
-    } catch (err) {
-      console.error('[agent] Error:', err);
-    } finally {
-      setAssigningTaskIds(prev => {
-        const next = new Set(prev);
-        next.delete(taskId);
-        return next;
-      });
-    }
-  };
-
   const handleSendAgentComment = async (taskId: number, content: string) => {
     const task = todos.find(t => t.id === taskId);
     if (!task) return;
@@ -4103,7 +4072,6 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           }}
           comments={commentsForTask}
           isAssigning={selectedTask ? assigningTaskIds.has(selectedTask.id) : false}
-          onAssignToAgent={handleAssignToAgent}
           onSendComment={handleSendAgentComment}
         />
       )}
