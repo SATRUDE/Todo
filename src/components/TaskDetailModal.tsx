@@ -513,7 +513,6 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                 className={`font-medium text-2xl leading-relaxed tracking-tight bg-transparent border-none outline-none w-full resize-none min-h-[42px] placeholder:text-muted-foreground ${
                   taskInput.trim() ? 'text-foreground' : 'text-muted-foreground'
                 }`}
-                autoFocus
                 rows={1}
                 style={{ overflow: 'hidden' }}
               />
