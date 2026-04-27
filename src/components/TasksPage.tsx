@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search, StickyNote } from "lucide-react";
+import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search, StickyNote, ChevronRight, Zap, Calendar } from "lucide-react";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { linkifyText } from "../lib/textUtils";
 
@@ -581,161 +581,73 @@ export function TasksPage(props: TasksPageProps) {
           </div>
         </div>
 
-        {/* Open session banner */}
-        {openSessionName && onOpenSessionClick && (
-          <div className="w-full px-5">
-            <Card
-              className="cursor-pointer hover:opacity-90 border-violet-500/20 bg-violet-500/10"
-              onClick={onOpenSessionClick}
-            >
-              <CardContent className="flex items-center gap-3 p-3">
-                <svg
-                  className="size-5 shrink-0 text-violet-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth="1.5"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"
-                  />
-                </svg>
-                <p className="flex-1 text-base text-foreground">
-                  Open session: <span className="font-medium">{openSessionName}</span>
-                </p>
-                <svg
-                  className="size-5 shrink-0 text-violet-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth="1.5"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m8.25 4.5 7.5 7.5-7.5 7.5"
-                  />
-                </svg>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {/* Action banners */}
+        {(
+          (openSessionName && onOpenSessionClick) ||
+          (notificationPermission !== "granted" && onEnableNotifications && "Notification" in window) ||
+          (isCalendarConnected === false && onConnectCalendar) ||
+          (calendarPendingEventsCount > 0 && onCalendarSyncClick)
+        ) && (
+          <div className="flex flex-col gap-2 w-full px-5">
+            {openSessionName && onOpenSessionClick && (
+              <Card
+                className="cursor-pointer transition-opacity hover:opacity-80 border-violet-500/30 bg-violet-500/10"
+                onClick={onOpenSessionClick}
+              >
+                <CardContent className="flex items-center gap-3 px-4 py-3">
+                  <Zap className="size-4 shrink-0 text-violet-400" strokeWidth={1.5} />
+                  <p className="flex-1 text-sm text-foreground">
+                    Open session: <span className="font-medium">{openSessionName}</span>
+                  </p>
+                  <ChevronRight className="size-4 shrink-0 text-violet-400" strokeWidth={1.5} />
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Notification banner */}
-        {notificationPermission !== "granted" &&
-          onEnableNotifications &&
-          "Notification" in window && (
-          <div className="w-full px-5">
-            <Card
-              className="cursor-pointer hover:opacity-90 border-border"
-              onClick={onEnableNotifications}
-            >
-              <CardContent className="flex items-center gap-3 p-3">
-                <Bell className="size-5 shrink-0 text-muted-foreground" />
-                <p className="flex-1 text-base text-foreground">
-                  Enable notifications to get reminders for due tasks
-                </p>
-                <svg
-                  className="size-5 shrink-0 text-muted-foreground"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth="1.5"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m8.25 4.5 7.5 7.5-7.5 7.5"
-                  />
-                </svg>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+            {notificationPermission !== "granted" && onEnableNotifications && "Notification" in window && (
+              <Card
+                className="cursor-pointer transition-opacity hover:opacity-80 border-border"
+                onClick={onEnableNotifications}
+              >
+                <CardContent className="flex items-center gap-3 px-4 py-3">
+                  <Bell className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                  <p className="flex-1 text-sm text-foreground">
+                    Enable notifications to get reminders for due tasks
+                  </p>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Calendar banners */}
-        {isCalendarConnected === false && onConnectCalendar && (
-          <div className="w-full px-5">
-            <Card
-              className="cursor-pointer hover:opacity-90 border-border"
-              onClick={onConnectCalendar}
-            >
-              <CardContent className="flex items-center gap-3 p-3">
-                <svg
-                  className="size-5 shrink-0 text-muted-foreground"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth="1.5"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
-                  />
-                </svg>
-                <p className="flex-1 text-base text-foreground">
-                  Connect your calendar to sync events with your tasks
-                </p>
-                <svg
-                  className="size-5 shrink-0 text-muted-foreground"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth="1.5"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m8.25 4.5 7.5 7.5-7.5 7.5"
-                  />
-                </svg>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+            {isCalendarConnected === false && onConnectCalendar && (
+              <Card
+                className="cursor-pointer transition-opacity hover:opacity-80 border-border"
+                onClick={onConnectCalendar}
+              >
+                <CardContent className="flex items-center gap-3 px-4 py-3">
+                  <Calendar className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                  <p className="flex-1 text-sm text-foreground">
+                    Connect your calendar to sync events with your tasks
+                  </p>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                </CardContent>
+              </Card>
+            )}
 
-        {calendarPendingEventsCount > 0 && onCalendarSyncClick && (
-          <div className="w-full px-5">
-            <Card
-              className="cursor-pointer hover:opacity-90 border-border"
-              onClick={onCalendarSyncClick}
-            >
-              <CardContent className="flex items-center gap-3 p-3">
-                <svg
-                  className="size-5 shrink-0 text-emerald-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth="1.5"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
-                  />
-                </svg>
-                <p className="flex-1 text-base text-foreground">
-                  {calendarPendingEventsCount} calendar event
-                  {calendarPendingEventsCount !== 1 ? "s" : ""} ready to sync
-                </p>
-                <svg
-                  className="size-5 shrink-0 text-emerald-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth="1.5"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m8.25 4.5 7.5 7.5-7.5 7.5"
-                  />
-                </svg>
-              </CardContent>
-            </Card>
+            {calendarPendingEventsCount > 0 && onCalendarSyncClick && (
+              <Card
+                className="cursor-pointer transition-opacity hover:opacity-80 border-border"
+                onClick={onCalendarSyncClick}
+              >
+                <CardContent className="flex items-center gap-3 px-4 py-3">
+                  <Calendar className="size-4 shrink-0 text-emerald-500" strokeWidth={1.5} />
+                  <p className="flex-1 text-sm text-foreground">
+                    {calendarPendingEventsCount} calendar event{calendarPendingEventsCount !== 1 ? "s" : ""} ready to sync
+                  </p>
+                  <ChevronRight className="size-4 shrink-0 text-emerald-500" strokeWidth={1.5} />
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 

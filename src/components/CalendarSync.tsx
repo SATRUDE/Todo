@@ -5,7 +5,7 @@ import { markEventAsProcessed } from "../lib/calendar";
 
 interface CalendarSyncProps {
   onBack: () => void;
-  onAddTask?: (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }) => void;
+  onAddTask?: (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder') => void;
   lists?: Array<{ id: number; name: string; color: string; count: number; isShared: boolean }>;
   onSync?: () => Promise<void>;
   isSyncing?: boolean;
@@ -46,6 +46,11 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
     const dayBefore = new Date(params.eventDate);
     dayBefore.setDate(dayBefore.getDate() - 1);
     onAddTask("Prepare for: " + params.title, undefined, 0, undefined, { date: dayBefore, time: "" });
+  };
+
+  const handleAddAsReminder = (params: { title: string; eventDate: Date; eventId: string }) => {
+    if (!onAddTask) return;
+    onAddTask(params.title, undefined, 0, undefined, { date: params.eventDate, time: "" }, 'reminder');
   };
 
   const handleSync = async () => {
@@ -170,6 +175,7 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
               onTaskClick={handleTaskClick}
               onEventProcessed={onEventProcessed}
               onAddPrepareTask={handleAddPrepareTask}
+              onAddAsReminder={handleAddAsReminder}
             />
           </div>
         )}

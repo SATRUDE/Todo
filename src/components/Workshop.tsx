@@ -327,7 +327,7 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
             </svg>
           </div>
           <div className="flex flex-col items-start relative shrink-0 flex-1">
-            <p className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-white tracking-[-0.308px] whitespace-pre">Workshop</p>
+            <p className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-nowrap text-foreground tracking-[-0.308px] whitespace-pre">Workshop</p>
             {lastSyncTime && (
               <p className="font-normal font-normal leading-[1.5] text-[14px] text-muted-foreground mt-[4px]">
                 Last synced: {lastSyncTime.toLocaleString()}
@@ -397,7 +397,7 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
             ) : reportSections.length > 0 ? (
               reportSections.map((section, index) => (
                 <div key={index} className="flex flex-col gap-[12px]">
-                  <h2 className="font-medium font-medium leading-[1.5] text-[22px] text-white tracking-[-0.242px]">
+                  <h2 className="font-medium font-medium leading-[1.5] text-[22px] text-foreground tracking-[-0.242px]">
                     {section.title}
                   </h2>
                   {section.insights && section.insights.length > 0 ? (
@@ -408,7 +408,7 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
                           key={sectionIndex} 
                           className="bg-card border border-border rounded-[12px] px-[16px] py-[16px]"
                         >
-                          <h3 className="font-medium font-medium leading-[1.5] text-[18px] text-white tracking-[-0.198px] mb-[12px]">
+                          <h3 className="font-medium font-medium leading-[1.5] text-[18px] text-foreground tracking-[-0.198px] mb-[12px]">
                             {insightSection.title}
                           </h3>
                           <ul className="flex flex-col gap-[8px] list-none pl-0">
@@ -417,7 +417,7 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
                                 key={insightIndex}
                                 className="flex items-start gap-[8px]"
                               >
-                                <span className="text-white mt-[4px] shrink-0">•</span>
+                                <span className="text-foreground mt-[4px] shrink-0">•</span>
                                 <p 
                                   className="font-normal font-normal leading-[1.6] text-[16px] break-words flex-1"
                                   style={{ color: '#A1A1AA' }}

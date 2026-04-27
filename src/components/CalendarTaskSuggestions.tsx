@@ -7,6 +7,7 @@ interface CalendarTaskSuggestionsProps {
   onTaskClick?: (suggestion: { text: string; description?: string; deadline?: { date: Date; time: string }; eventId: string }) => void;
   onEventProcessed?: () => void;
   onAddPrepareTask?: (params: { title: string; eventDate: Date; eventId: string }) => void;
+  onAddAsReminder?: (params: { title: string; eventDate: Date; eventId: string }) => void;
 }
 
 export interface CalendarTaskSuggestionsRef {
@@ -15,7 +16,7 @@ export interface CalendarTaskSuggestionsRef {
 }
 
 export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, CalendarTaskSuggestionsProps>(
-  ({ onAcceptSuggestion, onDismiss, onTaskClick, onEventProcessed, onAddPrepareTask }, ref) => {
+  ({ onAcceptSuggestion, onDismiss, onTaskClick, onEventProcessed, onAddPrepareTask, onAddAsReminder }, ref) => {
   type Suggestion = {
     text: string;
     description?: string;
@@ -56,6 +57,7 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [prepareAddedEventIds, setPrepareAddedEventIds] = useState<Set<string>>(new Set());
+  const [reminderAddedEventIds, setReminderAddedEventIds] = useState<Set<string>>(new Set());
   const [hasLoadedOnce, setHasLoadedOnce] = useState(() => {
     // Check if we have persisted suggestions
     try {
@@ -277,33 +279,65 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
                   <p className="font-normal text-sm text-muted-foreground break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                     {formatDate(suggestion.deadline.date)} at {suggestion.deadline.time}
                   </p>
-                  {onAddPrepareTask && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (prepareAddedEventIds.has(suggestion.event.id)) return;
-                        onAddPrepareTask({
-                          title: suggestion.text,
-                          eventDate: suggestion.deadline!.date,
-                          eventId: suggestion.event.id,
-                        });
-                        setPrepareAddedEventIds(prev => new Set(prev).add(suggestion.event.id));
-                      }}
-                      disabled={prepareAddedEventIds.has(suggestion.event.id)}
-                      className={`mt-1.5 px-3 py-1.5 text-sm font-normal rounded-lg border text-left w-fit transition-colors ${
-                        prepareAddedEventIds.has(suggestion.event.id)
-                          ? "border-muted-foreground/30 bg-muted/30 text-muted-foreground cursor-default"
-                          : "border-border bg-transparent text-foreground cursor-pointer hover:bg-accent"
-                      }`}
-                    >
-                      {prepareAddedEventIds.has(suggestion.event.id) ? (
-                        <>Prepare task added</>
-                      ) : (
-                        <>Prepare for: {suggestion.text}</>
+                  {(onAddPrepareTask || onAddAsReminder) && (
+                    <div className="mt-1.5 flex flex-wrap gap-2">
+                      {onAddPrepareTask && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (prepareAddedEventIds.has(suggestion.event.id)) return;
+                            onAddPrepareTask({
+                              title: suggestion.text,
+                              eventDate: suggestion.deadline!.date,
+                              eventId: suggestion.event.id,
+                            });
+                            setPrepareAddedEventIds(prev => new Set(prev).add(suggestion.event.id));
+                          }}
+                          disabled={prepareAddedEventIds.has(suggestion.event.id)}
+                          className={`px-3 py-1.5 text-sm font-normal rounded-lg border text-left w-fit transition-colors ${
+                            prepareAddedEventIds.has(suggestion.event.id)
+                              ? "border-muted-foreground/30 bg-muted/30 text-muted-foreground cursor-default"
+                              : "border-border bg-transparent text-foreground cursor-pointer hover:bg-accent"
+                          }`}
+                        >
+                          {prepareAddedEventIds.has(suggestion.event.id) ? (
+                            <>Prepare task added</>
+                          ) : (
+                            <>Prepare for: {suggestion.text}</>
+                          )}
+                        </button>
                       )}
-                    </button>
+                      {onAddAsReminder && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (reminderAddedEventIds.has(suggestion.event.id)) return;
+                            onAddAsReminder({
+                              title: suggestion.text,
+                              eventDate: suggestion.deadline!.date,
+                              eventId: suggestion.event.id,
+                            });
+                            setReminderAddedEventIds(prev => new Set(prev).add(suggestion.event.id));
+                          }}
+                          disabled={reminderAddedEventIds.has(suggestion.event.id)}
+                          className={`px-3 py-1.5 text-sm font-normal rounded-lg border text-left w-fit transition-colors ${
+                            reminderAddedEventIds.has(suggestion.event.id)
+                              ? "border-muted-foreground/30 bg-muted/30 text-muted-foreground cursor-default"
+                              : "border-border bg-transparent text-foreground cursor-pointer hover:bg-accent"
+                          }`}
+                        >
+                          {reminderAddedEventIds.has(suggestion.event.id) ? (
+                            <>Reminder added</>
+                          ) : (
+                            <>Add as a reminder</>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </>
               )}

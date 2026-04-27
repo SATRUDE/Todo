@@ -161,7 +161,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                   className="flex flex-col items-start min-w-0 flex-1 overflow-hidden cursor-pointer"
                   onClick={() => !isCompletedList && !isAllTasksList && setIsEditListModalOpen(true)}
                 >
-                  <p className="font-medium font-medium leading-[1.5] not-italic text-[28px] text-white tracking-[-0.308px] break-words min-w-0 w-full">
+                  <p className="font-medium font-medium leading-[1.5] not-italic text-[28px] text-foreground tracking-[-0.308px] break-words min-w-0 w-full">
                     {listName}
                   </p>
                 </div>
@@ -340,7 +340,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                             </svg>
                           </div>
                           <div className="basis-0 flex flex-col grow items-start min-h-px min-w-0 overflow-hidden">
-                            <p className="font-normal font-normal leading-[1.5] not-italic text-[18px] text-white tracking-[-0.198px] break-words min-w-0">
+                            <p className="font-normal font-normal leading-[1.5] not-italic text-[18px] text-foreground tracking-[-0.198px] break-words min-w-0">
                               {todo.text}
                             </p>
                           </div>
@@ -470,7 +470,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                       </div>
                     )}
                     <p className={`font-normal font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
-                      todo.completed ? "text-muted-foreground line-through" : "text-white"
+                      todo.completed ? "text-muted-foreground line-through" : "text-foreground"
                     }`}>
                       {todo.text}
                     </p>

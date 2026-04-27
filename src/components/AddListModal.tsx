@@ -146,7 +146,7 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
                   onChange={(e) => setListInput(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Add List"
-                  className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-muted-foreground"
+                  className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-foreground text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-muted-foreground"
                   autoFocus
                 />
 
@@ -161,7 +161,7 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
                       <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 24">
                         <g>
                           <rect fill={isShared ? "#00C853" : "#595559"} height="24" rx="12" width="44" />
-                          <circle cx={isShared ? "32" : "12"} cy="12" fill="white" r="10" />
+                          <circle cx={isShared ? "32" : "12"} cy="12" fill="var(--background)" r="10" />
                         </g>
                       </svg>
                     </div>

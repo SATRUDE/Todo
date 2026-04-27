@@ -1,5 +1,21 @@
 import { useState } from "react";
-import { ChevronLeft, Plus, X } from "lucide-react";
+import { ChevronLeft, Plus, X, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "./ui/button";
 import { CreateSessionModal } from "./CreateSessionModal";
 import { AddTasksToSessionModal } from "./AddTasksToSessionModal";
@@ -25,6 +41,7 @@ interface FocusSession {
   name: string;
   color: string;
   notes?: string | null;
+  is_open?: boolean;
 }
 
 interface SessionTaskWithTodo {
@@ -47,6 +64,87 @@ interface FocusSessionDetailProps {
   onDeleteSession: (id: number) => void;
   onAddTasksToSession: (taskIds: number[]) => void;
   onRemoveTaskFromSession: (taskId: number) => void;
+  onCloseSession?: (id: number) => void;
+  onReorderTasks: (sessionId: number, orderedTaskIds: number[]) => void;
+}
+
+function SortableTaskRow({
+  taskId,
+  todo,
+  list,
+  onToggle,
+  onClick,
+  onRemove,
+}: {
+  taskId: number;
+  todo: Todo;
+  list: ListItem | null;
+  onToggle: (id: number) => void;
+  onClick: (todo: Todo) => void;
+  onRemove: (id: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: taskId });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 w-full"
+    >
+      {/* Drag handle */}
+      <button
+        type="button"
+        className="shrink-0 size-5 text-muted-foreground/40 cursor-grab active:cursor-grabbing touch-none"
+        aria-label="Drag to reorder"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-full" strokeWidth={1.5} />
+      </button>
+
+      {/* Checkbox */}
+      <button
+        type="button"
+        className="shrink-0 size-6 text-foreground focus:outline-none"
+        onClick={() => onToggle(todo.id)}
+        aria-label={todo.completed ? "Mark incomplete" : "Mark complete"}
+      >
+        <svg className="block size-full" fill="none" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="11.625" stroke="currentColor" strokeWidth="0.75" fill={todo.completed ? "currentColor" : "none"} />
+          {todo.completed && (
+            <path d="M7 12L10 15L17 8" stroke="var(--card)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          )}
+        </svg>
+      </button>
+
+      {/* Task text + list badge */}
+      <button type="button" className="flex-1 min-w-0 text-left" onClick={() => onClick(todo)}>
+        <p className={`text-base text-foreground truncate ${todo.completed ? "line-through opacity-50" : ""}`}>
+          {todo.text}
+        </p>
+        {list && (
+          <span className="text-xs font-medium mt-0.5 inline-block" style={{ color: list.color }}>
+            {list.name}
+          </span>
+        )}
+      </button>
+
+      {/* Remove */}
+      <button
+        type="button"
+        className="shrink-0 size-5 text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => onRemove(todo.id)}
+        aria-label="Remove from session"
+      >
+        <X className="size-full" strokeWidth={1.5} />
+      </button>
+    </div>
+  );
 }
 
 export function FocusSessionDetail({
@@ -61,9 +159,25 @@ export function FocusSessionDetail({
   onDeleteSession,
   onAddTasksToSession,
   onRemoveTaskFromSession,
+  onCloseSession,
+  onReorderTasks,
 }: FocusSessionDetailProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddTasksModalOpen, setIsAddTasksModalOpen] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = sessionTasks.findIndex((st) => st.task_id === active.id);
+    const newIndex = sessionTasks.findIndex((st) => st.task_id === over.id);
+    const reordered = arrayMove(sessionTasks, oldIndex, newIndex);
+    onReorderTasks(session.id, reordered.map((st) => st.task_id));
+  };
 
   const completedCount = sessionTasks.filter((st) => st.todo.completed).length;
   const totalCount = sessionTasks.length;
@@ -150,78 +264,34 @@ export function FocusSessionDetail({
               </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2 w-full">
-              {sessionTasks.map(({ todo, task_id }) => {
-                const list = getListById(todo.listId);
-                return (
-                  <div
-                    key={task_id}
-                    className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 w-full"
-                  >
-                    {/* Checkbox */}
-                    <button
-                      type="button"
-                      className="shrink-0 size-6 text-foreground focus:outline-none"
-                      onClick={() => onToggleTask(todo.id)}
-                      aria-label={todo.completed ? "Mark incomplete" : "Mark complete"}
-                    >
-                      <svg className="block size-full" fill="none" viewBox="0 0 24 24">
-                        <circle
-                          cx="12"
-                          cy="12"
-                          r="11.625"
-                          stroke="currentColor"
-                          strokeWidth="0.75"
-                          fill={todo.completed ? "currentColor" : "none"}
-                        />
-                        {todo.completed && (
-                          <path
-                            d="M7 12L10 15L17 8"
-                            stroke="var(--card)"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        )}
-                      </svg>
-                    </button>
-
-                    {/* Task text + list badge */}
-                    <button
-                      type="button"
-                      className="flex-1 min-w-0 text-left"
-                      onClick={() => onTaskClick(todo)}
-                    >
-                      <p
-                        className={`text-base text-foreground truncate ${
-                          todo.completed ? "line-through opacity-50" : ""
-                        }`}
-                      >
-                        {todo.text}
-                      </p>
-                      {list && (
-                        <span
-                          className="text-xs font-medium mt-0.5 inline-block"
-                          style={{ color: list.color }}
-                        >
-                          {list.name}
-                        </span>
-                      )}
-                    </button>
-
-                    {/* Remove from session */}
-                    <button
-                      type="button"
-                      className="shrink-0 size-5 text-muted-foreground hover:text-foreground transition-colors"
-                      onClick={() => onRemoveTaskFromSession(todo.id)}
-                      aria-label="Remove from session"
-                    >
-                      <X className="size-full" strokeWidth={1.5} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={sessionTasks.map((st) => st.task_id)} strategy={verticalListSortingStrategy}>
+                <div className="flex flex-col gap-2 w-full">
+                  {sessionTasks.map(({ todo, task_id }) => (
+                    <SortableTaskRow
+                      key={task_id}
+                      taskId={task_id}
+                      todo={todo}
+                      list={getListById(todo.listId)}
+                      onToggle={onToggleTask}
+                      onClick={onTaskClick}
+                      onRemove={onRemoveTaskFromSession}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+          {/* Close session button */}
+          {session.is_open && onCloseSession && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full text-muted-foreground"
+              onClick={() => onCloseSession(session.id)}
+            >
+              Close session
+            </Button>
           )}
         </div>
       </div>

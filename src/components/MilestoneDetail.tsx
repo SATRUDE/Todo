@@ -388,7 +388,7 @@ export function MilestoneDetail({
                   className="flex flex-col items-start relative shrink-0 cursor-pointer min-w-0 flex-1 overflow-hidden"
                   onClick={handleMilestoneClick}
                 >
-                  <p className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-white tracking-[-0.308px] break-words w-full">
+                  <p className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-[28px] text-foreground tracking-[-0.308px] break-words w-full">
                     {milestone.name}
                   </p>
                 </div>
@@ -417,7 +417,7 @@ export function MilestoneDetail({
                   <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 24">
                     <g>
                       <rect fill={isAchieved ? "#00C853" : "#595559"} height="24" rx="12" width="44" />
-                      <circle cx={isAchieved ? "32" : "12"} cy="12" fill="white" r="10" />
+                      <circle cx={isAchieved ? "32" : "12"} cy="12" fill="var(--background)" r="10" />
                     </g>
                   </svg>
                 </div>
@@ -440,7 +440,7 @@ export function MilestoneDetail({
                 {/* Description Text */}
                 <div className="flex flex-col gap-[8px] items-start relative shrink-0 w-full">
                   <p 
-                    className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-white text-[18px] tracking-[-0.198px]"
+                    className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] tracking-[-0.198px]"
                     style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}
                   >
                     {linkifyText(milestone.description)}
@@ -492,7 +492,7 @@ export function MilestoneDetail({
                         </svg>
                       </div>
                       <p className={`font-normal font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
-                        todo.completed ? "text-muted-foreground line-through" : "text-white"
+                        todo.completed ? "text-muted-foreground line-through" : "text-foreground"
                       }`}>
                         {todo.text}
                       </p>
@@ -623,7 +623,7 @@ export function MilestoneDetail({
                           onClick={() => handleEditUpdate(update)}
                         >
                           <p 
-                            className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-white text-[18px] tracking-[-0.198px]"
+                            className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] tracking-[-0.198px]"
                             style={{ 
                               whiteSpace: 'pre-wrap', 
                               wordWrap: 'break-word',
