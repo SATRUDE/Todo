@@ -968,6 +968,20 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                   Add Image
                 </button>
 
+                {/* Session badges for assigned sessions */}
+                {sessionsForTask.map((session) => (
+                  <div
+                    key={session.id}
+                    className="flex shrink-0 items-center justify-center gap-1 rounded-full px-4 py-1 text-lg text-foreground"
+                    style={{ backgroundColor: session.color + '33', border: `1px solid ${session.color}` }}
+                  >
+                    <svg className="size-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke={session.color}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+                    </svg>
+                    <span style={{ color: session.color }}>{session.name}</span>
+                  </div>
+                ))}
+
                 {/* Session Button */}
                 {onAddToSession && task.id >= 0 && (
                   <button

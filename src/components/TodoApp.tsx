@@ -90,6 +90,7 @@ import {
   deleteFocusSession,
   setSessionOpen,
   fetchSessionTasks,
+  fetchSessionsForTask,
   addTaskToSession,
   removeTaskFromSession,
   updateSessionTaskOrders,
@@ -170,6 +171,7 @@ export function TodoApp() {
   const [isDeadlineModalOpen, setIsDeadlineModalOpen] = useState(false);
   const [taskForDeadlineUpdate, setTaskForDeadlineUpdate] = useState<Todo | null>(null);
   const [selectedTask, setSelectedTask] = useState<Todo | null>(null);
+  const [sessionsForSelectedTask, setSessionsForSelectedTask] = useState<FocusSession[]>([]);
   const [currentPage, setCurrentPage] = useState<Page>("today");
   const [selectedList, setSelectedList] = useState<ListItem | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
@@ -1998,6 +2000,7 @@ export function TodoApp() {
 
   const handleSelectFocusSession = async (session: FocusSession, pendingTaskId?: number | null) => {
     setSelectedSession(session);
+    setSelectedSessionTasks([]);
     try {
       const updatedSession = await setSessionOpen(session.id, true);
       setFocusSessions((prev) => prev.map((s) => (s.id === session.id ? updatedSession : { ...s, is_open: false })));
@@ -2527,6 +2530,11 @@ export function TodoApp() {
   const handleTaskClick = (task: Todo) => {
     setSelectedTask(task);
     setIsTaskDetailOpen(true);
+    if (task.id >= 0) {
+      fetchSessionsForTask(task.id).then(setSessionsForSelectedTask).catch(() => setSessionsForSelectedTask([]));
+    } else {
+      setSessionsForSelectedTask([]);
+    }
   };
 
   const getTasksForMilestone = (milestoneId: number) => {
@@ -3339,8 +3347,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           tasks={todos}
           onToggleTask={toggleTodo}
           onTaskClick={(task) => {
-            setSelectedTask(task);
-            setIsTaskDetailOpen(true);
+            handleTaskClick(task);
           }}
           onUpdateCommonTask={async (id, text, description, time, deadline) => {
             await handleUpdateCommonTask(id, text, description, time, deadline);
@@ -3936,7 +3943,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           }}
           onConvertToDailyTask={convertTaskToDaily}
           onConvertToCommonTask={convertTaskToCommon}
-          sessionsForTask={selectedTask ? focusSessions : []}
+          sessionsForTask={sessionsForSelectedTask}
           onAddToSession={(taskId) => {
             setIsTaskDetailOpen(false);
             // Navigate to sessions list so user can pick a session or create one
@@ -3957,9 +3964,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         onUpdateDeadline={handleUpdateDeadline}
         onDeleteTask={deleteTask}
         onTaskClick={(task) => {
-          setSelectedTask(task);
           setIsReviewMissedDeadlinesOpen(false);
-          setIsTaskDetailOpen(true);
+          handleTaskClick(task);
         }}
         onNewDeadlineClick={handleNewDeadlineClick}
         onMoveAllToToday={handleMoveAllMissedToToday}
