@@ -78,7 +78,7 @@ module.exports = async function handler(req, res) {
   }
 
   const body = parseBody(req) || {};
-  const { taskText, taskDescription, conversationHistory = [] } = body;
+  const { taskText, taskDescription, conversationHistory = [], customInstructions = '' } = body;
 
   if (!taskText || typeof taskText !== 'string') {
     return res.status(400).json({ error: 'taskText is required' });
@@ -90,8 +90,12 @@ module.exports = async function handler(req, res) {
     ? `${taskText}\n\nContext: ${taskDescription}`
     : taskText;
 
+  const systemContent = customInstructions?.trim()
+    ? `${SYSTEM_PROMPT}\n\nUser context:\n${customInstructions.trim()}`
+    : SYSTEM_PROMPT;
+
   const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: systemContent },
     { role: 'user', content: firstUserMessage },
   ];
 

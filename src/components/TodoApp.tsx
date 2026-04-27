@@ -2572,6 +2572,7 @@ export function TodoApp() {
           taskText: task.text,
           taskDescription: task.description || '',
           conversationHistory: [],
+          customInstructions: localStorage.getItem('ai_instructions') || '',
         }),
       });
       if (!res.ok) throw new Error('Agent request failed');
@@ -2616,6 +2617,7 @@ export function TodoApp() {
           taskText: task.text,
           taskDescription: task.description || '',
           conversationHistory,
+          customInstructions: localStorage.getItem('ai_instructions') || '',
         }),
       });
       if (!res.ok) throw new Error('Agent request failed');

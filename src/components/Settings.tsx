@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
-import { ChevronLeft, Bell, RefreshCw, Calendar, Sparkles, FlaskConical, LogOut } from "lucide-react";
+import { ChevronLeft, Bell, RefreshCw, Calendar, Sparkles, FlaskConical, LogOut, Bot } from "lucide-react";
 import { APP_VERSION } from "../lib/version";
 import { supabase } from "../lib/supabase";
 import { Button } from "./ui/button";
@@ -31,6 +31,10 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
   const [isConnecting, setIsConnecting] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const isDark = theme === "dark";
+  const [aiInstructions, setAiInstructions] = useState(
+    () => localStorage.getItem('ai_instructions') || ''
+  );
+  const [aiInstructionsSaved, setAiInstructionsSaved] = useState(false);
 
   // Check for calendar connection on mount and handle OAuth callback
   useEffect(() => {
@@ -191,6 +195,34 @@ export function Settings({ onBack, updateAvailable, onCheckForUpdate, onReload, 
             {syncStatus && (
               <p className="mt-2 pl-9 text-sm text-muted-foreground">{syncStatus}</p>
             )}
+          </Card>
+
+          {/* AI Instructions */}
+          <Card className="w-full rounded-lg border border-border bg-card px-4 py-3">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <Bot className="size-6 shrink-0 text-foreground" strokeWidth={1.5} />
+                <span className="text-lg font-normal text-foreground tracking-tight">AI instructions</span>
+              </div>
+              <textarea
+                value={aiInstructions}
+                onChange={(e) => {
+                  setAiInstructions(e.target.value);
+                  setAiInstructionsSaved(false);
+                }}
+                onBlur={() => {
+                  localStorage.setItem('ai_instructions', aiInstructions);
+                  setAiInstructionsSaved(true);
+                  setTimeout(() => setAiInstructionsSaved(false), 2000);
+                }}
+                placeholder={`Tell the AI about yourself so it can give better answers.\n\nExamples:\n• I live in Oslo, Norway. I fly from Oslo Airport (OSL).\n• Show prices in NOK.\n• I prefer direct flights when possible.`}
+                rows={5}
+                className="w-full rounded-lg bg-secondary px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none leading-relaxed"
+              />
+              {aiInstructionsSaved && (
+                <p className="text-xs text-muted-foreground">Saved</p>
+              )}
+            </div>
           </Card>
 
           {/* Storybook - localhost only */}
