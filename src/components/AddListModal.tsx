@@ -1,4 +1,6 @@
 import { useState, KeyboardEvent, useEffect, useRef } from "react";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 import { createPortal } from "react-dom";
 import svgPaths from "../imports/svg-5oexr7g1cf";
 import checkIconPaths from "../imports/svg-230yvpiryj";
@@ -152,20 +154,13 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
 
                 {/* Shared Toggle and Delete Button */}
                 <div className="flex gap-[8px] items-start justify-between relative shrink-0 w-full">
-                  <div 
-                    className="bg-secondary flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer"
-                    onClick={() => setIsShared(!isShared)}
-                  >
-                    {/* Toggle Switch */}
-                    <div className="h-[24px] relative shrink-0 w-[44px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 24">
-                        <g>
-                          <rect fill={isShared ? "#00C853" : "#595559"} height="24" rx="12" width="44" />
-                          <circle cx={isShared ? "32" : "12"} cy="12" fill="var(--background)" r="10" />
-                        </g>
-                      </svg>
-                    </div>
-                    <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Share</p>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="list-shared"
+                      checked={isShared}
+                      onCheckedChange={setIsShared}
+                    />
+                    <Label htmlFor="list-shared" className="text-foreground text-[18px] tracking-[-0.198px] cursor-pointer">Share</Label>
                   </div>
 
                   {/* Delete Button - only show when editing */}
