@@ -613,7 +613,7 @@ export async function createTask(todo: any): Promise<Todo> {
   // Remove any unexpected fields that might cause issues
   const validFields = [
     'text', 'completed', 'time', 'group', 'list_id', 'milestone_id', 'daily_task_id', 'parent_task_id',
-    'deadline_date', 'deadline_time', 'deadline_recurring',
+    'follow_up_of', 'deadline_date', 'deadline_time', 'deadline_recurring',
     'description', 'image_url', 'type', 'user_id'
   ]
   const cleanedDbTodo: any = {}
