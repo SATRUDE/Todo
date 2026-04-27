@@ -170,6 +170,7 @@ export interface FocusSession {
   name: string
   color: string
   notes?: string | null
+  is_open?: boolean
   created_at?: string
   updated_at?: string
 }
@@ -1901,6 +1902,33 @@ export async function deleteFocusSession(id: number): Promise<void> {
     console.error('Error deleting focus session:', error)
     throw error
   }
+}
+
+export async function setSessionOpen(id: number, isOpen: boolean): Promise<FocusSession> {
+  const userId = await ensureAuthenticated()
+
+  if (isOpen) {
+    await supabase
+      .from('focus_sessions')
+      .update({ is_open: false })
+      .eq('user_id', userId)
+      .neq('id', id)
+  }
+
+  const { data, error } = await supabase
+    .from('focus_sessions')
+    .update({ is_open: isOpen })
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error setting session open state:', error)
+    throw error
+  }
+
+  return data
 }
 
 export async function fetchSessionTasks(sessionId: number): Promise<SessionTaskWithTodo[]> {
