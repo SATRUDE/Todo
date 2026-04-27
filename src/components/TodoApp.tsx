@@ -1512,7 +1512,7 @@ export function TodoApp() {
     }
   };
 
-  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder', imageUrl?: string | null) => {
+  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder', imageUrl?: string | null, sessionId?: number) => {
     const newTodo: Todo = {
       id: Date.now(), // Temporary ID
       text: taskText,
@@ -1526,11 +1526,14 @@ export function TodoApp() {
       imageUrl: imageUrl ?? null,
       type: type || 'task',
     };
-    
+
     try {
       console.log('Adding new task:', { taskText, description, listId, deadline });
       const createdTask = await createTask(newTodo);
       console.log('Task created successfully');
+      if (sessionId) {
+        await addTaskToSession(sessionId, createdTask.id);
+      }
       // Reload all tasks to ensure consistency and immediate visibility
       const allTasks = await fetchTasks();
       const displayTasks = allTasks.map(dbTodoToDisplayTodo);
@@ -3861,6 +3864,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         onDeleteTask={deleteTask}
         lists={lists}
         milestones={allMilestonesWithGoals}
+        sessions={focusSessions}
         defaultListId={currentPage === "listDetail" && selectedList && selectedList.id !== ALL_TASKS_LIST_ID ? selectedList.id : undefined}
         onNavigateToDailyTasks={() => {
           setIsModalOpen(false);
