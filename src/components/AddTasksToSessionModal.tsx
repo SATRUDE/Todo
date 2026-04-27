@@ -8,6 +8,7 @@ interface Todo {
   completed: boolean;
   listId?: number;
   description?: string | null;
+  deadline?: { date: Date; time?: string; recurring?: string };
 }
 
 interface ListItem {
@@ -62,18 +63,28 @@ export function AddTasksToSessionModal({
     return incompleteTasks.filter((t) => t.text.toLowerCase().includes(q));
   }, [incompleteTasks, search]);
 
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+
   // Group filtered tasks by list
-  // listId === 0  → Today
-  // listId > 0    → named list
-  // listId undefined/null/negative → Unassigned
+  // deadline.date === today → Today
+  // listId > 0              → named list
+  // everything else         → Unassigned
   const tasksByList = useMemo(() => {
     const map = new Map<number | string, Todo[]>();
     filteredTasks.forEach((task) => {
       let key: number | string;
-      if (task.listId && task.listId > 0) {
-        key = task.listId;
-      } else if (task.listId === 0) {
+      const deadlineDate = task.deadline?.date;
+      const isToday =
+        deadlineDate instanceof Date &&
+        `${deadlineDate.getFullYear()}-${String(deadlineDate.getMonth() + 1).padStart(2, "0")}-${String(deadlineDate.getDate()).padStart(2, "0")}` === todayStr;
+
+      if (isToday) {
         key = "today";
+      } else if (task.listId && task.listId > 0) {
+        key = task.listId;
       } else {
         key = "unassigned";
       }
@@ -82,7 +93,7 @@ export function AddTasksToSessionModal({
       map.set(key, arr);
     });
     return map;
-  }, [filteredTasks]);
+  }, [filteredTasks, todayStr]);
 
   const getListById = (listId?: number) =>
     listId ? lists.find((l) => l.id === listId) : null;
