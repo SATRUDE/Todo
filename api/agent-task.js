@@ -13,6 +13,65 @@ function parseBody(req) {
   return req.body;
 }
 
+async function isUrlAlive(url) {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; bot)' },
+    });
+    clearTimeout(timer);
+    // 404/410 = definitely dead. Anything else (200, 403, 405...) = URL exists.
+    return res.status !== 404 && res.status !== 410;
+  } catch {
+    return false;
+  }
+}
+
+async function stripDeadLinks(text) {
+  // Extract all markdown links [label](url) and bare https:// URLs
+  const mdLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g;
+  const bareUrlRegex = /(?<!\()https?:\/\/[^\s\)>\]"]+/g;
+
+  const urls = new Map(); // url -> Set of full match strings in text
+  let match;
+
+  while ((match = mdLinkRegex.exec(text)) !== null) {
+    const url = match[2];
+    if (!urls.has(url)) urls.set(url, new Set());
+    urls.get(url).add(match[0]);
+  }
+  while ((match = bareUrlRegex.exec(text)) !== null) {
+    const url = match[0];
+    if (!urls.has(url)) urls.set(url, new Set());
+    urls.get(url).add(match[0]);
+  }
+
+  if (urls.size === 0) return text;
+
+  const checks = await Promise.all(
+    [...urls.keys()].map(url => isUrlAlive(url).then(alive => ({ url, alive })))
+  );
+
+  let result = text;
+  for (const { url, alive } of checks) {
+    if (!alive) {
+      for (const match of urls.get(url)) {
+        // Replace dead markdown link with just the label; replace dead bare URL with placeholder
+        const isMarkdown = match.startsWith('[');
+        const replacement = isMarkdown
+          ? match.replace(/\]\(https?:\/\/[^\)]+\)/, '] *(link unavailable)*')
+          : '*(link unavailable)*';
+        result = result.replace(match, replacement);
+      }
+    }
+  }
+  return result;
+}
+
 async function webSearch(query) {
   const res = await fetch('https://api.tavily.com/search', {
     method: 'POST',
@@ -39,11 +98,12 @@ const SYSTEM_PROMPT = `You are a smart personal assistant that searches the web 
 
 Guidelines:
 - Search the web to find accurate, current information
-- For travel (flights, hotels, trains): always include a direct booking link with dates/routes pre-filled where possible. Skyscanner deeplinks follow this pattern: https://www.skyscanner.net/transport/flights/{FROM_IATA}/{TO_IATA}/{YYYYMMDD}/ for one-way, add /{RETURN_YYYYMMDD}/ for return
-- For prices: give approximate ranges and note they may vary; always include a source link
+- IMPORTANT: Only include URLs that you found directly in search results. Never construct, guess, or invent URLs — they will be broken. If a search result contains a useful link, use that exact URL.
+- For travel (flights, hotels, trains): search for the specific route and dates. Report prices, airlines, and durations found. If a search result includes a direct booking URL, include it. If not, tell the user to search on skyscanner.net or google.com/travel/flights for the route and dates.
+- For prices: give approximate ranges and note they may vary
 - Be concise and practical — give the user what they need to act
 - Use **bold** for key figures/prices, bullet points for lists of options
-- At the end, include a "Sources:" line with the main URLs used`;
+- At the end, include a "Sources:" line with the exact URLs from your search results`;
 
 const tools = [
   {
@@ -156,7 +216,8 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Agent did not produce a response' });
     }
 
-    return res.status(200).json({ comment: finalComment, searches });
+    const verifiedComment = await stripDeadLinks(finalComment);
+    return res.status(200).json({ comment: verifiedComment, searches });
   } catch (err) {
     console.error('[agent-task] Error:', err?.message || err);
     return res.status(500).json({ error: err?.message || 'Agent error' });
