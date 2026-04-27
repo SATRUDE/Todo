@@ -482,8 +482,12 @@ export function TodoApp() {
 
       // Generate tasks from daily tasks for today (if not already generated)
       if (displayDailyTasks.length > 0) {
-        // generateTasksFromDailyTasks will fetch fresh todos itself, so we don't need to pass existingTodos
         await generateTasksFromDailyTasks(displayDailyTasks);
+      }
+
+      // Generate upcoming tasks from common task templates
+      if (displayCommonTasks.length > 0) {
+        await generateTasksFromCommonTasks(displayCommonTasks);
       }
     } catch (error) {
       console.error('Error loading secondary data:', error);
@@ -1335,11 +1339,13 @@ export function TodoApp() {
     setCurrentPage("lists");
   };
 
+  const recurringDayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
   const getNextRecurringDate = (currentDate: Date, recurring: string): Date => {
     const nextDate = new Date(currentDate);
-    
-    // Check if recurring contains custom days (comma-separated)
-    if (recurring && recurring.includes(',')) {
+
+    // Check if recurring contains custom days (comma-separated OR single day name like "monday")
+    if (recurring && (recurring.includes(',') || recurringDayNames.includes(recurring.toLowerCase()))) {
       const selectedDays = recurring.split(',').map(day => day.trim().toLowerCase());
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       
@@ -1698,9 +1704,11 @@ export function TodoApp() {
       const displayTask = dbCommonTaskToDisplayCommonTask(updatedTask);
       const updatedCommonTasks = commonTasks.map(task => task.id === id ? displayTask : task);
       setCommonTasks(updatedCommonTasks);
-      
-      // Don't generate tasks on update - task generation happens on app load and when maintaining buffer
-      // This prevents creating duplicate tasks when just updating the common task details
+
+      // Regenerate upcoming tasks for this template (deadline/recurring may have changed)
+      if (displayTask.deadline) {
+        await generateTasksFromCommonTasks([displayTask]);
+      }
     } catch (error) {
       console.error('Error updating common task:', error);
       alert(`Failed to update common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -1728,8 +1736,11 @@ export function TodoApp() {
       const displayTask = dbCommonTaskToDisplayCommonTask(createdTask);
       const updatedCommonTasks = [...commonTasks, displayTask];
       setCommonTasks(updatedCommonTasks);
-      
-      // Task generation is now handled by the daily cron job at midnight
+
+      // Generate upcoming tasks immediately after creating the template
+      if (displayTask.deadline) {
+        await generateTasksFromCommonTasks([displayTask]);
+      }
     } catch (error) {
       console.error('Error creating common task:', error);
       alert(`Failed to create common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -2163,8 +2174,8 @@ export function TodoApp() {
           // For recurring tasks, generate tasks for the next few occurrences
           const recurring = commonTask.deadline.recurring;
           
-          // Check if this is custom days (comma-separated)
-          if (recurring.includes(',')) {
+          // Check if this is custom days (comma-separated OR single day name like "monday")
+          if (recurring.includes(',') || recurringDayNames.includes(recurring.toLowerCase())) {
             // Handle custom weekly days
             const selectedDays = recurring.split(',').map(day => day.trim().toLowerCase());
             const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -2221,9 +2232,13 @@ export function TodoApp() {
         
         // Check if tasks already exist for these dates and generate missing ones
         for (const targetDate of datesToGenerate) {
-          // Check if a task with the same text and deadline date already exists (check against fresh DB data)
+          // Check if an incomplete task with the same text/description/date already exists.
+          // Completed tasks don't block regeneration — a completed Monday task shouldn't
+          // prevent the same template generating for a future Monday.
           const existingTask = displayExistingTasks.find(todo => {
+            if (todo.completed) return false;
             if (todo.text !== commonTask.text) return false;
+            if ((todo.description || null) !== (commonTask.description || null)) return false;
             if (!todo.deadline) return false;
             const todoDate = new Date(todo.deadline.date);
             todoDate.setHours(0, 0, 0, 0);
@@ -3340,6 +3355,30 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
       ) : currentPage === "commonTaskDetail" && selectedCommonTask ? (
         <CommonTaskDetail
           commonTask={selectedCommonTask}
+          upcomingDates={(() => {
+            if (!selectedCommonTask.deadline?.recurring) return [];
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const dates: Date[] = [];
+            const rec = selectedCommonTask.deadline.recurring;
+            if (rec.includes(',') || recurringDayNames.includes(rec.toLowerCase())) {
+              const indices = rec.split(',').map(d => recurringDayNames.indexOf(d.trim().toLowerCase())).filter(i => i !== -1);
+              const maxDate = new Date(today); maxDate.setDate(maxDate.getDate() + 30);
+              const cur = new Date(today);
+              while (cur <= maxDate && dates.length < 4) {
+                if (indices.includes(cur.getDay())) dates.push(new Date(cur));
+                cur.setDate(cur.getDate() + 1);
+              }
+            } else {
+              let cur = new Date(selectedCommonTask.deadline.date); cur.setHours(0, 0, 0, 0);
+              while (cur < today) cur = getNextRecurringDate(cur, rec);
+              const maxDate = new Date(today); maxDate.setDate(maxDate.getDate() + 30);
+              while (cur <= maxDate && dates.length < 4) {
+                dates.push(new Date(cur));
+                cur = getNextRecurringDate(cur, rec);
+              }
+            }
+            return dates;
+          })()}
           onBack={() => {
             setCurrentPage("commonTasks");
             setSelectedCommonTask(null);
