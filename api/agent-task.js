@@ -49,16 +49,16 @@ function buildFlightSearchLink({ origin_iata, destination_iata, outbound_date, r
   const out = toSkyscannerDate(outbound_date);
   if (return_date?.trim()) {
     const ret = toSkyscannerDate(return_date);
-    return `https://www.skyscanner.net/transport/flights/${o}/${d}/${out}/${ret}/`;
+    return `https://www.skyscanner.net/transport/flights/${o}/${d}/${out}/${ret}`;
   }
-  return `https://www.skyscanner.net/transport/flights/${o}/${d}/${out}/`;
+  return `https://www.skyscanner.net/transport/flights/${o}/${d}/${out}`;
 }
 
 function buildHotelSearchLink({ city, checkin_date, checkout_date, adults = 1 }) {
   const slug = city.trim().toLowerCase().replace(/\s+/g, '-');
   const cin = toSkyscannerDate(checkin_date);
   const cout = toSkyscannerDate(checkout_date);
-  return `https://www.skyscanner.net/hotels/${slug}/${cin}/${cout}/?adults=${adults}`;
+  return `https://www.skyscanner.net/hotels/${slug}/${cin}/${cout}?adults=${adults}`;
 }
 
 // ── Tool definitions ─────────────────────────────────────────────────────────
