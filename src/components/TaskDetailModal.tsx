@@ -69,6 +69,9 @@ interface TaskDetailModalProps {
   onConvertToCommonTask?: (taskId: number) => void | Promise<void>;
   sessionsForTask?: Array<{ id: number; name: string; color: string }>;
   onAddToSession?: (taskId: number) => void;
+  predecessorChain?: Todo[];
+  onFollowUp?: (taskId: number) => void;
+  onTaskChainClick?: (task: Todo) => void;
 }
 
 // Helper function to get all text nodes in an element
@@ -88,7 +91,7 @@ function getTextNodes(element: Node): Text[] {
   return textNodes;
 }
 
-export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks, onConvertToDailyTask, onConvertToCommonTask, sessionsForTask = [], onAddToSession }: TaskDetailModalProps) {
+export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks, onConvertToDailyTask, onConvertToCommonTask, sessionsForTask = [], onAddToSession, predecessorChain = [], onFollowUp, onTaskChainClick }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
   const [taskDescription, setTaskDescription] = useState(task.description || "");
   const [imageUrl, setImageUrl] = useState<string | null>(task.imageUrl || null);
@@ -785,6 +788,47 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
               </div>
             )}
 
+            {/* Follow-up chain — completed predecessors, oldest first */}
+            {predecessorChain.length > 0 && (
+              <div className="flex flex-col gap-2 w-full">
+                {predecessorChain.map((pred, index) => {
+                  const isLast = index === predecessorChain.length - 1;
+                  return (
+                    <div key={pred.id} className="flex flex-col">
+                      {/* Predecessor row */}
+                      <button
+                        type="button"
+                        className="flex items-start gap-3 w-full text-left group"
+                        onClick={() => onTaskChainClick?.(pred)}
+                      >
+                        {/* Timeline dot + line */}
+                        <div className="flex flex-col items-center shrink-0 pt-1">
+                          <div className="size-3 rounded-full bg-muted-foreground/40 ring-2 ring-background shrink-0" />
+                          {!isLast && <div className="w-px flex-1 min-h-[20px] bg-muted-foreground/20 mt-1" />}
+                        </div>
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 pb-3">
+                          <p className="text-base text-muted-foreground line-through leading-snug break-words group-hover:text-foreground transition-colors">
+                            {pred.text}
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  );
+                })}
+                {/* Arrow connecting chain to current task */}
+                <div className="flex items-start gap-3 w-full pointer-events-none">
+                  <div className="flex flex-col items-center shrink-0 pt-1">
+                    <div className="w-px h-3 bg-muted-foreground/20" />
+                    <svg className="size-3 text-muted-foreground/40 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 20l-8-8h5V4h6v8h5l-8 8z" />
+                    </svg>
+                  </div>
+                  <p className="text-xs text-muted-foreground/50 pt-0.5 pb-2">Current task</p>
+                </div>
+              </div>
+            )}
+
             {/* Subtasks Section */}
             {onCreateSubtask && (
               <div className="flex flex-col gap-2 w-full">
@@ -978,6 +1022,20 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
                     </svg>
                     Session
+                  </button>
+                )}
+
+                {/* Follow Up Button */}
+                {onFollowUp && task.id >= 0 && (
+                  <button
+                    type="button"
+                    className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
+                    onClick={() => onFollowUp(task.id)}
+                  >
+                    <svg className="size-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    Follow up
                   </button>
                 )}
 

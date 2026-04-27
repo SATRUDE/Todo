@@ -71,6 +71,7 @@ export interface Todo {
   milestone_id?: number // Foreign key to milestones table
   daily_task_id?: number | null // Foreign key to daily_tasks table
   parent_task_id?: number | null // Foreign key to parent task (for subtasks)
+  follow_up_of?: number | null // Foreign key to predecessor task in a follow-up chain
   deadline_date?: string // YYYY-MM-DD string
   deadline_time?: string
   deadline_recurring?: string
@@ -202,6 +203,7 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     milestone_id: dbTodo.milestone_id,
     daily_task_id: dbTodo.daily_task_id,
     parent_task_id: dbTodo.parent_task_id,
+    follow_up_of: dbTodo.follow_up_of,
     deadline_date: dbTodo.deadline_date,
     deadline_time: dbTodo.deadline_time,
     deadline_recurring: dbTodo.deadline_recurring,
@@ -276,7 +278,14 @@ export function appTodoToDbTodo(todo: any): any {
   } else if (todo.parent_task_id !== undefined && todo.parent_task_id !== null && typeof todo.parent_task_id === 'number') {
     dbTodo.parent_task_id = todo.parent_task_id
   }
-  
+
+  // Handle follow_up_of - the predecessor task in a follow-up chain
+  if (todo.followUpOf !== undefined && todo.followUpOf !== null && typeof todo.followUpOf === 'number') {
+    dbTodo.follow_up_of = todo.followUpOf
+  } else if (todo.follow_up_of !== undefined && todo.follow_up_of !== null && typeof todo.follow_up_of === 'number') {
+    dbTodo.follow_up_of = todo.follow_up_of
+  }
+
   if (todo.deadline) {
     // Ensure deadline.date is a Date object (it might be a string if serialized)
     let deadlineDate: Date;
@@ -388,6 +397,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     milestoneId: dbTodo.milestone_id,
     dailyTaskId: dbTodo.daily_task_id,
     parentTaskId: dbTodo.parent_task_id || undefined,
+    followUpOf: dbTodo.follow_up_of || undefined,
     deadline,
     timesDelayed: dbTodo.times_delayed && dbTodo.times_delayed > 0 ? dbTodo.times_delayed : undefined,
     type: dbTodo.type || 'task', // Default to 'task' if not set
@@ -549,6 +559,30 @@ export async function fetchSubtasks(parentTaskId: number): Promise<Todo[]> {
   }
 
   return data ? data.map(dbTodoToAppTodo) : []
+}
+
+// Walk the follow_up_of chain backwards from the given task, returning
+// predecessors ordered oldest-first (not including the task itself).
+export async function fetchPredecessorChain(taskId: number): Promise<Todo[]> {
+  const userId = await ensureAuthenticated()
+
+  // First fetch the task itself to get its follow_up_of pointer
+  const { data: startData } = await supabase
+    .from('todos').select('*').eq('id', taskId).eq('user_id', userId).single()
+  if (!startData) return []
+
+  const predecessors: Todo[] = []
+  let nextId: number | null = startData.follow_up_of ?? null
+
+  for (let depth = 0; depth < 20 && nextId !== null; depth++) {
+    const { data, error } = await supabase
+      .from('todos').select('*').eq('id', nextId).eq('user_id', userId).single()
+    if (error || !data) break
+    predecessors.unshift(dbTodoToAppTodo(data)) // prepend so oldest is first
+    nextId = data.follow_up_of ?? null
+  }
+
+  return predecessors
 }
 
 export async function fetchTasksByMilestone(milestoneId: number): Promise<Todo[]> {

@@ -91,6 +91,7 @@ import {
   setSessionOpen,
   fetchSessionTasks,
   fetchSessionsForTask,
+  fetchPredecessorChain,
   addTaskToSession,
   removeTaskFromSession,
   updateSessionTaskOrders,
@@ -124,6 +125,7 @@ interface Todo {
   milestoneId?: number; // Foreign key to milestones table
   dailyTaskId?: number | null; // Foreign key to daily_tasks table
   parentTaskId?: number | null; // Foreign key to parent task (for subtasks)
+  followUpOf?: number | null; // Predecessor task in follow-up chain
   deadline?: {
     date: Date;
     time: string;
@@ -172,6 +174,8 @@ export function TodoApp() {
   const [taskForDeadlineUpdate, setTaskForDeadlineUpdate] = useState<Todo | null>(null);
   const [selectedTask, setSelectedTask] = useState<Todo | null>(null);
   const [sessionsForSelectedTask, setSessionsForSelectedTask] = useState<FocusSession[]>([]);
+  const [predecessorChain, setPredecessorChain] = useState<Todo[]>([]);
+  const [followUpOfTaskId, setFollowUpOfTaskId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("today");
   const [selectedList, setSelectedList] = useState<ListItem | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
@@ -1515,7 +1519,7 @@ export function TodoApp() {
     }
   };
 
-  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder', imageUrl?: string | null, sessionId?: number) => {
+  const addNewTask = async (taskText: string, description?: string, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder', imageUrl?: string | null, sessionId?: number, followUpOf?: number) => {
     const newTodo: Todo = {
       id: Date.now(), // Temporary ID
       text: taskText,
@@ -1528,6 +1532,7 @@ export function TodoApp() {
       description: description ?? null,
       imageUrl: imageUrl ?? null,
       type: type || 'task',
+      followUpOf: followUpOf ?? undefined,
     };
 
     try {
@@ -2532,9 +2537,23 @@ export function TodoApp() {
     setIsTaskDetailOpen(true);
     if (task.id >= 0) {
       fetchSessionsForTask(task.id).then(setSessionsForSelectedTask).catch(() => setSessionsForSelectedTask([]));
+      fetchPredecessorChain(task.id).then(setPredecessorChain).catch(() => setPredecessorChain([]));
     } else {
       setSessionsForSelectedTask([]);
+      setPredecessorChain([]);
     }
+  };
+
+  const handleFollowUpTask = async (taskId: number) => {
+    // Complete the current task
+    await toggleTodo(taskId);
+    // Close the task detail
+    setIsTaskDetailOpen(false);
+    setSelectedTask(null);
+    // Store the predecessor ID so AddTaskModal can link the new task
+    setFollowUpOfTaskId(taskId);
+    // Open AddTaskModal
+    setIsModalOpen(true);
   };
 
   const getTasksForMilestone = (milestoneId: number) => {
@@ -3889,8 +3908,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
       {/* Add Task Modal */}
       <AddTaskModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onAddTask={addNewTask}
+        onClose={() => { setIsModalOpen(false); setFollowUpOfTaskId(null); }}
+        onAddTask={(text, description, listId, milestoneId, deadline, type, imageUrl, sessionId) =>
+          addNewTask(text, description, listId, milestoneId, deadline, type, imageUrl, sessionId, followUpOfTaskId ?? undefined)
+        }
         onUpdateTask={async (id, task, description, listId, milestoneId, deadline, type) => {
           await updateTask(id, task, description ?? null, listId, milestoneId, deadline ?? null, type);
         }}
@@ -3944,6 +3965,9 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onConvertToDailyTask={convertTaskToDaily}
           onConvertToCommonTask={convertTaskToCommon}
           sessionsForTask={sessionsForSelectedTask}
+          predecessorChain={predecessorChain}
+          onFollowUp={handleFollowUpTask}
+          onTaskChainClick={handleTaskClick}
           onAddToSession={(taskId) => {
             setIsTaskDetailOpen(false);
             // Navigate to sessions list so user can pick a session or create one
