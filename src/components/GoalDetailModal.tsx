@@ -1,4 +1,6 @@
 import { useState, useEffect, KeyboardEvent, useRef } from "react";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 import { createPortal } from "react-dom";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
 import svgPaths from "../imports/svg-e51h379o38";
@@ -229,20 +231,13 @@ export function GoalDetailModal({
                     </div>
 
                     {/* Active Toggle */}
-                    <div 
-                      className="bg-secondary flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
-                      onClick={() => setIsActive(!isActive)}
-                    >
-                      {/* Toggle Switch */}
-                      <div className="h-[24px] relative shrink-0 w-[44px]">
-                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 24">
-                          <g>
-                            <rect fill={isActive ? "#00C853" : "#595559"} height="24" rx="12" width="44" />
-                            <circle cx={isActive ? "32" : "12"} cy="12" fill="var(--background)" r="10" />
-                          </g>
-                        </svg>
-                      </div>
-                      <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Active</p>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="goal-active"
+                        checked={isActive}
+                        onCheckedChange={setIsActive}
+                      />
+                      <Label htmlFor="goal-active" className="text-foreground text-[18px] tracking-[-0.198px] cursor-pointer">Active</Label>
                     </div>
 
                     {/* Trash Icon - Only show for existing goals */}

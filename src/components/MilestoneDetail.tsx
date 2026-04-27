@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 import { createPortal } from "react-dom";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
@@ -408,20 +410,13 @@ export function MilestoneDetail({
 
             {/* Achieved Toggle */}
             <div className="mb-[12px]">
-              <div 
-                className="bg-secondary flex gap-[8px] items-center justify-center pl-[8px] pr-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer inline-flex"
-                onClick={handleToggleAchieved}
-              >
-                {/* Toggle Switch */}
-                <div className="h-[24px] relative shrink-0 w-[44px]">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 24">
-                    <g>
-                      <rect fill={isAchieved ? "#00C853" : "#595559"} height="24" rx="12" width="44" />
-                      <circle cx={isAchieved ? "32" : "12"} cy="12" fill="var(--background)" r="10" />
-                    </g>
-                  </svg>
-                </div>
-                <p className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre">Achieved</p>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="milestone-achieved"
+                  checked={isAchieved}
+                  onCheckedChange={handleToggleAchieved}
+                />
+                <Label htmlFor="milestone-achieved" className="text-foreground text-[18px] tracking-[-0.198px] cursor-pointer">Achieved</Label>
               </div>
             </div>
 
