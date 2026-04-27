@@ -76,6 +76,7 @@ export interface Todo {
   deadline_recurring?: string
   times_delayed?: number // How many times the deadline has been changed/delayed
   type?: 'task' | 'reminder' // Task type: 'task' or 'reminder'
+  ai_status?: string | null // 'pending' | 'running' | 'done' | null
   created_at?: string
   updated_at?: string
 }
@@ -164,6 +165,14 @@ export interface MilestoneUpdate {
   updated_at?: string
 }
 
+export interface TaskComment {
+  id: number
+  todo_id: number
+  author: 'ai' | 'user'
+  content: string
+  created_at?: string
+}
+
 export interface FocusSession {
   id: number
   user_id?: string
@@ -207,6 +216,7 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     deadline_recurring: dbTodo.deadline_recurring,
     times_delayed: dbTodo.times_delayed || 0,
     type: dbTodo.type || 'task', // Default to 'task' if not set
+    ai_status: dbTodo.ai_status || null,
     created_at: dbTodo.created_at,
     updated_at: dbTodo.updated_at,
   }
@@ -2097,12 +2107,51 @@ export async function fetchMilestoneUpdatesForMilestones(milestoneIds: number[])
     .select('*')
     .in('milestone_id', validMilestoneIds)
     .order('created_at', { ascending: false })
-  
+
   if (error) {
     console.error('Error fetching milestone updates:', error)
     throw error
   }
-  
+
   return data || []
+}
+
+// ─── Task Comments (AI Agent) ─────────────────────────────────────────────────
+
+export async function fetchTaskComments(todoId: number): Promise<TaskComment[]> {
+  await ensureAuthenticated()
+  const { data, error } = await (supabase as any)
+    .from('task_comments')
+    .select('*')
+    .eq('todo_id', todoId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching task comments:', error)
+    return []
+  }
+  return data || []
+}
+
+export async function addTaskComment(todoId: number, content: string, author: 'ai' | 'user' = 'ai'): Promise<TaskComment> {
+  await ensureAuthenticated()
+  const { data, error } = await (supabase as any)
+    .from('task_comments')
+    .insert({ todo_id: todoId, author, content })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error adding task comment:', error)
+    throw error
+  }
+  return data
+}
+
+export async function updateTaskAiStatus(todoId: number, status: string | null): Promise<void> {
+  await (supabase as any)
+    .from('todos')
+    .update({ ai_status: status })
+    .eq('id', todoId)
 }
 
