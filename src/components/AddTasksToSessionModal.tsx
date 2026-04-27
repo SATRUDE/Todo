@@ -163,7 +163,7 @@ export function AddTasksToSessionModal({
 
           {/* Header */}
           <div className="flex items-center justify-between px-5 pb-4 shrink-0">
-            <h2 className="text-xl font-medium text-white">Add tasks to session</h2>
+            <h2 className="text-xl font-medium text-foreground">Add tasks to session</h2>
             <button
               type="button"
               className="size-8 flex items-center justify-center text-foreground hover:opacity-70"
@@ -182,7 +182,7 @@ export function AddTasksToSessionModal({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search tasks..."
-                className="flex-1 bg-transparent text-white text-base outline-none placeholder:text-muted-foreground"
+                className="flex-1 bg-transparent text-foreground text-base outline-none placeholder:text-muted-foreground"
               />
             </div>
           </div>

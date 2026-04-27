@@ -238,7 +238,7 @@ export function GoalDetailModal({
                         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 24">
                           <g>
                             <rect fill={isActive ? "#00C853" : "#595559"} height="24" rx="12" width="44" />
-                            <circle cx={isActive ? "32" : "12"} cy="12" fill="white" r="10" />
+                            <circle cx={isActive ? "32" : "12"} cy="12" fill="var(--background)" r="10" />
                           </g>
                         </svg>
                       </div>

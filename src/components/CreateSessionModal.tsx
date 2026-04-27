@@ -107,7 +107,7 @@ export function CreateSessionModal({
                 onChange={(e) => setNameInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Session name"
-                className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-white text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-muted-foreground"
+                className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-foreground text-[28px] tracking-[-0.308px] bg-transparent border-none outline-none w-full placeholder:text-muted-foreground"
                 autoFocus
               />
 

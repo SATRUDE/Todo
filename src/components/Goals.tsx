@@ -572,7 +572,7 @@ export function Goals({
                 </svg>
               </div>
               <div className="flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre">
-                <p className="font-medium font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">Goals</p>
+                <p className="font-medium font-medium relative shrink-0 text-[28px] text-foreground tracking-[-0.308px]">Goals</p>
               </div>
             </div>
             <div className="flex items-center gap-[12px] relative shrink-0">
@@ -657,7 +657,7 @@ export function Goals({
                       </div>
 
                       {/* Goal Title */}
-                      <h3 className="font-medium font-medium text-[18px] text-white mb-[10px] tracking-[-0.198px] break-words min-w-0">
+                      <h3 className="font-medium font-medium text-[18px] text-foreground mb-[10px] tracking-[-0.198px] break-words min-w-0">
                         {goal.text}
                       </h3>
 

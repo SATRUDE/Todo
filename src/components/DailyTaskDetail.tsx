@@ -177,7 +177,7 @@ export function DailyTaskDetail({
                   className="flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre cursor-pointer"
                   onClick={handleTitleClick}
                 >
-                  <p className="font-medium font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">
+                  <p className="font-medium font-medium relative shrink-0 text-[28px] text-foreground tracking-[-0.308px]">
                     {dailyTask.text}
                   </p>
                 </div>
@@ -227,7 +227,7 @@ export function DailyTaskDetail({
                         </svg>
                       </div>
                       <p className={`font-normal font-normal leading-[1.5] not-italic relative min-w-0 flex-1 text-[18px] break-words tracking-[-0.198px] ${
-                        todo.completed ? "text-muted-foreground line-through" : "text-white"
+                        todo.completed ? "text-muted-foreground line-through" : "text-foreground"
                       }`}>
                         {todo.text}
                       </p>

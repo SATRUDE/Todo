@@ -208,7 +208,7 @@ export function GoalDetail({
                 className="flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre cursor-pointer"
                 onClick={handleGoalClick}
               >
-                <p className="font-medium font-medium relative shrink-0 text-[28px] text-white tracking-[-0.308px]">
+                <p className="font-medium font-medium relative shrink-0 text-[28px] text-foreground tracking-[-0.308px]">
                   {goal.text}
                 </p>
               </div>

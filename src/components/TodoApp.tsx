@@ -3101,7 +3101,7 @@ export function TodoApp() {
   if (loading) {
     return (
       <div className="bg-background flex flex-col items-center justify-center pb-0 pt-[60px] px-0 relative size-full min-h-screen">
-        <p className="text-white text-lg">Loading...</p>
+        <p className="text-foreground text-lg">Loading...</p>
       </div>
     );
   }
