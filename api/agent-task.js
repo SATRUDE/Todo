@@ -1,9 +1,9 @@
 /**
  * Vercel serverless function: AI agent for task delegation.
- * Uses Claude with Tavily web search to research and answer tasks.
+ * Uses GPT-4o with Tavily web search to research and answer tasks.
  */
 
-const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
 
 function parseBody(req) {
   if (!req.body) return null;
@@ -45,6 +45,23 @@ Guidelines:
 - Use **bold** for key figures/prices, bullet points for lists of options
 - At the end, include a "Sources:" line with the main URLs used`;
 
+const tools = [
+  {
+    type: 'function',
+    function: {
+      name: 'web_search',
+      description: 'Search the web for current information — prices, availability, news, routes, schedules, or any real-time data.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'The search query' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+];
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -53,11 +70,11 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured. Add it to your Vercel environment variables.' });
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(500).json({ error: 'OPENAI_API_KEY not configured.' });
   }
   if (!process.env.TAVILY_API_KEY) {
-    return res.status(500).json({ error: 'TAVILY_API_KEY not configured. Add it to your Vercel environment variables.' });
+    return res.status(500).json({ error: 'TAVILY_API_KEY not configured. Get a free key at tavily.com.' });
   }
 
   const body = parseBody(req) || {};
@@ -67,28 +84,16 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'taskText is required' });
   }
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  const tools = [
-    {
-      name: 'web_search',
-      description: 'Search the web for current information — prices, availability, news, routes, schedules, or any real-time data.',
-      input_schema: {
-        type: 'object',
-        properties: {
-          query: { type: 'string', description: 'The search query' },
-        },
-        required: ['query'],
-      },
-    },
-  ];
-
-  // Build message history: task context first, then prior conversation
   const firstUserMessage = taskDescription?.trim()
     ? `${taskText}\n\nContext: ${taskDescription}`
     : taskText;
 
-  const messages = [{ role: 'user', content: firstUserMessage }];
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'user', content: firstUserMessage },
+  ];
 
   for (const msg of conversationHistory) {
     if (msg.author && msg.content) {
@@ -108,40 +113,37 @@ module.exports = async function handler(req, res) {
     while (iterations < MAX_ITERATIONS) {
       iterations++;
 
-      const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
         max_tokens: 2048,
         tools,
         messages,
-        system: SYSTEM_PROMPT,
       });
 
-      if (response.stop_reason === 'end_turn') {
-        finalComment = response.content
-          .filter(b => b.type === 'text')
-          .map(b => b.text)
-          .join('\n')
-          .trim();
+      const choice = response.choices[0];
+
+      if (choice.finish_reason === 'stop') {
+        finalComment = choice.message.content?.trim() || '';
         break;
       }
 
-      if (response.stop_reason === 'tool_use') {
-        messages.push({ role: 'assistant', content: response.content });
-        const toolResults = [];
+      if (choice.finish_reason === 'tool_calls') {
+        messages.push(choice.message);
 
-        for (const block of response.content) {
-          if (block.type !== 'tool_use') continue;
-          searches.push(block.input.query);
-          const result = await webSearch(block.input.query);
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: block.id,
+        for (const toolCall of choice.message.tool_calls || []) {
+          if (toolCall.function.name !== 'web_search') continue;
+          let args;
+          try { args = JSON.parse(toolCall.function.arguments); } catch { continue; }
+          searches.push(args.query);
+          const result = await webSearch(args.query);
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
             content: result,
           });
         }
-
-        messages.push({ role: 'user', content: toolResults });
       } else {
+        finalComment = choice.message.content?.trim() || '';
         break;
       }
     }
