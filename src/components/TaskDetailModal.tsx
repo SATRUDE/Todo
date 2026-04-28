@@ -9,6 +9,7 @@ import { TaskNoteModal } from "./TaskNoteModal";
 import { TaskTypeModal } from "./TaskTypeModal";
 import { linkifyText } from "../lib/textUtils";
 import { supabase } from "../lib/supabase";
+import { Bomb } from "lucide-react";
 
 interface ListItem {
   id: number;
@@ -57,9 +58,9 @@ interface TaskDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   task: Todo;
-  onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null) => void;
+  onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null, bombMode?: boolean) => void;
   onDeleteTask: (taskId: number) => void;
-  onCreateTask?: (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null) => void;
+  onCreateTask?: (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null, bombMode?: boolean) => void;
   lists?: ListItem[];
   milestones?: MilestoneWithGoal[];
   onFetchSubtasks?: (parentTaskId: number) => Promise<Todo[]>;
@@ -114,6 +115,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<number | null>(task.milestoneId || null);
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(task.deadline || null);
   const [taskType, setTaskType] = useState<'task' | 'reminder'>(task.type || 'task');
+  const [bombMode, setBombMode] = useState(task.bomb_mode ?? false);
   const [subtasks, setSubtasks] = useState<Todo[]>([]);
   const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
   const [editingSubtaskId, setEditingSubtaskId] = useState<number | null>(null);
@@ -148,6 +150,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     setSelectedMilestoneId(task.milestoneId || null);
     setDeadline(task.deadline || null);
     setTaskType(task.type || 'task');
+    setBombMode(task.bomb_mode ?? false);
     
     // Load subtasks when modal opens
     if (onFetchSubtasks && task.id) {
@@ -202,9 +205,9 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     if (taskInput.trim() === "") return;
     // Check if this is a new task (temporary ID < 0) and we have onCreateTask
     if (task.id < 0 && onCreateTask) {
-      onCreateTask(taskInput, taskDescription || null, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, taskType, imageUrl);
+      onCreateTask(taskInput, taskDescription || null, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, taskType, imageUrl, bombMode);
     } else {
-      onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, taskType, imageUrl);
+      onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, taskType, imageUrl, bombMode);
     }
     onClose();
   };
@@ -1052,6 +1055,21 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                   </button>
                 )}
 
+                {/* Defuse Button — shown when bomb mode is active */}
+                {bombMode && task.id >= 0 && (
+                  <button
+                    type="button"
+                    className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-destructive/15 px-4 py-1 text-lg text-destructive transition-colors hover:bg-destructive/25"
+                    onClick={() => {
+                      setBombMode(false);
+                      onUpdateTask(task.id, taskInput, taskDescription, selectedListId || undefined, selectedMilestoneId || undefined, deadline === null ? null : deadline, taskType, imageUrl, false);
+                    }}
+                  >
+                    <Bomb className="size-5 shrink-0" strokeWidth={1.5} />
+                    Defuse
+                  </button>
+                )}
+
                 {/* Milestone Button */}
                 {milestones.length > 0 && (
                   <button
@@ -1205,8 +1223,10 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
         isOpen={isDeadlineOpen}
         onClose={() => setIsDeadlineOpen(false)}
         onSetDeadline={handleSetDeadline}
-        onClearDeadline={() => setDeadline(null)}
+        onClearDeadline={() => { setDeadline(null); setBombMode(false); }}
         currentDeadline={deadline}
+        bombMode={bombMode}
+        onBombModeChange={setBombMode}
       />
 
       {onAddNote && (

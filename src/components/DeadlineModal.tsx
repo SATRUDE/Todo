@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Calendar } from "./ui/calendar";
 import { TimeInput } from "./TimeInput";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 
 interface DeadlineModalProps {
   isOpen: boolean;
@@ -8,6 +10,8 @@ interface DeadlineModalProps {
   onSetDeadline: (date: Date, time: string, recurring?: string) => void;
   onClearDeadline?: () => void;
   currentDeadline?: { date: Date; time: string; recurring?: string } | null;
+  bombMode?: boolean;
+  onBombModeChange?: (enabled: boolean) => void;
 }
 
 function addDays(date: Date, days: number): Date {
@@ -31,7 +35,7 @@ const QUICK_SELECT_OPTIONS: { label: string; getDate: () => Date }[] = [
   { label: "In a month", getDate: () => addMonths(new Date(), 1) },
 ];
 
-export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline, currentDeadline }: DeadlineModalProps) {
+export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline, currentDeadline, bombMode = false, onBombModeChange }: DeadlineModalProps) {
   const getCurrentTime = () => {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
@@ -71,6 +75,11 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
   const [noTime, setNoTime] = useState(!currentDeadline?.time || currentDeadline.time.trim() === "");
   const [noDate, setNoDate] = useState(!currentDeadline?.date);
   const [selectedDays, setSelectedDays] = useState<string[]>(getInitialSelectedDays());
+  const [localBombMode, setLocalBombMode] = useState(bombMode);
+
+  useEffect(() => {
+    if (isOpen) setLocalBombMode(bombMode);
+  }, [isOpen, bombMode]);
 
   useEffect(() => {
     if (isOpen) {
@@ -128,6 +137,7 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
       } else if (recurring !== "none") {
         recurringValue = recurring;
       }
+      onBombModeChange?.(localBombMode);
       onSetDeadline(selectedDate, timeToSet, recurringValue);
       onClose();
     }
@@ -310,6 +320,21 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Bomb mode toggle */}
+          <div className="shrink-0 w-full px-5 py-3 border-t border-border flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-0.5">
+              <Label htmlFor="bomb-mode" className="text-base font-normal text-foreground cursor-pointer">
+                💣 Bomb mode
+              </Label>
+              <p className="text-xs text-muted-foreground">Sends a notification every 5 minutes until completed</p>
+            </div>
+            <Switch
+              id="bomb-mode"
+              checked={localBombMode}
+              onCheckedChange={setLocalBombMode}
+            />
           </div>
 
           {/* Fixed action buttons - always visible at bottom */}

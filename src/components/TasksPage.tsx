@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search, StickyNote, ChevronRight, Zap, Calendar } from "lucide-react";
+import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search, StickyNote, ChevronRight, Zap, Calendar, Bomb } from "lucide-react";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { linkifyText } from "../lib/textUtils";
 
@@ -21,6 +21,7 @@ export interface Todo {
   description?: string | null;
   deadline?: { date: Date; time: string; recurring?: string };
   timesDelayed?: number;
+  bomb_mode?: boolean;
 }
 
 export interface ListItem {
@@ -125,7 +126,7 @@ export function TaskRow({
         </div>
       )}
 
-      {(time || list || subtaskCount > 0 || noteCount > 0 || (todo.timesDelayed && todo.timesDelayed > 0)) && (
+      {(time || list || subtaskCount > 0 || noteCount > 0 || (todo.timesDelayed && todo.timesDelayed > 0) || todo.bomb_mode) && (
         <div className="flex gap-2 items-center pl-8 flex-wrap">
           {time && (
             <div className="flex gap-1 items-center text-muted-foreground">
@@ -187,6 +188,11 @@ export function TaskRow({
             <div className="flex gap-1 items-center text-muted-foreground">
               <StickyNote className="size-5 shrink-0" />
               <span className="text-sm">{noteCount} {noteCount === 1 ? 'note' : 'notes'}</span>
+            </div>
+          )}
+          {todo.bomb_mode && (
+            <div className="flex gap-1 items-center text-destructive">
+              <Bomb className="size-5 shrink-0" strokeWidth={1.5} />
             </div>
           )}
         </div>
