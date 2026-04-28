@@ -149,6 +149,27 @@ async function sendNotification(subscription, todo) {
 }
 
 /**
+ * Check if a bomb-mode todo is overdue (deadline has already passed)
+ */
+function isBombOverdue(todo) {
+  if (!todo.bomb_mode || !todo.deadline_date) return false;
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const deadlineDate = new Date(todo.deadline_date);
+
+  if (deadlineDate > today) return false;
+  if (!todo.deadline_time) return deadlineDate < today;
+
+  const [hours, minutes] = todo.deadline_time.split(':').map(Number);
+  if (isNaN(hours) || isNaN(minutes)) return deadlineDate < today;
+
+  const deadlineDateTime = new Date(deadlineDate);
+  deadlineDateTime.setHours(hours, minutes, 0, 0);
+  return now > deadlineDateTime;
+}
+
+/**
  * Main function
  */
 async function main() {
@@ -241,6 +262,48 @@ async function main() {
     console.log(`\n✅ Reminder check complete!`);
     console.log(`   Successfully sent: ${successCount} notifications`);
     console.log(`   Failed: ${failureCount} notifications`);
+
+    // ── Bomb mode: repeat every 5 min for overdue tasks ───────────────────────
+    const { data: bombTodos, error: bombError } = await supabase
+      .from('todos')
+      .select('*')
+      .eq('completed', false)
+      .eq('bomb_mode', true)
+      .not('deadline_date', 'is', null);
+
+    if (bombError) {
+      console.error('❌ Failed to fetch bomb todos:', bombError.message);
+    } else if (bombTodos && bombTodos.length > 0) {
+      const overdueBombTodos = bombTodos.filter(isBombOverdue);
+      console.log(`\n💣 Found ${overdueBombTodos.length} overdue bomb todo(s)`);
+
+      for (const todo of overdueBombTodos) {
+        console.log(`\n💣 Processing bomb todo #${todo.id}: "${todo.text.substring(0, 50)}"`);
+        const bombPayload = {
+          title: '💣 Overdue',
+          body: todo.text.length > 100 ? todo.text.substring(0, 100) + '...' : todo.text,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          tag: `bomb-${todo.id}`,
+          data: { todoId: todo.id, url: '/' },
+        };
+        if (subscriptions) {
+          for (const subscription of subscriptions) {
+            try {
+              await webpush.sendNotification(
+                { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
+                JSON.stringify(bombPayload)
+              );
+            } catch (err) {
+              if (err.statusCode === 410 || err.statusCode === 404) {
+                await supabase.from('push_subscriptions').delete().eq('id', subscription.id);
+              }
+            }
+          }
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
   } catch (error) {
     console.error('❌ Error in reminder check:', error);
     process.exit(1);

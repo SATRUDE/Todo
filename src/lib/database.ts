@@ -78,6 +78,7 @@ export interface Todo {
   times_delayed?: number // How many times the deadline has been changed/delayed
   type?: 'task' | 'reminder' // Task type: 'task' or 'reminder'
   ai_status?: string | null // 'pending' | 'running' | 'done' | null
+  bomb_mode?: boolean
   created_at?: string
   updated_at?: string
 }
@@ -219,6 +220,7 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     times_delayed: dbTodo.times_delayed || 0,
     type: dbTodo.type || 'task', // Default to 'task' if not set
     ai_status: dbTodo.ai_status || null,
+    bomb_mode: dbTodo.bomb_mode ?? false,
     created_at: dbTodo.created_at,
     updated_at: dbTodo.updated_at,
   }
@@ -353,10 +355,16 @@ export function appTodoToDbTodo(todo: any): any {
   if (todo.type === 'task' || todo.type === 'reminder') {
     dbTodo.type = todo.type
   } else {
-    // Default to 'task' if type is undefined, null, or invalid
     dbTodo.type = 'task'
   }
-  
+
+  // Handle bomb_mode
+  if (typeof todo.bomb_mode === 'boolean') {
+    dbTodo.bomb_mode = todo.bomb_mode
+  } else if (typeof todo.bombMode === 'boolean') {
+    dbTodo.bomb_mode = todo.bombMode
+  }
+
   return dbTodo
 }
 

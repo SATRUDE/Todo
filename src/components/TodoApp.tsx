@@ -2403,7 +2403,7 @@ export function TodoApp() {
     setTodos(displayTasks);
   };
 
-  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null, dailyTaskId?: number | null) => {
+  const updateTask = async (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null, bombMode?: boolean, dailyTaskId?: number | null) => {
     try {
       const todo = todos.find(t => t.id === taskId);
       if (!todo) return;
@@ -2439,7 +2439,11 @@ export function TodoApp() {
       if (dailyTaskId !== undefined) {
         updateData.dailyTaskId = dailyTaskId;
       }
-      
+
+      if (bombMode !== undefined) {
+        updateData.bomb_mode = bombMode;
+      }
+
       if (deadline !== undefined) {
         updateData.deadline = deadline ?? null;
       }
