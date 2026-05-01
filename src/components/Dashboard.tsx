@@ -1,11 +1,16 @@
+import { useEffect, useState } from "react";
+import { fetchCalorieDaySummary } from "../lib/database";
+
 interface DashboardCardProps {
   label: string;
   iconPath: string;
   colorClass: string;
   onClick: () => void;
+  subtitle?: string;
+  subtitleClass?: string;
 }
 
-function DashboardCard({ label, iconPath, colorClass, onClick }: DashboardCardProps) {
+function DashboardCard({ label, iconPath, colorClass, onClick, subtitle, subtitleClass }: DashboardCardProps) {
   return (
     <button
       type="button"
@@ -27,6 +32,11 @@ function DashboardCard({ label, iconPath, colorClass, onClick }: DashboardCardPr
         <p className={`text-lg font-normal tracking-tight leading-relaxed ${colorClass}`}>
           {label}
         </p>
+        {subtitle && (
+          <p className={`text-xs font-normal -mt-1 ${subtitleClass ?? "text-muted-foreground"}`}>
+            {subtitle}
+          </p>
+        )}
       </div>
     </button>
   );
@@ -41,9 +51,37 @@ interface DashboardProps {
   onNavigateToNotes?: (taskId?: number) => void;
   onNavigateToDrinkWater?: () => void;
   onNavigateToFocusSessions?: () => void;
+  onNavigateToCalorieCounter?: () => void;
 }
 
-export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCommonTasks, onNavigateToDailyTasks, onNavigateToGoals, onNavigateToNotes, onNavigateToDrinkWater, onNavigateToFocusSessions }: DashboardProps) {
+export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCommonTasks, onNavigateToDailyTasks, onNavigateToGoals, onNavigateToNotes, onNavigateToDrinkWater, onNavigateToFocusSessions, onNavigateToCalorieCounter }: DashboardProps) {
+  const [calorieSubtitle, setCalorieSubtitle] = useState<{ text: string; over: boolean } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTodayCalories() {
+      try {
+        const summary = await fetchCalorieDaySummary(new Date());
+        if (cancelled) return;
+        const total = summary.totals.calories;
+        const goal = summary.goalCalories;
+        if (goal == null) {
+          setCalorieSubtitle({ text: total > 0 ? `${total} kcal logged` : "No goal set", over: false });
+        } else if (total > goal) {
+          setCalorieSubtitle({ text: `${total - goal} kcal over`, over: true });
+        } else {
+          setCalorieSubtitle({ text: `${goal - total} kcal left`, over: false });
+        }
+      } catch (err) {
+        console.error("Failed to load calorie summary for dashboard:", err);
+      }
+    }
+    void loadTodayCalories();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="relative shrink-0 w-full">
       <div className="flex flex-col gap-8 px-5 pt-0 pb-[150px] w-full">
@@ -104,10 +142,17 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCom
               colorClass="text-violet-400"
               onClick={onNavigateToFocusSessions ?? (() => {})}
             />
+            <DashboardCard
+              label="Calories"
+              iconPath="M12 2.25c-.5 1.5-2 3-2 4.5 0 1.5 1 2.25 2 2.25s2-.75 2-2.25c0-1.5-1.5-3-2-4.5ZM7.5 11.25a4.5 4.5 0 0 0-1.5 3.5C6 18 9 21.75 12 21.75s6-3.75 6-7a4.5 4.5 0 0 0-1.5-3.5c-1 0-1.5 1-1.5 2 0 .75-.5 1.5-1.5 1.5h-3c-1 0-1.5-.75-1.5-1.5 0-1-.5-2-1.5-2Z"
+              colorClass="text-rose-400"
+              onClick={onNavigateToCalorieCounter ?? (() => {})}
+              subtitle={calorieSubtitle?.text}
+              subtitleClass={calorieSubtitle?.over ? "text-red-500" : "text-muted-foreground"}
+            />
           </div>
         </div>
       </div>
     </div>
   );
 }
-

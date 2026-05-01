@@ -199,6 +199,56 @@ export interface SessionTaskWithTodo extends SessionTask {
   todo: Todo
 }
 
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
+
+export interface CalorieLog {
+  id: number
+  user_id?: string
+  log_date: string // YYYY-MM-DD
+  name?: string | null
+  calories: number
+  meal_type?: MealType | null
+  protein_g?: number | null
+  carbs_g?: number | null
+  fat_g?: number | null
+  saved_food_id?: number | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface CalorieDayOverride {
+  id: number
+  log_date: string
+  goal_calories: number
+}
+
+export interface CalorieSavedFood {
+  id: number
+  name: string
+  calories: number
+  meal_type?: MealType | null
+  protein_g?: number | null
+  carbs_g?: number | null
+  fat_g?: number | null
+  last_used_at?: string
+  created_at?: string
+}
+
+export interface CalorieDayTotals {
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+}
+
+export interface CalorieDaySummary {
+  date: string // YYYY-MM-DD
+  goalCalories: number | null
+  isOverride: boolean
+  logs: CalorieLog[]
+  totals: CalorieDayTotals
+}
+
 // Convert database Todo to app Todo format
 export function dbTodoToAppTodo(dbTodo: any): Todo {
   return {
@@ -2214,5 +2264,322 @@ export async function updateTaskAiStatus(todoId: number, status: string | null):
     .from('todos')
     .update({ ai_status: status })
     .eq('id', todoId)
+}
+
+// ─── Calorie Counter ──────────────────────────────────────────────────────────
+
+export async function fetchDefaultCalorieGoal(): Promise<number | null> {
+  const userId = await ensureAuthenticated()
+  const { data } = await (supabase as any)
+    .from('user_settings')
+    .select('default_calorie_goal')
+    .eq('user_id', userId)
+    .maybeSingle()
+  const value = data?.default_calorie_goal
+  return typeof value === 'number' ? value : null
+}
+
+export async function saveDefaultCalorieGoal(goal: number | null): Promise<void> {
+  const userId = await ensureAuthenticated()
+  await (supabase as any)
+    .from('user_settings')
+    .upsert(
+      { user_id: userId, default_calorie_goal: goal },
+      { onConflict: 'user_id' }
+    )
+}
+
+export async function fetchCalorieDayOverride(date: Date): Promise<CalorieDayOverride | null> {
+  const userId = await ensureAuthenticated()
+  const logDate = formatLocalDate(date)
+  if (!logDate) return null
+  const { data, error } = await (supabase as any)
+    .from('calorie_day_overrides')
+    .select('id, log_date, goal_calories')
+    .eq('user_id', userId)
+    .eq('log_date', logDate)
+    .maybeSingle()
+  if (error) {
+    console.error('Error fetching calorie day override:', error)
+    return null
+  }
+  return data ?? null
+}
+
+export async function upsertCalorieDayOverride(date: Date, goalCalories: number): Promise<CalorieDayOverride> {
+  const userId = await ensureAuthenticated()
+  const logDate = formatLocalDate(date)
+  if (!logDate) throw new Error('Invalid date')
+  const { data, error } = await (supabase as any)
+    .from('calorie_day_overrides')
+    .upsert(
+      { user_id: userId, log_date: logDate, goal_calories: goalCalories },
+      { onConflict: 'user_id,log_date' }
+    )
+    .select('id, log_date, goal_calories')
+    .single()
+  if (error) {
+    console.error('Error upserting calorie day override:', error)
+    throw error
+  }
+  return data
+}
+
+export async function deleteCalorieDayOverride(date: Date): Promise<void> {
+  const userId = await ensureAuthenticated()
+  const logDate = formatLocalDate(date)
+  if (!logDate) return
+  const { error } = await (supabase as any)
+    .from('calorie_day_overrides')
+    .delete()
+    .eq('user_id', userId)
+    .eq('log_date', logDate)
+  if (error) {
+    console.error('Error deleting calorie day override:', error)
+    throw error
+  }
+}
+
+export async function fetchCalorieLogs(date: Date): Promise<CalorieLog[]> {
+  const userId = await ensureAuthenticated()
+  const logDate = formatLocalDate(date)
+  if (!logDate) return []
+  const { data, error } = await (supabase as any)
+    .from('calorie_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('log_date', logDate)
+    .order('created_at', { ascending: true })
+  if (error) {
+    console.error('Error fetching calorie logs:', error)
+    return []
+  }
+  return data || []
+}
+
+export interface CalorieLogInput {
+  date: Date
+  name?: string | null
+  calories: number
+  mealType?: MealType | null
+  protein_g?: number | null
+  carbs_g?: number | null
+  fat_g?: number | null
+  savedFoodId?: number | null
+}
+
+export async function createCalorieLog(entry: CalorieLogInput): Promise<CalorieLog> {
+  const userId = await ensureAuthenticated()
+  const logDate = formatLocalDate(entry.date)
+  if (!logDate) throw new Error('Invalid date')
+  const { data, error } = await (supabase as any)
+    .from('calorie_logs')
+    .insert({
+      user_id: userId,
+      log_date: logDate,
+      name: entry.name ?? null,
+      calories: entry.calories,
+      meal_type: entry.mealType ?? null,
+      protein_g: entry.protein_g ?? null,
+      carbs_g: entry.carbs_g ?? null,
+      fat_g: entry.fat_g ?? null,
+      saved_food_id: entry.savedFoodId ?? null,
+    })
+    .select()
+    .single()
+  if (error) {
+    console.error('Error creating calorie log:', error)
+    throw error
+  }
+  return data
+}
+
+export async function updateCalorieLog(
+  id: number,
+  patch: Partial<Omit<CalorieLogInput, 'date'>> & { date?: Date }
+): Promise<CalorieLog> {
+  await ensureAuthenticated()
+  const update: Record<string, unknown> = {}
+  if (patch.date !== undefined) {
+    const logDate = formatLocalDate(patch.date)
+    if (logDate) update.log_date = logDate
+  }
+  if (patch.name !== undefined) update.name = patch.name
+  if (patch.calories !== undefined) update.calories = patch.calories
+  if (patch.mealType !== undefined) update.meal_type = patch.mealType
+  if (patch.protein_g !== undefined) update.protein_g = patch.protein_g
+  if (patch.carbs_g !== undefined) update.carbs_g = patch.carbs_g
+  if (patch.fat_g !== undefined) update.fat_g = patch.fat_g
+  if (patch.savedFoodId !== undefined) update.saved_food_id = patch.savedFoodId
+
+  const { data, error } = await (supabase as any)
+    .from('calorie_logs')
+    .update(update)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) {
+    console.error('Error updating calorie log:', error)
+    throw error
+  }
+  return data
+}
+
+export async function deleteCalorieLog(id: number): Promise<void> {
+  await ensureAuthenticated()
+  const { error } = await (supabase as any)
+    .from('calorie_logs')
+    .delete()
+    .eq('id', id)
+  if (error) {
+    console.error('Error deleting calorie log:', error)
+    throw error
+  }
+}
+
+export async function fetchCalorieDaySummary(date: Date): Promise<CalorieDaySummary> {
+  const logDate = formatLocalDate(date) ?? ''
+  const [logs, override, defaultGoal] = await Promise.all([
+    fetchCalorieLogs(date),
+    fetchCalorieDayOverride(date),
+    fetchDefaultCalorieGoal(),
+  ])
+  const totals: CalorieDayTotals = logs.reduce(
+    (acc, log) => ({
+      calories: acc.calories + (log.calories || 0),
+      protein_g: acc.protein_g + (log.protein_g || 0),
+      carbs_g: acc.carbs_g + (log.carbs_g || 0),
+      fat_g: acc.fat_g + (log.fat_g || 0),
+    }),
+    { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
+  )
+  const goalCalories = override?.goal_calories ?? defaultGoal ?? null
+  return {
+    date: logDate,
+    goalCalories,
+    isOverride: !!override,
+    logs,
+    totals,
+  }
+}
+
+export async function fetchSavedFoods(): Promise<CalorieSavedFood[]> {
+  const userId = await ensureAuthenticated()
+  const { data, error } = await (supabase as any)
+    .from('calorie_saved_foods')
+    .select('*')
+    .eq('user_id', userId)
+    .order('last_used_at', { ascending: false })
+  if (error) {
+    console.error('Error fetching saved foods:', error)
+    return []
+  }
+  return data || []
+}
+
+export interface SavedFoodInput {
+  name: string
+  calories: number
+  meal_type?: MealType | null
+  protein_g?: number | null
+  carbs_g?: number | null
+  fat_g?: number | null
+}
+
+export async function createSavedFood(food: SavedFoodInput): Promise<CalorieSavedFood> {
+  const userId = await ensureAuthenticated()
+  const { data, error } = await (supabase as any)
+    .from('calorie_saved_foods')
+    .insert({
+      user_id: userId,
+      name: food.name,
+      calories: food.calories,
+      meal_type: food.meal_type ?? null,
+      protein_g: food.protein_g ?? null,
+      carbs_g: food.carbs_g ?? null,
+      fat_g: food.fat_g ?? null,
+    })
+    .select()
+    .single()
+  if (error) {
+    console.error('Error creating saved food:', error)
+    throw error
+  }
+  return data
+}
+
+export async function updateSavedFood(id: number, patch: Partial<SavedFoodInput>): Promise<CalorieSavedFood> {
+  await ensureAuthenticated()
+  const { data, error } = await (supabase as any)
+    .from('calorie_saved_foods')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) {
+    console.error('Error updating saved food:', error)
+    throw error
+  }
+  return data
+}
+
+export async function deleteSavedFood(id: number): Promise<void> {
+  await ensureAuthenticated()
+  const { error } = await (supabase as any)
+    .from('calorie_saved_foods')
+    .delete()
+    .eq('id', id)
+  if (error) {
+    console.error('Error deleting saved food:', error)
+    throw error
+  }
+}
+
+export async function quickAddSavedFood(
+  savedFoodId: number,
+  date: Date,
+  mealType?: MealType
+): Promise<CalorieLog> {
+  const userId = await ensureAuthenticated()
+  const logDate = formatLocalDate(date)
+  if (!logDate) throw new Error('Invalid date')
+
+  const { data: food, error: foodError } = await (supabase as any)
+    .from('calorie_saved_foods')
+    .select('*')
+    .eq('id', savedFoodId)
+    .eq('user_id', userId)
+    .single()
+  if (foodError || !food) {
+    console.error('Error fetching saved food for quick add:', foodError)
+    throw foodError ?? new Error('Saved food not found')
+  }
+
+  const { data: inserted, error: insertError } = await (supabase as any)
+    .from('calorie_logs')
+    .insert({
+      user_id: userId,
+      log_date: logDate,
+      name: food.name,
+      calories: food.calories,
+      meal_type: mealType ?? food.meal_type ?? null,
+      protein_g: food.protein_g ?? null,
+      carbs_g: food.carbs_g ?? null,
+      fat_g: food.fat_g ?? null,
+      saved_food_id: savedFoodId,
+    })
+    .select()
+    .single()
+  if (insertError) {
+    console.error('Error inserting calorie log from saved food:', insertError)
+    throw insertError
+  }
+
+  await (supabase as any)
+    .from('calorie_saved_foods')
+    .update({ last_used_at: new Date().toISOString() })
+    .eq('id', savedFoodId)
+
+  return inserted
 }
 
