@@ -13,53 +13,77 @@ import { Label } from "./ui/label";
 import {
   upsertCalorieDayOverride,
   deleteCalorieDayOverride,
-  saveDefaultCalorieGoal,
+  saveCalorieDefaults,
 } from "../lib/database";
 
 interface EditDayGoalDialogProps {
   isOpen: boolean;
   onClose: () => void;
   date: Date;
-  currentGoal: number | null;
+  currentCalorieGoal: number | null;
+  currentProteinGoal: number | null;
   isOverride: boolean;
   onSaved: () => void;
+}
+
+function parseGoal(value: string, allowDecimal: boolean): number | null | "invalid" {
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  const num = Number(trimmed);
+  if (!Number.isFinite(num) || num < 0) return "invalid";
+  return allowDecimal ? Math.round(num * 10) / 10 : Math.round(num);
 }
 
 export function EditDayGoalDialog({
   isOpen,
   onClose,
   date,
-  currentGoal,
+  currentCalorieGoal,
+  currentProteinGoal,
   isOverride,
   onSaved,
 }: EditDayGoalDialogProps) {
-  const [value, setValue] = useState("");
+  const [calories, setCalories] = useState("");
+  const [protein, setProtein] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
-    setValue(currentGoal != null ? String(currentGoal) : "");
+    setCalories(currentCalorieGoal != null ? String(currentCalorieGoal) : "");
+    setProtein(currentProteinGoal != null ? String(currentProteinGoal) : "");
     setError(null);
     setSubmitting(false);
-  }, [isOpen, currentGoal]);
+  }, [isOpen, currentCalorieGoal, currentProteinGoal]);
 
-  const parsed = (() => {
-    const trimmed = value.trim();
-    if (trimmed === "") return null;
-    const num = Number(trimmed);
-    return Number.isFinite(num) && num >= 0 ? Math.round(num) : null;
-  })();
+  const calorieParsed = parseGoal(calories, false);
+  const proteinParsed = parseGoal(protein, true);
+
+  const validate = (): { calorieGoal: number | null; proteinGoal: number | null } | null => {
+    if (calorieParsed === "invalid") {
+      setError("Enter a valid calorie goal.");
+      return null;
+    }
+    if (proteinParsed === "invalid") {
+      setError("Enter a valid protein goal.");
+      return null;
+    }
+    return {
+      calorieGoal: calorieParsed,
+      proteinGoal: proteinParsed,
+    };
+  };
 
   const handleSaveForDay = async () => {
-    if (parsed == null) {
-      setError("Enter a valid calorie goal.");
-      return;
-    }
+    const values = validate();
+    if (!values) return;
     setSubmitting(true);
     setError(null);
     try {
-      await upsertCalorieDayOverride(date, parsed);
+      await upsertCalorieDayOverride(date, {
+        goal_calories: values.calorieGoal,
+        protein_goal_g: values.proteinGoal,
+      });
       onSaved();
       onClose();
     } catch (err) {
@@ -71,14 +95,15 @@ export function EditDayGoalDialog({
   };
 
   const handleSaveAsDefault = async () => {
-    if (parsed == null) {
-      setError("Enter a valid calorie goal.");
-      return;
-    }
+    const values = validate();
+    if (!values) return;
     setSubmitting(true);
     setError(null);
     try {
-      await saveDefaultCalorieGoal(parsed);
+      await saveCalorieDefaults({
+        calorieGoal: values.calorieGoal,
+        proteinGoalG: values.proteinGoal,
+      });
       if (isOverride) {
         await deleteCalorieDayOverride(date);
       }
@@ -107,28 +132,46 @@ export function EditDayGoalDialog({
     }
   };
 
+  const canSave = calorieParsed !== "invalid" && proteinParsed !== "invalid";
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Calorie goal</DialogTitle>
+          <DialogTitle>Daily goals</DialogTitle>
           <DialogDescription>
-            Set a goal for this day, or save it as your new default for every day.
+            Set goals for this day, or save them as your new defaults for every day.
+            Leave a field blank to remove that goal.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="goal-kcal">Goal (kcal)</Label>
-          <Input
-            id="goal-kcal"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            placeholder="2000"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            autoFocus
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="goal-kcal">Calories (kcal)</Label>
+            <Input
+              id="goal-kcal"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              placeholder="2000"
+              value={calories}
+              onChange={(e) => setCalories(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="goal-protein">Protein (g)</Label>
+            <Input
+              id="goal-protein"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="0.1"
+              placeholder="120"
+              value={protein}
+              onChange={(e) => setProtein(e.target.value)}
+            />
+          </div>
         </div>
 
         {error && (
@@ -141,7 +184,7 @@ export function EditDayGoalDialog({
           <Button
             type="button"
             onClick={handleSaveForDay}
-            disabled={submitting || parsed == null}
+            disabled={submitting || !canSave}
             className="w-full"
           >
             Save for this day only
@@ -150,10 +193,10 @@ export function EditDayGoalDialog({
             type="button"
             variant="outline"
             onClick={handleSaveAsDefault}
-            disabled={submitting || parsed == null}
+            disabled={submitting || !canSave}
             className="w-full"
           >
-            Save as new default
+            Save as new defaults
           </Button>
           {isOverride && (
             <Button
@@ -163,7 +206,7 @@ export function EditDayGoalDialog({
               disabled={submitting}
               className="w-full text-muted-foreground"
             >
-              Reset to default goal
+              Reset to defaults
             </Button>
           )}
         </DialogFooter>
