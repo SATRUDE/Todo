@@ -219,7 +219,8 @@ export interface CalorieLog {
 export interface CalorieDayOverride {
   id: number
   log_date: string
-  goal_calories: number
+  goal_calories: number | null
+  protein_goal_g: number | null
 }
 
 export interface CalorieSavedFood {
@@ -244,6 +245,7 @@ export interface CalorieDayTotals {
 export interface CalorieDaySummary {
   date: string // YYYY-MM-DD
   goalCalories: number | null
+  proteinGoalG: number | null
   isOverride: boolean
   logs: CalorieLog[]
   totals: CalorieDayTotals
@@ -2268,25 +2270,42 @@ export async function updateTaskAiStatus(todoId: number, status: string | null):
 
 // ─── Calorie Counter ──────────────────────────────────────────────────────────
 
-export async function fetchDefaultCalorieGoal(): Promise<number | null> {
+export interface CalorieDefaults {
+  calorieGoal: number | null
+  proteinGoalG: number | null
+}
+
+export async function fetchCalorieDefaults(): Promise<CalorieDefaults> {
   const userId = await ensureAuthenticated()
   const { data } = await (supabase as any)
     .from('user_settings')
-    .select('default_calorie_goal')
+    .select('default_calorie_goal, default_protein_goal')
     .eq('user_id', userId)
     .maybeSingle()
-  const value = data?.default_calorie_goal
-  return typeof value === 'number' ? value : null
+  return {
+    calorieGoal:
+      typeof data?.default_calorie_goal === 'number'
+        ? data.default_calorie_goal
+        : null,
+    proteinGoalG:
+      typeof data?.default_protein_goal === 'number'
+        ? data.default_protein_goal
+        : null,
+  }
 }
 
-export async function saveDefaultCalorieGoal(goal: number | null): Promise<void> {
+export async function saveCalorieDefaults(defaults: Partial<CalorieDefaults>): Promise<void> {
   const userId = await ensureAuthenticated()
+  const payload: Record<string, unknown> = { user_id: userId }
+  if (defaults.calorieGoal !== undefined) {
+    payload.default_calorie_goal = defaults.calorieGoal
+  }
+  if (defaults.proteinGoalG !== undefined) {
+    payload.default_protein_goal = defaults.proteinGoalG
+  }
   await (supabase as any)
     .from('user_settings')
-    .upsert(
-      { user_id: userId, default_calorie_goal: goal },
-      { onConflict: 'user_id' }
-    )
+    .upsert(payload, { onConflict: 'user_id' })
 }
 
 export async function fetchCalorieDayOverride(date: Date): Promise<CalorieDayOverride | null> {
@@ -2295,7 +2314,7 @@ export async function fetchCalorieDayOverride(date: Date): Promise<CalorieDayOve
   if (!logDate) return null
   const { data, error } = await (supabase as any)
     .from('calorie_day_overrides')
-    .select('id, log_date, goal_calories')
+    .select('id, log_date, goal_calories, protein_goal_g')
     .eq('user_id', userId)
     .eq('log_date', logDate)
     .maybeSingle()
@@ -2306,17 +2325,28 @@ export async function fetchCalorieDayOverride(date: Date): Promise<CalorieDayOve
   return data ?? null
 }
 
-export async function upsertCalorieDayOverride(date: Date, goalCalories: number): Promise<CalorieDayOverride> {
+export interface CalorieDayOverrideInput {
+  goal_calories?: number | null
+  protein_goal_g?: number | null
+}
+
+export async function upsertCalorieDayOverride(
+  date: Date,
+  goals: CalorieDayOverrideInput
+): Promise<CalorieDayOverride> {
   const userId = await ensureAuthenticated()
   const logDate = formatLocalDate(date)
   if (!logDate) throw new Error('Invalid date')
+  const payload: Record<string, unknown> = {
+    user_id: userId,
+    log_date: logDate,
+  }
+  if (goals.goal_calories !== undefined) payload.goal_calories = goals.goal_calories
+  if (goals.protein_goal_g !== undefined) payload.protein_goal_g = goals.protein_goal_g
   const { data, error } = await (supabase as any)
     .from('calorie_day_overrides')
-    .upsert(
-      { user_id: userId, log_date: logDate, goal_calories: goalCalories },
-      { onConflict: 'user_id,log_date' }
-    )
-    .select('id, log_date, goal_calories')
+    .upsert(payload, { onConflict: 'user_id,log_date' })
+    .select('id, log_date, goal_calories, protein_goal_g')
     .single()
   if (error) {
     console.error('Error upserting calorie day override:', error)
@@ -2439,10 +2469,10 @@ export async function deleteCalorieLog(id: number): Promise<void> {
 
 export async function fetchCalorieDaySummary(date: Date): Promise<CalorieDaySummary> {
   const logDate = formatLocalDate(date) ?? ''
-  const [logs, override, defaultGoal] = await Promise.all([
+  const [logs, override, defaults] = await Promise.all([
     fetchCalorieLogs(date),
     fetchCalorieDayOverride(date),
-    fetchDefaultCalorieGoal(),
+    fetchCalorieDefaults(),
   ])
   const totals: CalorieDayTotals = logs.reduce(
     (acc, log) => ({
@@ -2453,10 +2483,12 @@ export async function fetchCalorieDaySummary(date: Date): Promise<CalorieDaySumm
     }),
     { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
   )
-  const goalCalories = override?.goal_calories ?? defaultGoal ?? null
+  const goalCalories = override?.goal_calories ?? defaults.calorieGoal ?? null
+  const proteinGoalG = override?.protein_goal_g ?? defaults.proteinGoalG ?? null
   return {
     date: logDate,
     goalCalories,
+    proteinGoalG,
     isOverride: !!override,
     logs,
     totals,

@@ -167,7 +167,10 @@ export function SavedFoodsSheet({ isOpen, onClose, onChanged }: SavedFoodsSheetP
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-md overflow-y-auto pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),1rem)] [&>button]:top-[max(env(safe-area-inset-top),1rem)]"
+      >
         <SheetHeader>
           <SheetTitle>Saved foods</SheetTitle>
           <SheetDescription>

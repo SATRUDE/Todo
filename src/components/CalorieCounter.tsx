@@ -177,6 +177,17 @@ export function CalorieCounter({ onBack }: CalorieCounterProps) {
     fat_g: 0,
   };
   const goal = summary?.goalCalories ?? null;
+  const proteinGoal = summary?.proteinGoalG ?? null;
+  const showMacros =
+    proteinGoal != null ||
+    totals.protein_g > 0 ||
+    totals.carbs_g > 0 ||
+    totals.fat_g > 0;
+  const proteinPct =
+    proteinGoal != null && proteinGoal > 0
+      ? Math.min(totals.protein_g / proteinGoal, 1) * 100
+      : null;
+  const proteinOver = proteinGoal != null && totals.protein_g > proteinGoal;
 
   return (
     <div className="flex flex-col min-h-0 w-full">
@@ -259,9 +270,16 @@ export function CalorieCounter({ onBack }: CalorieCounterProps) {
               className="gap-2"
             >
               <Pencil className="size-3.5" />
-              {goal == null
-                ? "Set goal"
-                : `Goal: ${goal.toLocaleString()} kcal`}
+              {goal == null && proteinGoal == null
+                ? "Set goals"
+                : [
+                    goal != null ? `${goal.toLocaleString()} kcal` : null,
+                    proteinGoal != null
+                      ? `${Math.round(proteinGoal * 10) / 10}g protein`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
             </Button>
             {summary?.isOverride && (
               <span className="text-xs text-muted-foreground">
@@ -272,23 +290,46 @@ export function CalorieCounter({ onBack }: CalorieCounterProps) {
         </div>
 
         {/* Macros */}
-        {(totals.protein_g > 0 || totals.carbs_g > 0 || totals.fat_g > 0) && (
+        {showMacros && (
           <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "Protein", value: totals.protein_g, color: "text-emerald-500" },
-              { label: "Carbs", value: totals.carbs_g, color: "text-amber-500" },
-              { label: "Fat", value: totals.fat_g, color: "text-rose-500" },
-            ].map((m) => (
-              <div
-                key={m.label}
-                className="flex flex-col items-center rounded-lg border border-border bg-card px-3 py-2"
+            <div className="flex flex-col items-center rounded-lg border border-border bg-card px-3 py-2">
+              <span
+                className={`text-lg font-medium ${
+                  proteinOver ? "text-red-500" : "text-emerald-500"
+                }`}
               >
-                <span className={`text-lg font-medium ${m.color}`}>
-                  {Math.round(m.value * 10) / 10}g
-                </span>
-                <span className="text-xs text-muted-foreground">{m.label}</span>
-              </div>
-            ))}
+                {Math.round(totals.protein_g * 10) / 10}g
+                {proteinGoal != null && (
+                  <span className="text-muted-foreground font-normal">
+                    {" / "}
+                    {Math.round(proteinGoal * 10) / 10}g
+                  </span>
+                )}
+              </span>
+              <span className="text-xs text-muted-foreground">Protein</span>
+              {proteinPct != null && (
+                <div className="mt-1.5 h-1 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${
+                      proteinOver ? "bg-red-500" : "bg-emerald-500"
+                    }`}
+                    style={{ width: `${proteinPct}%` }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col items-center rounded-lg border border-border bg-card px-3 py-2">
+              <span className="text-lg font-medium text-amber-500">
+                {Math.round(totals.carbs_g * 10) / 10}g
+              </span>
+              <span className="text-xs text-muted-foreground">Carbs</span>
+            </div>
+            <div className="flex flex-col items-center rounded-lg border border-border bg-card px-3 py-2">
+              <span className="text-lg font-medium text-rose-500">
+                {Math.round(totals.fat_g * 10) / 10}g
+              </span>
+              <span className="text-xs text-muted-foreground">Fat</span>
+            </div>
           </div>
         )}
 
@@ -317,11 +358,11 @@ export function CalorieCounter({ onBack }: CalorieCounterProps) {
                   key={food.id}
                   type="button"
                   onClick={() => handleQuickAdd(food)}
-                  className="shrink-0 flex flex-col items-start gap-0.5 rounded-lg border border-border bg-card px-3 py-2 text-left hover:bg-accent/50 max-w-[160px]"
+                  className="shrink-0 flex flex-col items-start gap-0.5 rounded-lg border border-border bg-card px-3 py-2 text-left hover:bg-accent/50 w-[160px]"
                 >
-                  <div className="flex items-center gap-1.5">
-                    <Bookmark className="size-3 text-rose-400" />
-                    <span className="text-sm font-medium text-foreground truncate">
+                  <div className="flex items-center gap-1.5 w-full min-w-0">
+                    <Bookmark className="size-3 shrink-0 text-rose-400" />
+                    <span className="text-sm font-medium text-foreground truncate min-w-0 flex-1">
                       {food.name}
                     </span>
                   </div>
@@ -420,7 +461,8 @@ export function CalorieCounter({ onBack }: CalorieCounterProps) {
         isOpen={goalDialogOpen}
         onClose={() => setGoalDialogOpen(false)}
         date={selectedDate}
-        currentGoal={goal}
+        currentCalorieGoal={goal}
+        currentProteinGoal={proteinGoal}
         isOverride={summary?.isOverride ?? false}
         onSaved={() => {
           void loadSummary(selectedDate);
