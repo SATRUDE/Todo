@@ -212,9 +212,6 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
             {/* Time Range Filter Tag */}
             {timeRangeFilter && isCompletedList && onClearDateFilter && (
               (() => {
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ListDetail.tsx:TimeRangeTag:render',message:'Rendering time range tag',data:{timeRangeFilter,listId,isCompletedList},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                // #endregion
                 const getTimeRangeLabel = () => {
                   switch (timeRangeFilter) {
                     case "today": return "Today";
@@ -268,13 +265,10 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                   width: 'calc(100% - 40px)'
                 }}
                 ref={(el) => {
-                  // #region agent log
                   if (el) {
                     const computedStyle = window.getComputedStyle(el);
                     const parentStyle = el.parentElement ? window.getComputedStyle(el.parentElement) : null;
-                    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ListDetail.tsx:RemindersBox:render',message:'Reminders box rendered in ListDetail',data:{remindersCount:reminders.length,className:el.className,inlineStyle:el.getAttribute('style'),paddingTop:computedStyle.paddingTop,paddingBottom:computedStyle.paddingBottom,paddingLeft:computedStyle.paddingLeft,paddingRight:computedStyle.paddingRight,backgroundColor:computedStyle.backgroundColor,marginLeft:computedStyle.marginLeft,marginRight:computedStyle.marginRight,borderRadius:computedStyle.borderRadius,width:computedStyle.width,parentPaddingLeft:parentStyle?.paddingLeft,parentPaddingRight:parentStyle?.paddingRight},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
                   }
-                  // #endregion
                 }}
               >
                 {/* Header */}
@@ -284,12 +278,9 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                       className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-foreground text-nowrap tracking-[-0.154px]"
                       style={{ fontSize: '12px' }}
                       ref={(el) => {
-                        // #region agent log
                         if (el) {
                           const computedStyle = window.getComputedStyle(el);
-                          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ListDetail.tsx:RemindersTitle:render',message:'Reminders title rendered in ListDetail',data:{className:el.className,inlineStyle:el.getAttribute('style'),fontSize:computedStyle.fontSize,textContent:el.textContent},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
                         }
-                        // #endregion
                       }}
                     >
                       REMINDERS

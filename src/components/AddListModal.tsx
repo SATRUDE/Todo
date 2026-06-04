@@ -92,7 +92,6 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
     };
   }, [isOpen]);
 
-  // #region agent log
   useEffect(() => {
     if (!isOpen || folders.length === 0) return;
     const t = setTimeout(() => {
@@ -103,11 +102,9 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
       const rect = row?.getBoundingClientRect();
       const chipRect = firstChip?.getBoundingClientRect();
       const parentRect = parent?.getBoundingClientRect();
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AddListModal.tsx:folder-chips',message:'Folder chips layout',data:{chipsRowPaddingLeft:pad,chipsRowLeft:rect?.left,firstChipLeft:chipRect?.left,parentLeft:parentRect?.left,isEdit:!!editingList,hypothesisId:'F'},timestamp:Date.now()})}).catch(()=>{});
     }, 150);
     return () => clearTimeout(t);
   }, [isOpen, folders.length, editingList]);
-  // #endregion
 
   if (!isOpen) return null;
 

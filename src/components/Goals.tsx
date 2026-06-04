@@ -86,9 +86,6 @@ export function Goals({
     const savedGoalsReport = localStorage.getItem('workshop-goals-report');
     const savedSyncTime = localStorage.getItem('workshop-goals-last-sync');
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:useEffect:loadSyncTime',message:'Loading sync time from localStorage',data:{hasSavedSyncTime:!!savedSyncTime,hasSavedReport:!!savedGoalsReport,savedSyncTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
     
     if (savedGoalsReport) {
       setGoalsReport(savedGoalsReport);
@@ -97,9 +94,6 @@ export function Goals({
       const syncTime = new Date(savedSyncTime);
       setLastSyncTime(syncTime);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:useEffect:setSyncTime',message:'Set sync time from localStorage',data:{syncTimeISO:syncTime.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
-      // #endregion
     }
   }, []);
 
@@ -335,9 +329,6 @@ export function Goals({
   };
 
   const generateGoalsReport = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:generateGoalsReport:entry',message:'Sync button clicked',data:{goalsCount:goals.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     
     setIsLoadingGoals(true);
 
@@ -345,19 +336,12 @@ export function Goals({
       // Get current user session
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:generateGoalsReport:auth',message:'Auth check complete',data:{hasUser:!!user,hasAuthError:!!authError,authError:authError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       
       if (authError || !user) {
         throw new Error('User not authenticated');
       }
 
       const sanitizedGoals = goals.map(goal => ({ ...goal }));
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:generateGoalsReport:beforeApiCall',message:'Before API call',data:{userId:user.id,goalsCount:sanitizedGoals.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
 
       // Call the API endpoint with sectionType='goals'
       const response = await fetch('/api/workshop', {
@@ -378,9 +362,6 @@ export function Goals({
       const contentType = response.headers.get('content-type');
       const text = await response.text();
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:generateGoalsReport:apiResponse',message:'API response received',data:{status:response.status,ok:response.ok,contentType,textLength:text.length,textPreview:text.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       
       if (!response.ok) {
         let errorMessage = `HTTP error! status: ${response.status}`;
@@ -411,17 +392,11 @@ export function Goals({
 
       const reportContent = data.message || data.report || '';
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:generateGoalsReport:parsedResponse',message:'Response parsed',data:{hasMessage:!!data.message,hasReport:!!data.report,reportContentLength:reportContent.length,reportContentPreview:reportContent.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       
       // Extract Goals Overview
       const goalsMatch = reportContent.match(/##\s*Goals?\s*Overview?\s*\n([\s\S]*?)(?=##\s*Tasks?\s*Overview|$)/i);
       const goalsContent = goalsMatch ? goalsMatch[1].trim() : reportContent.trim();
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:generateGoalsReport:extractedGoals',message:'Goals content extracted',data:{hasMatch:!!goalsMatch,goalsContentLength:goalsContent.length,goalsContentPreview:goalsContent.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       
       // Save Goals Overview to localStorage and update state
       if (goalsContent) {
@@ -430,32 +405,17 @@ export function Goals({
         localStorage.setItem('workshop-goals-last-sync', syncTime.toISOString());
         setGoalsReport(goalsContent);
         
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:generateGoalsReport:beforeSetState',message:'Before setLastSyncTime',data:{syncTimeISO:syncTime.toISOString(),syncTimeString:syncTime.toString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'F'})}).catch(()=>{});
-        // #endregion
         
         setLastSyncTime(syncTime);
         
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:generateGoalsReport:afterSetState',message:'After setLastSyncTime',data:{savedLength:goalsContent.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'F'})}).catch(()=>{});
-        // #endregion
       } else {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:generateGoalsReport:noContent',message:'No goals content to save',data:{goalsContentLength:goalsContent.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
       }
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:generateGoalsReport:error',message:'Error caught',data:{errorMessage:error instanceof Error ? error.message : String(error),errorStack:error instanceof Error ? error.stack : undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       
       console.error('Error calling workshop API for goals:', error);
     } finally {
       setIsLoadingGoals(false);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Goals.tsx:generateGoalsReport:finally',message:'Function complete',data:{isLoadingGoals:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
     }
   };
 
@@ -543,7 +503,6 @@ export function Goals({
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `Due ${date.getDate()} ${months[date.getMonth()]}`;
   };
-
 
   const activeGoals = goals.filter(g => g.is_active !== false);
   const inactiveGoals = goals.filter(g => g.is_active === false);

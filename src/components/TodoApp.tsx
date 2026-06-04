@@ -1038,14 +1038,8 @@ export function TodoApp() {
 
   // Initialize notification permission status
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:useEffect:notificationPermission',message:'Initializing notification permission check',data:{hasWindow:typeof window !== 'undefined',hasNotification:'Notification' in window,permission:typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'N/A'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'1'})}).catch(()=>{});
-    // #endregion
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setNotificationPermission(Notification.permission);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:useEffect:notificationPermission:set',message:'Notification permission set',data:{permission:Notification.permission},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'1'})}).catch(()=>{});
-      // #endregion
     }
   }, []);
 
@@ -1056,19 +1050,10 @@ export function TodoApp() {
       setNotificationPermission(permission);
       
       if (permission === 'granted') {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleEnableNotifications:permissionGranted',message:'Permission granted, subscribing to push',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
-        // #endregion
         const subscription = await subscribeToPushNotifications();
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleEnableNotifications:subscriptionResult',message:'Push subscription result',data:{hasSubscription:!!subscription,subscriptionEndpoint:subscription?.endpoint?.substring(0,50)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
-        // #endregion
         if (subscription) {
           console.log('📱 Push subscription created, sending to server...');
           const success = await sendSubscriptionToServer(subscription);
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleEnableNotifications:subscriptionSaved',message:'Subscription save result',data:{success},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
-          // #endregion
           if (success) {
             console.log('✅ Subscription saved to server successfully');
             alert('Notifications enabled! You will receive reminders for due todos.');
@@ -1078,9 +1063,6 @@ export function TodoApp() {
           }
         } else {
           console.error('❌ Failed to create push subscription');
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleEnableNotifications:subscriptionFailed',message:'Failed to create push subscription',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'3'})}).catch(()=>{});
-          // #endregion
         }
       } else if (permission === 'denied') {
         alert('Notification permission was previously denied. Please enable notifications in your browser settings to receive reminders.');
@@ -1423,20 +1405,11 @@ export function TodoApp() {
   };
 
   const toggleTodo = async (id: number) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:toggleTodo:entry',message:'Toggle todo called',data:{taskId:id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     const todo = todos.find(t => t.id === id);
     if (!todo) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:toggleTodo:notFound',message:'Todo not found',data:{taskId:id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       return;
     }
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:toggleTodo:found',message:'Todo found',data:{taskId:id,completed:todo.completed,hasRecurring:!!todo.deadline?.recurring},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     
     // Check if this is a today task being completed
     const isTodayTask = todo.deadline && 
@@ -2453,28 +2426,16 @@ export function TodoApp() {
         updateData.deadline = deadline ?? null;
       }
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:updateTask:beforeDbUpdate',message:'Before database update',data:{taskId,updateData,type},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       await updateTaskDb(taskId, updateData);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:updateTask:afterDbUpdate',message:'Database update successful',data:{taskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       
       // Reload all tasks to ensure consistency
       const allTasks = await fetchTasks();
       const displayTasks = allTasks.map(dbTodoToDisplayTodo);
       setTodos(displayTasks);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:updateTask:stateUpdated',message:'State updated successfully',data:{taskId,tasksCount:displayTasks.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       
       // Note: Calendar sync is manual only - users must explicitly sync from the calendar sync page
       // Tasks are NOT automatically synced when deadlines are updated
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:updateTask:error',message:'Error updating task',data:{taskId,error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       console.error('Error updating task:', error);
     }
   };
@@ -2513,51 +2474,27 @@ export function TodoApp() {
   };
 
   const handleUpdateDeadline = async (taskId: number, deadline: { date: Date; time: string; recurring?: string }) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleUpdateDeadline:entry',message:'Handle update deadline called',data:{taskId,deadlineDate:deadline.date.toISOString(),deadlineTime:deadline.time},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const todo = todos.find(t => t.id === taskId);
     if (!todo) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleUpdateDeadline:notFound',message:'Todo not found',data:{taskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       return;
     }
     
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleUpdateDeadline:beforeUpdate',message:'Calling updateTask',data:{taskId,todoText:todo.text},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       await updateTask(taskId, todo.text, todo.description, todo.listId, todo.milestoneId, deadline, todo.type);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleUpdateDeadline:afterUpdate',message:'UpdateTask completed successfully',data:{taskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       
       setIsDeadlineModalOpen(false);
       setTaskForDeadlineUpdate(null);
       // ReviewMissedDeadlinesModal remains open - the list will update automatically since missedDeadlines is computed from todos state
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleUpdateDeadline:modalClosed',message:'Modal state updated',data:{taskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleUpdateDeadline:error',message:'Error updating deadline',data:{taskId,error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       console.error('Error updating deadline:', error);
     }
   };
 
   const handleNewDeadlineClick = (task: Todo) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleNewDeadlineClick:entry',message:'Handle new deadline click called',data:{taskId:task.id,taskText:task.text},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     setTaskForDeadlineUpdate(task);
     // Keep the ReviewMissedDeadlinesModal open - don't close it
     setIsDeadlineModalOpen(true);
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:handleNewDeadlineClick:stateSet',message:'State set for deadline modal',data:{taskId:task.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
   };
 
   const handleMoveAllMissedToToday = async () => {
@@ -3803,9 +3740,6 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         />
       ) : currentPage === "listDetail" && selectedList ? (
         (() => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodoApp.tsx:ListDetail:render',message:'Rendering ListDetail with timeRangeFilter',data:{listId:selectedList.id,listName:selectedList.name,timeRangeFilter,dateFilter:dateFilter?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
           return (
             <ListDetail 
               listId={selectedList.id}
