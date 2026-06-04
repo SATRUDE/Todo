@@ -148,16 +148,10 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
   const parseTasksInsights = (tasksContent: string): { title: string; insights: string[] }[] => {
     const sections: { title: string; insights: string[] }[] = [];
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:entry',message:'Starting parseTasksInsights',data:{tasksContentLength:tasksContent.length,tasksContentPreview:tasksContent.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     
     // Split by markdown headings (###)
     const headingSections = tasksContent.split(/(?=###\s+)/);
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:sections',message:'Split into heading sections',data:{sectionCount:headingSections.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     
     for (const section of headingSections) {
       const trimmed = section.trim();
@@ -169,9 +163,6 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
         const title = headingMatch[1].trim();
         let content = trimmed.replace(/^###\s+.+?\n?/, '').trim();
         
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:foundHeading',message:'Found heading section',data:{title,contentLength:content.length,contentPreview:content.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         
         // Remove any repeated title variations (like "asks Due Today" or malformed titles)
         content = content.replace(/^asks\s+Due\s+Today.*?-\s*/i, '');
@@ -184,9 +175,6 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
         // Split content into lines
         const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:splitLines',message:'Split content into lines',data:{lineCount:lines.length,firstFewLines:lines.slice(0,5)},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         
         // Find where insights start (bullet points starting with "-" that are NOT tasks)
         let insightsStartIndex = -1;
@@ -199,18 +187,12 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
           }
         }
         
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:foundInsights',message:'Found insights start index',data:{insightsStartIndex,hasInsights:insightsStartIndex >= 0},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         
         if (insightsStartIndex >= 0) {
           // Extract only the insights (bullet points)
           const insightLines = lines.slice(insightsStartIndex);
           const insightsText = insightLines.join('\n');
           
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:extractedInsights',message:'Extracted insights text',data:{insightsTextLength:insightsText.length,insightsTextPreview:insightsText.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
           
           if (insightsText.trim().length > 0) {
             // Split insights by lines starting with "-" to get individual insights
@@ -219,9 +201,6 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
               return insight.replace(/^-\s*/, '').trim();
             }).filter(insight => insight.length > 10);
             
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:individualInsights',message:'Created individual insights',data:{insightCount:individualInsights.length,insights:individualInsights.map(i => i.substring(0,50))},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
             
             // Group all insights under this section title
             if (individualInsights.length > 0) {
@@ -238,9 +217,6 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
       }
     }
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Workshop.tsx:parseTasksInsights:return',message:'Returning parsed sections',data:{sectionCount:sections.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     
     return sections.length > 0 ? sections : [{ title: 'Tasks Overview', insights: [tasksContent] }];
   };

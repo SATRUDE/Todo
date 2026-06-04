@@ -726,19 +726,13 @@ export async function updateTask(id: number, todo: any): Promise<Todo> {
     dbTodo.type = 'task' // Default to 'task' if type is missing or invalid
   }
   
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateTask:beforeUpdate',message:'Before Supabase update',data:{taskId:id,userId,dbTodo,originalTodo:todo},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
-  // #endregion
   
   // First, check what user_id the task currently has and check for deadline changes
-  // #region agent log
   const { data: existingTask } = await supabase
     .from('todos')
     .select('id, user_id, deadline_date, times_delayed')
     .eq('id', id)
     .single();
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateTask:checkExisting',message:'Checking existing task user_id',data:{taskId:id,existingUserId:existingTask?.user_id,currentUserId:userId},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
-  // #endregion
   
   // Check if deadline date has changed (only if both old and new deadlines exist)
   if (existingTask && existingTask.deadline_date && dbTodo.deadline_date && 
@@ -764,9 +758,6 @@ export async function updateTask(id: number, todo: any): Promise<Todo> {
     .single()
 
   if (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateTask:error',message:'Supabase update error',data:{taskId:id,errorCode:error.code,errorMessage:error.message,errorDetails:JSON.stringify(error),dbTodo},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
     console.error('Error updating task:', error)
     console.error('Error code:', error.code)
     console.error('Error message:', error.message)
@@ -774,10 +765,6 @@ export async function updateTask(id: number, todo: any): Promise<Todo> {
     console.error('DB Todo being sent:', JSON.stringify(dbTodo, null, 2))
     throw error
   }
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateTask:success',message:'Supabase update successful',data:{taskId:id,updatedData:data},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
-  // #endregion
 
   return dbTodoToAppTodo(data)
 }
@@ -978,25 +965,15 @@ export async function deleteList(id: number): Promise<void> {
 
 // Common Tasks
 export async function fetchCommonTasks(): Promise<CommonTask[]> {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:fetchCommonTasks:entry',message:'Fetching common tasks',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   
   const userId = await ensureAuthenticated()
   
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:fetchCommonTasks:beforeQuery',message:'Before Supabase query',data:{userId,tableName:'common_tasks'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   
   const { data, error } = await supabase
     .from('common_tasks')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:fetchCommonTasks:afterQuery',message:'After Supabase query',data:{hasError:!!error,errorCode:error?.code,errorMessage:error?.message,errorDetails:error ? JSON.stringify(error) : null,dataLength:data?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
 
   if (error) {
     console.error('Error fetching common tasks:', error)
@@ -1008,16 +985,17 @@ export async function fetchCommonTasks(): Promise<CommonTask[]> {
 }
 
 export async function createCommonTask(task: { text: string; description?: string | null; time?: string | null; deadline?: { date: Date; time: string; recurring?: string } | null }): Promise<CommonTask> {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createCommonTask:entry',message:'Creating common task',data:{taskText:task.text,hasDescription:!!task.description,hasTime:!!task.time,hasDeadline:!!task.deadline},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
   
   const userId = await ensureAuthenticated()
   
   const insertData: any = {
     user_id: userId,
     text: task.text,
-    description: task.description || null,
+    // Trim the description so it matches the trimmed description stored on the
+    // todos generated from this template. Without this, an untrimmed template
+    // description never matches its generated tasks (causing duplicate
+    // regeneration and an empty common-task detail page).
+    description: task.description ? task.description.trim() || null : null,
     time: task.time || null,
   }
 
@@ -1049,19 +1027,12 @@ export async function createCommonTask(task: { text: string; description?: strin
     insertData.deadline_recurring = null
   }
   
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createCommonTask:beforeInsert',message:'Before Supabase insert',data:{userId,tableName:'common_tasks',insertData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
   
   const { data, error } = await supabase
     .from('common_tasks')
     .insert(insertData)
     .select()
     .single()
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createCommonTask:afterInsert',message:'After Supabase insert',data:{hasError:!!error,errorCode:error?.code,errorMessage:error?.message,errorDetails:error ? JSON.stringify(error) : null,hasData:!!data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
 
   if (error) {
     console.error('Error creating common task:', error)
@@ -1076,7 +1047,9 @@ export async function updateCommonTask(id: number, task: { text: string; descrip
   
   const updateData: any = {
     text: task.text,
-    description: task.description || null,
+    // Trim to stay consistent with the trimmed description stored on generated
+    // todos (see createCommonTask / createTask).
+    description: task.description ? task.description.trim() || null : null,
     time: task.time || null,
   }
 
@@ -1620,9 +1593,6 @@ export async function fetchAllMilestones(goalIds: number[]): Promise<Array<{ id:
 }
 
 export async function createMilestone(milestone: { goal_id: number; name: string; description?: string | null; deadline?: { date: Date; time: string; recurring?: string } | null }): Promise<Milestone> {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createMilestone:entry',message:'Creating milestone',data:{goalId:milestone.goal_id,name:milestone.name,hasDeadline:!!milestone.deadline,deadlineDate:milestone.deadline?.date?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   
   const userId = await ensureAuthenticated()
   
@@ -1635,9 +1605,6 @@ export async function createMilestone(milestone: { goal_id: number; name: string
     .single()
   
   if (!goal) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createMilestone:goalNotFound',message:'Goal not found',data:{goalId:milestone.goal_id,userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     throw new Error('Goal not found or access denied')
   }
   
@@ -1649,27 +1616,17 @@ export async function createMilestone(milestone: { goal_id: number; name: string
   
   if (milestone.deadline) {
     const formattedDate = formatLocalDate(milestone.deadline.date)
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createMilestone:formattingDeadline',message:'Formatting deadline date',data:{originalDate:milestone.deadline.date?.toISOString(),formattedDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     insertData.deadline_date = formattedDate
   } else {
     insertData.deadline_date = null
   }
   
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createMilestone:beforeInsert',message:'Before Supabase insert',data:{insertData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-  // #endregion
   
   const { data, error } = await supabase
     .from('milestones')
     .insert(insertData)
     .select()
     .single()
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:createMilestone:afterInsert',message:'After Supabase insert',data:{hasError:!!error,errorCode:error?.code,errorMessage:error?.message,errorDetails:error ? JSON.stringify(error) : null,hasData:!!data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-  // #endregion
 
   if (error) {
     console.error('Error creating milestone:', error)
@@ -1680,9 +1637,6 @@ export async function createMilestone(milestone: { goal_id: number; name: string
 }
 
 export async function updateMilestone(id: number, milestone: { name: string; description?: string | null; deadline?: { date: Date; time: string; recurring?: string } | null; achieved?: boolean }): Promise<Milestone> {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:entry',message:'Updating milestone',data:{milestoneId:id,name:milestone.name,hasDeadline:!!milestone.deadline,deadlineDate:milestone.deadline?.date?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-  // #endregion
   
   const userId = await ensureAuthenticated()
   
@@ -1694,9 +1648,6 @@ export async function updateMilestone(id: number, milestone: { name: string; des
     .single()
   
   if (!milestoneData) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:milestoneNotFound',message:'Milestone not found',data:{milestoneId:id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
     throw new Error('Milestone not found')
   }
   
@@ -1708,9 +1659,6 @@ export async function updateMilestone(id: number, milestone: { name: string; des
     .single()
   
   if (!goalData) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:accessDenied',message:'Access denied',data:{milestoneId:id,goalId:milestoneData.goal_id,userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-    // #endregion
     throw new Error('Milestone not found or access denied')
   }
   
@@ -1721,9 +1669,6 @@ export async function updateMilestone(id: number, milestone: { name: string; des
   
   if (milestone.deadline) {
     const formattedDate = formatLocalDate(milestone.deadline.date)
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:formattingDeadline',message:'Formatting deadline date',data:{originalDate:milestone.deadline.date?.toISOString(),formattedDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
-    // #endregion
     updateData.deadline_date = formattedDate
   } else {
     updateData.deadline_date = null
@@ -1734,9 +1679,6 @@ export async function updateMilestone(id: number, milestone: { name: string; des
     updateData.completed = milestone.achieved
   }
   
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:beforeUpdate',message:'Before Supabase update',data:{milestoneId:id,updateData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-  // #endregion
   
   const { data, error } = await supabase
     .from('milestones')
@@ -1744,10 +1686,6 @@ export async function updateMilestone(id: number, milestone: { name: string; des
     .eq('id', id)
     .select()
     .single()
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'database.ts:updateMilestone:afterUpdate',message:'After Supabase update',data:{hasError:!!error,errorCode:error?.code,errorMessage:error?.message,errorDetails:error ? JSON.stringify(error) : null,hasData:!!data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-  // #endregion
 
   if (error) {
     console.error('Error updating milestone:', error)

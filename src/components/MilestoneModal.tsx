@@ -98,32 +98,17 @@ export function MilestoneModal({
   const handleSave = async () => {
     if (milestoneName.trim() === "") return;
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MilestoneModal.tsx:handleSave:entry',message:'Saving milestone',data:{milestoneId:milestone?.id,milestoneName,hasDeadline:!!deadline,deadlineDate:deadline?.date?.toISOString(),deadlineTime:deadline?.time},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-    // #endregion
     
     try {
       if (milestone && milestone.id >= 0) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MilestoneModal.tsx:handleSave:updating',message:'Updating existing milestone',data:{milestoneId:milestone.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
-        // #endregion
         // Update existing milestone
         await onUpdateMilestone(milestone.id, milestoneName, milestoneDescription || null, deadline || null);
       } else if (milestone) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MilestoneModal.tsx:handleSave:creating',message:'Creating new milestone',data:{goalId:milestone.goal_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'N'})}).catch(()=>{});
-        // #endregion
         // Create new milestone
         await onCreateMilestone(milestoneName, milestoneDescription || null, deadline || null);
       }
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MilestoneModal.tsx:handleSave:success',message:'Milestone saved successfully',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'O'})}).catch(()=>{});
-      // #endregion
       onClose();
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4cc0016e-9fdc-4dbd-bc07-aa68fd3a2227',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MilestoneModal.tsx:handleSave:error',message:'Error saving milestone',data:{errorMessage:error instanceof Error ? error.message : String(error),errorDetails:error ? JSON.stringify(error) : null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'P'})}).catch(()=>{});
-      // #endregion
       console.error('Error saving milestone:', error);
       alert('Failed to save milestone. Check console for details.');
     }

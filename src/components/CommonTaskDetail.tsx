@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { CommonTaskDetailModal } from "./CommonTaskDetailModal";
 import { linkifyText } from "../lib/textUtils";
@@ -46,6 +47,7 @@ interface CommonTaskDetailProps {
   onUpdateCommonTask: (id: number, text: string, description?: string | null, time?: string | null, deadline?: { date: Date; time: string; recurring?: string } | null) => Promise<void>;
   onDeleteCommonTask: (id: number) => Promise<void>;
   onAddTaskToList: (task: CommonTask, listId: number) => Promise<void>;
+  onResetCommonTask?: (task: CommonTask) => Promise<number>;
   lists: ListItem[];
   upcomingDates?: Date[];
 }
@@ -59,10 +61,30 @@ export function CommonTaskDetail({
   onUpdateCommonTask,
   onDeleteCommonTask,
   onAddTaskToList,
+  onResetCommonTask,
   upcomingDates = [],
   lists
 }: CommonTaskDetailProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleReset = async () => {
+    if (!onResetCommonTask || isResetting) return;
+    const confirmed = confirm(
+      "Reset this common task?\n\nThis deletes all open tasks created from it and regenerates a fresh set based on its schedule. Completed tasks are kept."
+    );
+    if (!confirmed) return;
+    try {
+      setIsResetting(true);
+      const removed = await onResetCommonTask(commonTask);
+      alert(`Reset complete. Removed ${removed} open task${removed === 1 ? "" : "s"} and regenerated from the schedule.`);
+    } catch (error) {
+      console.error("Error resetting common task:", error);
+      alert(`Failed to reset: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   // Safety check - if commonTask is not properly initialized, show error
   if (!commonTask || !commonTask.text) {
@@ -105,8 +127,11 @@ export function CommonTaskDetail({
       if (task.completed) {
         return false;
       }
-      const textMatches = task.text === commonTask.text;
-      const descriptionMatches = (task.description || null) === (commonTask.description || null);
+      // Trim before comparing: generated todos store a trimmed description
+      // while the common task template may have stored it untrimmed, so an
+      // exact compare would hide tasks that genuinely belong to this template.
+      const textMatches = (task.text || '').trim() === (commonTask.text || '').trim();
+      const descriptionMatches = (task.description || '').trim() === (commonTask.description || '').trim();
       return textMatches && descriptionMatches;
     } catch (error) {
       console.error('Error filtering tasks:', error);
@@ -196,6 +221,18 @@ export function CommonTaskDetail({
                   </p>
                 </div>
               </div>
+              {onResetCommonTask && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={isResetting}
+                  aria-label="Reset tasks for this common task"
+                  className="flex items-center gap-[6px] shrink-0 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-opacity hover:opacity-80 disabled:opacity-50"
+                >
+                  <RefreshCw className={`size-4 ${isResetting ? "animate-spin" : ""}`} strokeWidth={2} />
+                  {isResetting ? "Resetting…" : "Reset"}
+                </button>
+              )}
             </div>
 
             {/* Upcoming scheduled dates */}

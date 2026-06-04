@@ -219,7 +219,8 @@ module.exports = async function handler(req, res) {
     }
 
     // Get Supabase credentials
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    // Prefer VITE_SUPABASE_URL so server code targets the same project the frontend uses.
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
     const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceRoleKey) {
