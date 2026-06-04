@@ -2255,8 +2255,12 @@ export function TodoApp() {
           // prevent the same template generating for a future Monday.
           const existingTask = displayExistingTasks.find(todo => {
             if (todo.completed) return false;
-            if (todo.text !== commonTask.text) return false;
-            if ((todo.description || null) !== (commonTask.description || null)) return false;
+            // Compare text/description after trimming. Todos store a trimmed
+            // description (createTask) while common tasks may store untrimmed
+            // text — an exact compare here would never match and the template
+            // would regenerate duplicates on every load.
+            if ((todo.text || '').trim() !== (commonTask.text || '').trim()) return false;
+            if ((todo.description || '').trim() !== (commonTask.description || '').trim()) return false;
             if (!todo.deadline) return false;
             const todoDate = new Date(todo.deadline.date);
             todoDate.setHours(0, 0, 0, 0);

@@ -105,8 +105,11 @@ export function CommonTaskDetail({
       if (task.completed) {
         return false;
       }
-      const textMatches = task.text === commonTask.text;
-      const descriptionMatches = (task.description || null) === (commonTask.description || null);
+      // Trim before comparing: generated todos store a trimmed description
+      // while the common task template may have stored it untrimmed, so an
+      // exact compare would hide tasks that genuinely belong to this template.
+      const textMatches = (task.text || '').trim() === (commonTask.text || '').trim();
+      const descriptionMatches = (task.description || '').trim() === (commonTask.description || '').trim();
       return textMatches && descriptionMatches;
     } catch (error) {
       console.error('Error filtering tasks:', error);

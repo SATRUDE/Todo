@@ -1017,7 +1017,11 @@ export async function createCommonTask(task: { text: string; description?: strin
   const insertData: any = {
     user_id: userId,
     text: task.text,
-    description: task.description || null,
+    // Trim the description so it matches the trimmed description stored on the
+    // todos generated from this template. Without this, an untrimmed template
+    // description never matches its generated tasks (causing duplicate
+    // regeneration and an empty common-task detail page).
+    description: task.description ? task.description.trim() || null : null,
     time: task.time || null,
   }
 
@@ -1076,7 +1080,9 @@ export async function updateCommonTask(id: number, task: { text: string; descrip
   
   const updateData: any = {
     text: task.text,
-    description: task.description || null,
+    // Trim to stay consistent with the trimmed description stored on generated
+    // todos (see createCommonTask / createTask).
+    description: task.description ? task.description.trim() || null : null,
     time: task.time || null,
   }
 
