@@ -2294,30 +2294,37 @@ export function TodoApp() {
   // Reset a single common task: delete all of its OPEN generated tasks, then
   // regenerate a fresh set based on the template's current rules and dates.
   // Completed tasks are kept so history is preserved. Returns the number of
-  // open tasks that were removed.
+  // open tasks that were actually removed.
+  //
+  // Deletion runs through a server endpoint using the service-role key. The
+  // browser client cannot reliably delete these rows: legacy todos with a NULL
+  // or mismatched user_id are silently skipped by RLS (the delete reports no
+  // error but removes nothing), which is exactly what made an earlier
+  // client-side reset claim success while leaving every task in place.
   const handleResetCommonTask = async (commonTask: CommonTask): Promise<number> => {
-    // Fetch fresh so we operate on the true current state, not stale React state.
-    const allTasks = await fetchTasks();
-    const displayTasks = allTasks.map(dbTodoToDisplayTodo);
-
-    const normalize = (s?: string | null) => (s || '').trim();
-    const matchingOpenTasks = displayTasks.filter((todo: Todo) =>
-      !todo.completed &&
-      normalize(todo.text) === normalize(commonTask.text) &&
-      normalize(todo.description) === normalize(commonTask.description)
-    );
-
-    // Delete each matching open task.
-    for (const task of matchingOpenTasks) {
-      try {
-        await deleteTaskDb(task.id);
-      } catch (error) {
-        console.error(`Error deleting task ${task.id} during common task reset:`, error);
-      }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error('You must be signed in to reset a common task.');
     }
 
-    // Reload, push to state, then regenerate from the template's rules/dates
-    // using the freshly-reloaded list so dedup works against real data.
+    const response = await fetch('/api/reset-common-task', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ commonTaskId: commonTask.id }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || err.error || 'Failed to reset common task.');
+    }
+
+    const { deletedCount = 0 } = await response.json();
+
+    // Reload from the database (the server-side delete is already committed),
+    // then regenerate a fresh scheduled set using the existing client logic.
     const remainingTasks = await fetchTasks();
     const remainingDisplayTasks = remainingTasks.map(dbTodoToDisplayTodo);
     setTodos(remainingDisplayTasks);
@@ -2327,7 +2334,7 @@ export function TodoApp() {
       // generateTasksFromCommonTasks reloads state itself when it creates tasks.
     }
 
-    return matchingOpenTasks.length;
+    return deletedCount;
   };
 
   // Goals handlers
