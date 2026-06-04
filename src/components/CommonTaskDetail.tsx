@@ -194,29 +194,29 @@ export function CommonTaskDetail({
         <div className="w-full">
           <div className="flex flex-col gap-[32px] items-start px-[20px] pt-[30px] relative w-full h-fit" style={{ paddingBottom: '150px' }}>
             {/* Header */}
-            <div className="flex items-center justify-between relative shrink-0 w-full">
-              <div className="flex gap-[16px] items-center relative shrink-0">
-                <div 
+            <div className="flex items-center justify-between gap-3 relative shrink-0 w-full">
+              <div className="flex gap-[16px] items-center relative min-w-0 flex-1">
+                <div
                   className="relative shrink-0 size-[32px] cursor-pointer"
                   onClick={onBack}
                 >
                   <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
                     <g>
-                      <path 
-                        d="M20 8L12 16L20 24" 
-                        stroke="#E1E6EE" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth="2" 
+                      <path
+                        d="M20 8L12 16L20 24"
+                        stroke="#E1E6EE"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
                       />
                     </g>
                   </svg>
                 </div>
-                <div 
-                  className="flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative shrink-0 text-nowrap whitespace-pre cursor-pointer"
+                <div
+                  className="flex flex-col gap-[4px] items-start leading-[1.5] not-italic relative min-w-0 flex-1 cursor-pointer"
                   onClick={handleTitleClick}
                 >
-                  <p className="font-medium font-medium relative shrink-0 text-[28px] text-foreground tracking-[-0.308px]">
+                  <p className="font-medium font-medium relative w-full truncate text-[28px] text-foreground tracking-[-0.308px]">
                     {commonTask.text}
                   </p>
                 </div>
@@ -229,7 +229,7 @@ export function CommonTaskDetail({
                   aria-label="Reset tasks for this common task"
                   className="flex items-center gap-[6px] shrink-0 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-opacity hover:opacity-80 disabled:opacity-50"
                 >
-                  <RefreshCw className={`size-4 ${isResetting ? "animate-spin" : ""}`} strokeWidth={2} />
+                  <RefreshCw className={`size-4 shrink-0 ${isResetting ? "animate-spin" : ""}`} strokeWidth={2} />
                   {isResetting ? "Resetting…" : "Reset"}
                 </button>
               )}
