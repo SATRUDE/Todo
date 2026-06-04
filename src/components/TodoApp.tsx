@@ -2291,6 +2291,45 @@ export function TodoApp() {
     }
   };
 
+  // Reset a single common task: delete all of its OPEN generated tasks, then
+  // regenerate a fresh set based on the template's current rules and dates.
+  // Completed tasks are kept so history is preserved. Returns the number of
+  // open tasks that were removed.
+  const handleResetCommonTask = async (commonTask: CommonTask): Promise<number> => {
+    // Fetch fresh so we operate on the true current state, not stale React state.
+    const allTasks = await fetchTasks();
+    const displayTasks = allTasks.map(dbTodoToDisplayTodo);
+
+    const normalize = (s?: string | null) => (s || '').trim();
+    const matchingOpenTasks = displayTasks.filter((todo: Todo) =>
+      !todo.completed &&
+      normalize(todo.text) === normalize(commonTask.text) &&
+      normalize(todo.description) === normalize(commonTask.description)
+    );
+
+    // Delete each matching open task.
+    for (const task of matchingOpenTasks) {
+      try {
+        await deleteTaskDb(task.id);
+      } catch (error) {
+        console.error(`Error deleting task ${task.id} during common task reset:`, error);
+      }
+    }
+
+    // Reload, push to state, then regenerate from the template's rules/dates
+    // using the freshly-reloaded list so dedup works against real data.
+    const remainingTasks = await fetchTasks();
+    const remainingDisplayTasks = remainingTasks.map(dbTodoToDisplayTodo);
+    setTodos(remainingDisplayTasks);
+
+    if (commonTask.deadline) {
+      await generateTasksFromCommonTasks([commonTask], remainingDisplayTasks);
+      // generateTasksFromCommonTasks reloads state itself when it creates tasks.
+    }
+
+    return matchingOpenTasks.length;
+  };
+
   // Goals handlers
   const handleUpdateGoal = async (id: number, text: string, description?: string | null, is_active?: boolean, deadline_date?: string | null) => {
     try {
@@ -3428,6 +3467,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           }}
           onDeleteCommonTask={handleDeleteCommonTask}
           onAddTaskToList={handleAddCommonTaskToList}
+          onResetCommonTask={handleResetCommonTask}
           lists={lists}
         />
       ) : currentPage === "dailyTasks" ? (
