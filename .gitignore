@@ -12,3 +12,6 @@ build
 
 *storybook.log
 storybook-static
+
+# Never commit generated keys
+VAPID-KEYS.txt

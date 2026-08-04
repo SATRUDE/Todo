@@ -13,7 +13,7 @@ GitHub Actions runs a scheduled workflow every 5 minutes that:
 
 1. A GitHub repository (public repos get free unlimited Actions minutes)
 2. Supabase database with the `push_subscriptions` table created (run `supabase-schema.sql`)
-3. VAPID keys generated (already done - see `VAPID-KEYS.txt`)
+3. VAPID keys generated - run `npx web-push generate-vapid-keys` and keep the output somewhere private (a password manager, never this repository)
 
 ## Setup Steps
 
@@ -36,14 +36,13 @@ Add the following secrets:
 
 #### `VAPID_PUBLIC_KEY`
 - **Value**: Your VAPID public key
-- **From**: `VAPID-KEYS.txt` file in this repository
-- **Example**: `BDJ7TIDnLub_PRAIaCLV0Lq2_7B879nLZfVcA5bz3BF86p7uyiNRURiN28XATbUtkJY0NIZYCUHXES5hZa46Mp4`
+- **From**: the output of `npx web-push generate-vapid-keys`
+- Also set it as `VITE_VAPID_PUBLIC_KEY` in the Vercel project settings so the app subscribes with the same key
 
 #### `VAPID_PRIVATE_KEY`
 - **Value**: Your VAPID private key
-- **From**: `VAPID-KEYS.txt` file in this repository
-- **Example**: `pbaPnvtnpo-J8UlIAtU_v1FIj4Qxru8JcnPj-L8lV6A`
-- **Important**: Keep this secret - never commit it to the repository
+- **From**: the output of `npx web-push generate-vapid-keys`
+- **Important**: Keep this secret - never commit it to the repository. If it is ever exposed, generate a fresh pair, update these secrets and the Vercel env, and note that existing push subscriptions become invalid until each device re-subscribes.
 
 ### 2. Verify Database Schema
 
