@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 import { createPortal } from "react-dom";
@@ -180,7 +181,7 @@ export function MilestoneDetail({
       window.dispatchEvent(new CustomEvent('milestoneUpdateChanged'));
     } catch (error) {
       console.error('Error saving milestone update:', error);
-      alert('Failed to save update. Please try again.');
+      toast.error('Failed to save update. Please try again.');
     }
   };
 
@@ -200,7 +201,7 @@ export function MilestoneDetail({
       window.dispatchEvent(new CustomEvent('milestoneUpdateChanged'));
     } catch (error) {
       console.error('Error deleting milestone update:', error);
-      alert('Failed to delete update. Please try again.');
+      toast.error('Failed to delete update. Please try again.');
     }
   };
 

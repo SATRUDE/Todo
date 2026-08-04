@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
+import { ConfirmDialog } from "./ConfirmDialog";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { CommonTaskDetailModal } from "./CommonTaskDetailModal";
 import { linkifyText } from "../lib/textUtils";
@@ -67,20 +69,22 @@ export function CommonTaskDetail({
 }: CommonTaskDetailProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  const handleReset = async () => {
+  const handleReset = () => {
     if (!onResetCommonTask || isResetting) return;
-    const confirmed = confirm(
-      "Reset this common task?\n\nThis deletes all open tasks created from it and regenerates a fresh set based on its schedule. Completed tasks are kept."
-    );
-    if (!confirmed) return;
+    setIsResetConfirmOpen(true);
+  };
+
+  const performReset = async () => {
+    if (!onResetCommonTask || isResetting) return;
     try {
       setIsResetting(true);
       const removed = await onResetCommonTask(commonTask);
-      alert(`Reset complete. Removed ${removed} open task${removed === 1 ? "" : "s"} and regenerated from the schedule.`);
+      toast.success(`Reset complete. Removed ${removed} open task${removed === 1 ? "" : "s"} and regenerated from the schedule.`);
     } catch (error) {
       console.error("Error resetting common task:", error);
-      alert(`Failed to reset: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to reset: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsResetting(false);
     }
@@ -438,6 +442,15 @@ export function CommonTaskDetail({
           lists={lists}
         />
       )}
+      <ConfirmDialog
+        open={isResetConfirmOpen}
+        onOpenChange={setIsResetConfirmOpen}
+        title="Reset this common task?"
+        description="This deletes all open tasks created from it and regenerates a fresh set based on its schedule. Completed tasks are kept."
+        confirmLabel="Reset"
+        destructive
+        onConfirm={performReset}
+      />
     </>
   );
 }

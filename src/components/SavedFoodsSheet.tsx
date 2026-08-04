@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ConfirmDialog } from "./ConfirmDialog";
 import {
   Sheet,
   SheetContent,
@@ -154,8 +155,14 @@ export function SavedFoodsSheet({ isOpen, onClose, onChanged }: SavedFoodsSheetP
     }
   };
 
-  const handleDelete = async (food: CalorieSavedFood) => {
-    if (!confirm(`Delete "${food.name}" from saved foods?`)) return;
+  const [pendingDeleteFood, setPendingDeleteFood] = useState<CalorieSavedFood | null>(null);
+
+  const handleDelete = (food: CalorieSavedFood) => setPendingDeleteFood(food);
+
+  const performDelete = async () => {
+    const food = pendingDeleteFood;
+    if (!food) return;
+    setPendingDeleteFood(null);
     try {
       await deleteSavedFood(food.id);
       await reload();
@@ -340,6 +347,14 @@ export function SavedFoodsSheet({ isOpen, onClose, onChanged }: SavedFoodsSheetP
             )}
           </div>
         </div>
+        <ConfirmDialog
+          open={pendingDeleteFood !== null}
+          onOpenChange={(open) => { if (!open) setPendingDeleteFood(null); }}
+          title={pendingDeleteFood ? `Delete "${pendingDeleteFood.name}" from saved foods?` : "Delete saved food?"}
+          confirmLabel="Delete"
+          destructive
+          onConfirm={performDelete}
+        />
       </SheetContent>
     </Sheet>
   );

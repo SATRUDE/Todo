@@ -1,4 +1,5 @@
 import { useState, useEffect, KeyboardEvent, useRef } from "react";
+import { toast } from "sonner";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 import { createPortal } from "react-dom";
@@ -95,10 +96,10 @@ export function GoalDetailModal({
       onClose();
     } catch (error) {
       if (error instanceof Error && error.message.includes('4 active goals')) {
-        alert(error.message);
+        toast.error(error.message);
       } else {
         console.error('Error saving goal:', error);
-        alert('Failed to save goal. Check console for details.');
+        toast.error('Failed to save goal. Check console for details.');
       }
     }
   };

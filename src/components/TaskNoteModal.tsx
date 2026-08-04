@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Pencil, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface NoteForTask {
   id: number;
@@ -84,9 +85,17 @@ export function TaskNoteModal({ isOpen, onClose, taskId, notesForTask, onAddNote
     setEditContent("");
   };
 
-  const handleDelete = async (id: number) => {
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+
+  const handleDelete = (id: number) => {
     if (!onDeleteNote) return;
-    if (!confirm("Delete this note?")) return;
+    setPendingDeleteId(id);
+  };
+
+  const performDelete = async () => {
+    const id = pendingDeleteId;
+    if (!onDeleteNote || id === null) return;
+    setPendingDeleteId(null);
     setIsSaving(true);
     setError(null);
     try {
@@ -244,6 +253,14 @@ export function TaskNoteModal({ isOpen, onClose, taskId, notesForTask, onAddNote
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}
+        title="Delete this note?"
+        confirmLabel="Delete"
+        destructive
+        onConfirm={performDelete}
+      />
     </div>
   );
 }

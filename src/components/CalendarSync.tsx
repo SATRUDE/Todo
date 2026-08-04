@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
 import { CalendarTaskSuggestions, CalendarTaskSuggestionsRef } from "./CalendarTaskSuggestions";
 import { TaskDetailModal } from "./TaskDetailModal";
 import { markEventAsProcessed } from "../lib/calendar";
@@ -114,7 +115,7 @@ export function CalendarSync({ onBack, onAddTask, lists = [], onSync, isSyncing 
       setSelectedSuggestion(null);
     } catch (error) {
       console.error('[CalendarSync] Error creating task from suggestion:', error);
-      alert(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
+import { toast } from "sonner";
 import { fetchCalendarEvents, suggestTasksFromEvents, CalendarEvent, getProcessedEventIds, markEventAsProcessed, filterProcessedEvents } from "../lib/calendar";
 
 interface CalendarTaskSuggestionsProps {
@@ -138,7 +139,7 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
       }
     } catch (err) {
       console.error('[CalendarTaskSuggestions] Error dismissing event:', err);
-      alert(`Failed to dismiss event: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      toast.error(`Failed to dismiss event: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
@@ -163,7 +164,7 @@ export const CalendarTaskSuggestions = forwardRef<CalendarTaskSuggestionsRef, Ca
     } catch (err) {
       console.error('[CalendarTaskSuggestions] Error accepting suggestion:', err);
       console.error('[CalendarTaskSuggestions] Error details:', err);
-      alert(`Failed to add task: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      toast.error(`Failed to add task: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 

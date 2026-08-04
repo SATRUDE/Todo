@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "./ConfirmDialog";
 import type { Note } from "../lib/database";
 
 interface TodoForPicker {
@@ -56,8 +57,11 @@ export function NoteDetail({ note, todos, onBack, onUpdateNote, onDeleteNote }: 
     setIsEditing(false);
   };
 
-  const handleDelete = async () => {
-    if (!confirm("Delete this note?")) return;
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  const handleDelete = () => setIsDeleteConfirmOpen(true);
+
+  const performDelete = async () => {
     setIsSubmitting(true);
     try {
       await onDeleteNote(note.id);
@@ -172,6 +176,14 @@ export function NoteDetail({ note, todos, onBack, onUpdateNote, onDeleteNote }: 
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        title="Delete this note?"
+        confirmLabel="Delete"
+        destructive
+        onConfirm={performDelete}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Pencil, Trash2, StickyNote } from "lucide-react";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 export interface Note {
   id: number;
@@ -105,13 +106,18 @@ export function Notes({
     setEditTaskId(null);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this note?")) return;
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+
+  const handleDelete = (id: number) => setPendingDeleteId(id);
+
+  const performDelete = async () => {
+    if (pendingDeleteId === null) return;
     setIsSubmitting(true);
     try {
-      await onDeleteNote(id);
+      await onDeleteNote(pendingDeleteId);
     } finally {
       setIsSubmitting(false);
+      setPendingDeleteId(null);
     }
   };
 
@@ -275,6 +281,14 @@ export function Notes({
             </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}
+        title="Delete this note?"
+        confirmLabel="Delete"
+        destructive
+        onConfirm={performDelete}
+      />
     </div>
   );
 }
