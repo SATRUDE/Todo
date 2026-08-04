@@ -24,14 +24,14 @@ export function UpdateNotification({ onReload, onDismiss }: UpdateNotificationPr
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[10002] pointer-events-auto">
-      <div className="bg-[#0b64f9] flex items-center justify-between gap-[16px] px-[20px] py-[12px] w-full">
+      <div className="bg-primary flex items-center justify-between gap-[16px] px-[20px] py-[12px] w-full">
         <p className="font-normal font-normal leading-[1.5] not-italic text-white text-[16px] tracking-[-0.176px] flex-1">
           New version available
         </p>
         <div className="flex gap-[12px] items-center">
           <button
             onClick={handleReload}
-            className="bg-white text-[#0b64f9] font-medium font-medium leading-[1.5] not-italic text-[16px] tracking-[-0.176px] px-[16px] py-[8px] rounded-[8px] cursor-pointer hover:opacity-90 transition-opacity"
+            className="bg-white text-primary font-medium font-medium leading-[1.5] not-italic text-[16px] tracking-[-0.176px] px-[16px] py-[8px] rounded-[8px] cursor-pointer hover:opacity-90 transition-opacity"
           >
             Reload
           </button>
