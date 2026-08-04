@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { AppSheet } from "./AppSheet";
 
 interface NoteForTask {
   id: number;
@@ -115,39 +116,18 @@ export function TaskNoteModal({ isOpen, onClose, taskId, notesForTask, onAddNote
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[10002] pointer-events-none">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 pointer-events-auto bg-black/75 backdrop-blur-sm transition-opacity duration-300"
-        onClick={onClose}
-        aria-hidden
-      />
-
-      {/* Bottom Sheet */}
-      <div
-        className="absolute bottom-0 left-0 right-0 flex animate-slide-up justify-center pointer-events-auto desktop-bottom-sheet"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex max-h-[90vh] w-full flex-col items-center overflow-hidden rounded-t-xl bg-card">
-          {/* Handle */}
-          <div className="flex shrink-0 flex-col items-center gap-2.5 pt-5">
-            <div className="h-5 w-24 shrink-0 text-muted-foreground">
-              <svg className="size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
-                <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
-              </svg>
-            </div>
-          </div>
-
+    <>
+    <AppSheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} title="Note">
           {/* Title */}
-          <div className="w-full shrink-0 px-5">
+          <div className="w-full shrink-0">
             <h2 className="text-xl font-medium tracking-tight text-foreground">
               Note
             </h2>
           </div>
 
-          {/* Scrollable Content */}
-          <div className="flex min-h-0 w-full flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch]" style={{ maxHeight: "calc(90vh - 140px)" }}>
-            <div className="flex flex-col gap-4 px-5 pt-5 pb-10">
+          {/* Content */}
+          <div className="flex min-h-0 w-full flex-col">
+            <div className="flex flex-col gap-4 pt-5 pb-10">
               {/* Existing notes */}
               {notesForTask.length > 0 && (
                 <div className="flex flex-col gap-3">
@@ -251,8 +231,7 @@ export function TaskNoteModal({ isOpen, onClose, taskId, notesForTask, onAddNote
               </div>
             </div>
           </div>
-        </div>
-      </div>
+    </AppSheet>
       <ConfirmDialog
         open={pendingDeleteId !== null}
         onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}
@@ -261,6 +240,6 @@ export function TaskNoteModal({ isOpen, onClose, taskId, notesForTask, onAddNote
         destructive
         onConfirm={performDelete}
       />
-    </div>
+    </>
   );
 }

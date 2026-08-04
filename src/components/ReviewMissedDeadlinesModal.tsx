@@ -1,4 +1,4 @@
-import { createPortal } from "react-dom";
+import { AppSheet } from "./AppSheet";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import iconPaths from "../imports/svg-u66msu10qs";
 import { linkifyText } from "../lib/textUtils";
@@ -79,48 +79,19 @@ export function ReviewMissedDeadlinesModal({
 
   if (!isOpen) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[10001] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10001 }}>
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
-        onClick={onClose}
-        style={{ 
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(4px)'
-        }}
-      />
-      
-      {/* Bottom Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pb-[60px] pt-5 desktop-bottom-sheet">
-          {/* Handle */}
-          <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
-            <div className="h-5 w-24 shrink-0 text-muted-foreground">
-              <svg className="block size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
-                <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
-              </svg>
-            </div>
-          </div>
-
+  return (
+    <AppSheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} title="Review missed deadlines">
           {/* Title */}
-          <div className="w-full shrink-0 px-5">
+          <div className="w-full shrink-0">
             <h2 className="text-xl font-medium tracking-tight text-foreground">
               Review missed deadlines
             </h2>
           </div>
 
-          {/* Scrollable Content */}
-          <div 
-            className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full" 
+          {/* Content */}
+          <div
+            className="flex flex-col gap-[32px] items-start py-0 relative shrink-0 w-full pt-4"
             data-node-id="36:485"
-            style={{ 
-              overflowY: 'auto', 
-              WebkitOverflowScrolling: 'touch', 
-              maxHeight: 'calc(90vh - 120px)', 
-              minHeight: 0, 
-              overflowX: 'hidden' 
-            }}
           >
             <div className="flex flex-col gap-[24px] items-start relative shrink-0 w-full pb-[40px]" data-node-id="36:495">
               {missedDeadlines.map((todo) => {
@@ -375,10 +346,7 @@ export function ReviewMissedDeadlinesModal({
               </button>
             </div>
           )}
-        </div>
-      </div>
-    </div>,
-    document.body
+    </AppSheet>
   );
 }
 

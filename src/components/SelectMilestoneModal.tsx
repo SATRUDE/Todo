@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { AppSheet } from "./AppSheet";
 
 interface MilestoneWithGoal {
   id: number;
@@ -31,41 +32,10 @@ export function SelectMilestoneModal({ isOpen, onClose, milestones, selectedMile
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[10002] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
-        onClick={onClose}
-        style={{ 
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(4px)'
-        }}
-      />
-      
-      {/* Bottom Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div 
-          className="bg-background flex flex-col rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet" 
-          style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
-        >
-          {/* Handle */}
-          <div className="flex flex-col gap-[10px] items-center relative shrink-0 w-full pt-[20px] pb-[10px]">
-            <div className="h-[20px] relative shrink-0 w-[100px]">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
-                <g>
-                  <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
-                </g>
-              </svg>
-            </div>
-          </div>
-
-          {/* Scrollable Content */}
-          <div 
-            className="flex flex-col pb-[60px] px-0 relative w-full"
-            style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', maxHeight: 'calc(90vh - 80px)', height: 'calc(90vh - 80px)', minHeight: 0, overflowX: 'hidden' }}
-          >
-            {/* Content */}
-            <div className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative w-full">
+    <AppSheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} title="Add to milestone">
+          {/* Content */}
+          <div className="flex flex-col pb-6 relative w-full">
+            <div className="flex flex-col gap-[32px] items-start py-0 relative w-full">
               <p className="font-medium font-medium leading-[1.5] not-italic relative shrink-0 text-foreground text-[20px] text-nowrap tracking-[-0.22px] whitespace-pre">Add to milestone</p>
               
               {/* Milestone Items */}
@@ -107,8 +77,6 @@ export function SelectMilestoneModal({ isOpen, onClose, milestones, selectedMile
               )}
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </AppSheet>
   );
 }
