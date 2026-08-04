@@ -260,15 +260,16 @@ module.exports = async function handler(req, res) {
               const recurring = commonTask.deadline_recurring;
               let datesToGenerate = [];
 
-              // First, check how many future tasks already exist for this common task
+              // First, check how many future tasks already exist for this common task.
+              // Deliberately do NOT match on deadline_recurring: actions that move an
+              // instance's deadline (e.g. "Move all to today") strip the recurring flag,
+              // and requiring the flag to match made the generator blind to those
+              // instances, so it spawned duplicates alongside them day after day.
+              // Any open instance with the same text counts.
               const existingFutureTasks = existingTodos.filter(todo => {
-                if (todo.text !== commonTask.text) return false;
+                if ((todo.text || '').trim() !== (commonTask.text || '').trim()) return false;
                 if (!todo.deadline_date) return false;
                 if (todo.completed) return false;
-                // Match recurring pattern
-                const todoRecurring = todo.deadline_recurring || null;
-                const commonRecurring = recurring || null;
-                if (todoRecurring !== commonRecurring) return false;
                 // Check if date is today or in the future
                 const todoDate = parseLocalDate(todo.deadline_date);
                 if (!todoDate) return false;
@@ -366,16 +367,14 @@ module.exports = async function handler(req, res) {
                 const targetDateStr = formatLocalDate(targetDate);
                 if (!targetDateStr) continue;
 
-                // Double-check this date doesn't already exist (safety check)
+                // Double-check this date doesn't already exist (safety check).
+                // Same-text same-date open instance blocks the spawn regardless of
+                // its deadline_recurring flag; see the matching note above.
                 const existingTask = existingTodos.find(todo => {
-                  if (todo.text !== commonTask.text) return false;
+                  if ((todo.text || '').trim() !== (commonTask.text || '').trim()) return false;
                   if (!todo.deadline_date) return false;
                   if (todo.deadline_date !== targetDateStr) return false;
-                  if (todo.completed) return false;
-                  // Match recurring pattern
-                  const todoRecurring = todo.deadline_recurring || null;
-                  const commonRecurring = recurring || null;
-                  return todoRecurring === commonRecurring;
+                  return !todo.completed;
                 });
 
                 if (!existingTask) {

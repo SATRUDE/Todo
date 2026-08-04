@@ -2547,7 +2547,9 @@ export function TodoApp() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     for (const todo of missedDeadlines) {
-      await handleUpdateDeadline(todo.id, { date: new Date(today.getTime()), time: "" });
+      // Carry the recurring flag through the move: dropping it detaches the
+      // instance from its common task and the generator spawns a duplicate.
+      await handleUpdateDeadline(todo.id, { date: new Date(today.getTime()), time: "", recurring: todo.deadline?.recurring || undefined });
     }
   };
 
