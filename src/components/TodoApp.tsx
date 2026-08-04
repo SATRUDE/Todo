@@ -3862,7 +3862,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
 
       {/* Bottom Navigation */}
       {currentPage !== "workshop" && (
-      <nav className="flex gap-6 items-center justify-center py-3 pb-[max(env(safe-area-inset-bottom),2.5rem)] fixed bottom-0 left-0 right-0 w-full bg-card border-t border-border z-[1000]" aria-label="Main navigation">
+      // z-40: below the overlay layer (drawers/dialogs at z-50), above page content.
+      // The old hand-rolled sheets covered this nav from z-10001; vaul drawers sit at
+      // z-50, so the nav must yield or it floats over every open sheet.
+      <nav className="flex gap-6 items-center justify-center py-3 pb-[max(env(safe-area-inset-bottom),2.5rem)] fixed bottom-0 left-0 right-0 w-full bg-card border-t border-border z-40" aria-label="Main navigation">
         
         {/* Calendar Icon */}
         <button
