@@ -368,13 +368,14 @@ module.exports = async function handler(req, res) {
                 if (!targetDateStr) continue;
 
                 // Double-check this date doesn't already exist (safety check).
-                // Same-text same-date open instance blocks the spawn regardless of
-                // its deadline_recurring flag; see the matching note above.
+                // Same-text same-date instance blocks the spawn regardless of its
+                // deadline_recurring flag AND regardless of completed: a completed
+                // instance means that occurrence is done, not missing, so it must
+                // not be resurrected.
                 const existingTask = existingTodos.find(todo => {
                   if ((todo.text || '').trim() !== (commonTask.text || '').trim()) return false;
                   if (!todo.deadline_date) return false;
-                  if (todo.deadline_date !== targetDateStr) return false;
-                  return !todo.completed;
+                  return todo.deadline_date === targetDateStr;
                 });
 
                 if (!existingTask) {
