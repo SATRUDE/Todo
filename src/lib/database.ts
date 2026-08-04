@@ -2554,3 +2554,58 @@ export async function quickAddSavedFood(
   return inserted
 }
 
+
+// ─── Weekly Menus (Remy's drafts → review → publish to Notion) ───────────────
+
+export interface Menu {
+  id: number
+  user_id?: string
+  week_number: number
+  year: number
+  content: string
+  status: 'draft' | 'published'
+  notified_at?: string | null
+  published_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export async function fetchMenus(): Promise<Menu[]> {
+  await ensureAuthenticated()
+  const { data, error } = await (supabase as any)
+    .from('menus')
+    .select('*')
+    .order('year', { ascending: false })
+    .order('week_number', { ascending: false })
+  if (error) {
+    console.error('Error fetching menus:', error)
+    throw error
+  }
+  return data || []
+}
+
+export async function updateMenuContent(menuId: number, content: string): Promise<void> {
+  await ensureAuthenticated()
+  const { error } = await (supabase as any)
+    .from('menus')
+    .update({ content, updated_at: new Date().toISOString() })
+    .eq('id', menuId)
+  if (error) {
+    console.error('Error updating menu:', error)
+    throw error
+  }
+}
+
+export async function createMenuDraft(content: string, weekNumber: number, year: number): Promise<Menu> {
+  const userId = await ensureAuthenticated()
+  const { data, error } = await (supabase as any)
+    .from('menus')
+    .insert({ user_id: userId, content, week_number: weekNumber, year, status: 'draft' })
+    .select()
+    .single()
+  if (error) {
+    console.error('Error creating menu draft:', error)
+    throw error
+  }
+  return data
+}

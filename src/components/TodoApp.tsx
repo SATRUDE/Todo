@@ -7,6 +7,7 @@ import { Lists } from "./Lists";
 import { ListDetail } from "./ListDetail";
 import { Settings } from "./Settings";
 import { Dashboard } from "./Dashboard";
+import { MenusPage } from "./MenusPage";
 import { CalendarSync } from "./CalendarSync";
 import { CommonTasks } from "./CommonTasks";
 import { CommonTaskDetail } from "./CommonTaskDetail";
@@ -151,7 +152,7 @@ interface ListItem {
   folderId?: number | null;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop" | "notes" | "noteDetail" | "search" | "focusSessions" | "focusSessionDetail" | "drinkWater" | "calorieCounter";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop" | "notes" | "noteDetail" | "search" | "focusSessions" | "focusSessionDetail" | "drinkWater" | "calorieCounter" | "menus";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -3376,7 +3377,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onNavigateToDrinkWater={() => setCurrentPage("drinkWater")}
           onNavigateToFocusSessions={() => setCurrentPage("focusSessions")}
           onNavigateToCalorieCounter={() => setCurrentPage("calorieCounter")}
+          onNavigateToMenus={() => setCurrentPage("menus")}
         />
+      ) : currentPage === "menus" ? (
+        <MenusPage onBack={() => setCurrentPage("dashboard")} />
       ) : currentPage === "drinkWater" ? (
         <DrinkWater onBack={() => setCurrentPage("dashboard")} />
       ) : currentPage === "calorieCounter" ? (
