@@ -3401,7 +3401,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
       ) : currentPage === "commonTasks" ? (
         isSecondaryDataLoading ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-[#e1e6ee]">Loading common tasks...</div>
+            <div className="text-foreground">Loading common tasks...</div>
           </div>
         ) : (
           <CommonTasks 
@@ -3476,7 +3476,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
       ) : currentPage === "dailyTasks" ? (
         isSecondaryDataLoading ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-[#e1e6ee]">Loading daily tasks...</div>
+            <div className="text-foreground">Loading daily tasks...</div>
           </div>
         ) : (
           <DailyTasks 
@@ -3508,7 +3508,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
       ) : currentPage === "notes" ? (
         isSecondaryDataLoading ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-[#e1e6ee]">Loading notes...</div>
+            <div className="text-foreground">Loading notes...</div>
           </div>
         ) : (
           <Notes

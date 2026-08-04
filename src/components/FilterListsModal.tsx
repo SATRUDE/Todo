@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import svgPaths from "../imports/svg-p3zv31caxs";
+import { AppSheet } from "./AppSheet";
 import { Button } from "./ui/button";
 
 interface ListFolder {
@@ -113,35 +114,16 @@ export function FilterListsModal({ isOpen, onClose, lists, folders = [], selecte
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[10002] pointer-events-none">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 pointer-events-auto bg-black/75 backdrop-blur-sm transition-opacity duration-300"
-        onClick={onClose}
-        aria-hidden
-      />
-
-      {/* Bottom Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pb-[60px] pt-5 desktop-bottom-sheet">
-          {/* Handle */}
-          <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
-            <div className="h-5 w-24 shrink-0 text-muted-foreground">
-              <svg className="block size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
-                <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
-              </svg>
-            </div>
-          </div>
-
+    <AppSheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} title="Filter by list">
           {/* Title */}
-          <div className="w-full shrink-0 px-5">
+          <div className="w-full shrink-0">
             <h2 className="text-xl font-medium tracking-tight text-foreground">
               Filter by list
             </h2>
           </div>
 
-          {/* Scrollable Content */}
-          <div className="flex flex-1 flex-col w-full overflow-x-hidden overflow-y-auto px-5 [-webkit-overflow-scrolling:touch] min-h-0" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+          {/* Content */}
+          <div className="flex flex-1 flex-col w-full min-h-0">
             <div className="flex flex-col gap-4 pt-4 pb-2">
               {/* Today (if included) */}
               {todayItem.length > 0 && (
@@ -198,9 +180,7 @@ export function FilterListsModal({ isOpen, onClose, lists, folders = [], selecte
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </AppSheet>
   );
 }
 

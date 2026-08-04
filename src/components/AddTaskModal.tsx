@@ -1,5 +1,5 @@
 import { useState, KeyboardEvent, useEffect, useRef, ChangeEvent } from "react";
-import { createPortal } from "react-dom";
+import { AppSheet } from "./AppSheet";
 import { Mic, MicOff } from "lucide-react";
 import { toast } from "sonner";
 import svgPaths from "../imports/svg-p3zv31caxs";
@@ -462,28 +462,15 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
 
   if (!isOpen) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[10001] pointer-events-none">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 pointer-events-auto bg-black/75 backdrop-blur-sm transition-opacity duration-300"
-        onClick={onClose}
-      />
-      
-      {/* Bottom Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pb-[60px] pt-5 desktop-bottom-sheet">
-          {/* Handle */}
-          <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
-            <div className="h-5 w-24 shrink-0 text-muted-foreground">
-              <svg className="block size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
-                <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
-              </svg>
-            </div>
-          </div>
-
+  return (
+    <>
+    <AppSheet
+      open={isOpen}
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      title="Add task"
+    >
           {/* Content */}
-          <div className="flex flex-1 min-h-0 w-full flex-col gap-8 overflow-y-auto overflow-x-hidden px-5 [-webkit-overflow-scrolling:touch]">
+          <div className="flex flex-1 min-h-0 w-full flex-col gap-8">
                 {/* Voice processing - loading */}
                 {voiceProcessing && (
                   <div className="flex flex-1 flex-col items-center justify-center gap-6 min-h-[240px] py-12">
@@ -853,8 +840,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
                 </>
                 )}
           </div>
-        </div>
-      </div>
+    </AppSheet>
 
       {/* Select List Modal */}
       <SelectListModal
@@ -892,7 +878,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
 
       {/* Session Picker */}
       {isSelectSessionOpen && (
-        <div className="absolute inset-0 z-[10002] flex items-end justify-center pointer-events-auto">
+        <div className="fixed inset-0 z-[10002] flex items-end justify-center pointer-events-auto">
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsSelectSessionOpen(false)} />
           <div className="relative w-full max-w-lg rounded-t-xl bg-card px-5 pt-5 pb-8 flex flex-col gap-4">
             <p className="text-lg font-medium text-foreground">Assign to session</p>
@@ -937,7 +923,6 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
         disabled={isUploadingImage}
         style={{ display: 'none' }}
       />
-    </div>,
-    document.body
+    </>
   );
 }

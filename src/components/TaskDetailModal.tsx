@@ -1,7 +1,7 @@
 import { useState, useEffect, KeyboardEvent, useRef, ChangeEvent, Fragment } from "react";
 import { toast } from "sonner";
-import { createPortal } from "react-dom";
 import svgPaths from "../imports/svg-e51h379o38";
+import { AppSheet } from "./AppSheet";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
 import { SelectListModal } from "./SelectListModal";
 import { SelectMilestoneModal } from "./SelectMilestoneModal";
@@ -508,32 +508,16 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
 
   if (!isOpen) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[10001] pointer-events-none">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 pointer-events-auto bg-black/75 backdrop-blur-sm transition-opacity duration-300"
-        onClick={onClose}
-      />
-      
-      {/* Bottom Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div 
-          className="bg-card flex max-h-[90vh] flex-col gap-10 overflow-hidden rounded-t-xl pb-[60px] pt-5 w-full desktop-bottom-sheet"
-        >
-          {/* Handle */}
-          <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
-            <div className="h-5 w-24 shrink-0 text-muted-foreground">
-              <svg className="block size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
-                <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
-              </svg>
-            </div>
-          </div>
-
+  return (
+    <>
+      <AppSheet
+        open={isOpen}
+        onOpenChange={(open) => { if (!open) onClose(); }}
+        title="Task details"
+      >
           {/* Scrollable Content */}
-          <div 
-            className="flex min-h-0 shrink-0 w-full flex-col gap-8 overflow-x-hidden overflow-y-auto px-5 [-webkit-overflow-scrolling:touch]"
-            style={{ maxHeight: 'calc(90vh - 120px)' }}
+          <div
+            className="flex min-h-0 shrink-0 w-full flex-col gap-8"
           >
             {/* Title and Description Section */}
             <div className="flex flex-col gap-[8px] items-start leading-[1.5] not-italic relative shrink-0 w-full">
@@ -1258,8 +1242,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
               </div>
             )}
           </div>
-        </div>
-      </div>
+      </AppSheet>
 
       {/* Select List Modal */}
       <SelectListModal
@@ -1308,7 +1291,6 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
         onSelectType={handleSelectTaskType}
       />
 
-    </div>,
-    document.body
+    </>
   );
 }

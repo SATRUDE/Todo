@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { AppSheet } from "./AppSheet";
 
 export type TaskTypeOption = "task" | "reminder" | "daily" | "common";
 
@@ -41,47 +42,16 @@ export function TaskTypeModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[10004] pointer-events-none">
-      <div
-        className="absolute inset-0 pointer-events-auto bg-black/75 backdrop-blur-sm transition-opacity duration-300"
-        onClick={onClose}
-        aria-hidden
-      />
-
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pb-[60px] pt-5 desktop-bottom-sheet">
-          {/* Handle */}
-          <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
-            <div className="h-5 w-24 shrink-0 text-muted-foreground">
-              <svg
-                className="block size-full"
-                fill="none"
-                viewBox="0 0 100 20"
-                aria-hidden
-              >
-                <line
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeOpacity="0.3"
-                  strokeWidth="5"
-                  x1="13"
-                  x2="87"
-                  y1="10"
-                  y2="10"
-                />
-              </svg>
-            </div>
-          </div>
-
+    <AppSheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} title="Task type">
           {/* Title */}
-          <div className="w-full shrink-0 px-5">
+          <div className="w-full shrink-0">
             <h2 className="text-xl font-medium tracking-tight text-foreground">
               Task type
             </h2>
           </div>
 
           {/* Options */}
-          <div className="flex flex-col gap-1 px-5 pb-6 pt-4">
+          <div className="flex flex-col gap-1 pb-6 pt-4">
             {OPTIONS.map((option) => {
               const isSelected =
                 (option.value === "task" || option.value === "reminder") &&
@@ -172,8 +142,6 @@ export function TaskTypeModal({
               );
             })}
           </div>
-        </div>
-      </div>
-    </div>
+    </AppSheet>
   );
 }

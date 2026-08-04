@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Calendar } from "./ui/calendar";
+import { AppSheet } from "./AppSheet";
 import { TimeInput } from "./TimeInput";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
@@ -171,31 +172,14 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[10003] pointer-events-none">
-      <div
-        className="absolute inset-0 pointer-events-auto bg-black/75 backdrop-blur-sm transition-opacity duration-300"
-        onClick={onClose}
-        aria-hidden
-      />
-
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pt-5 desktop-bottom-sheet">
-          {/* Handle */}
-          <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
-            <div className="h-5 w-24 shrink-0 text-muted-foreground">
-              <svg className="block size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
-                <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
-              </svg>
-            </div>
-          </div>
-
-          <div className="w-full shrink-0 px-5">
+    <AppSheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} title="Set deadline">
+          <div className="w-full shrink-0">
             <h2 className="text-xl font-medium tracking-tight text-foreground">
               Set Deadline
             </h2>
           </div>
 
-          <div className="flex flex-1 flex-col w-full overflow-x-hidden overflow-y-auto px-5 [-webkit-overflow-scrolling:touch] min-h-0">
+          <div className="flex flex-1 flex-col w-full min-h-0">
             <div className="flex flex-col gap-6 pt-4 pb-2">
               {/* Calendar section */}
               <div className="w-full">
@@ -368,8 +352,6 @@ export function DeadlineModal({ isOpen, onClose, onSetDeadline, onClearDeadline,
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </AppSheet>
   );
 }

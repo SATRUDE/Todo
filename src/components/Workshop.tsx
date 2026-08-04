@@ -335,21 +335,21 @@ export function Workshop({ onBack, tasks }: WorkshopProps) {
               <div className="flex flex-col items-center justify-center py-[40px]">
                 <div className="flex gap-[4px] mb-[16px]">
                   <div 
-                    className="w-2 h-2 bg-[#E1E6EE] rounded-full" 
+                    className="w-2 h-2 bg-foreground rounded-full" 
                     style={{ 
                       animation: 'bounce 1.4s infinite',
                       animationDelay: '0ms'
                     }}
                   ></div>
                   <div 
-                    className="w-2 h-2 bg-[#E1E6EE] rounded-full" 
+                    className="w-2 h-2 bg-foreground rounded-full" 
                     style={{ 
                       animation: 'bounce 1.4s infinite',
                       animationDelay: '200ms'
                     }}
                   ></div>
                   <div 
-                    className="w-2 h-2 bg-[#E1E6EE] rounded-full" 
+                    className="w-2 h-2 bg-foreground rounded-full" 
                     style={{ 
                       animation: 'bounce 1.4s infinite',
                       animationDelay: '400ms'

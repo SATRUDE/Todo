@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import svgPaths from "../imports/svg-p3zv31caxs";
+import { AppSheet } from "./AppSheet";
 
 interface ListItem {
   id: number;
@@ -21,39 +22,16 @@ interface SelectListModalProps {
 export function SelectListModal({ isOpen, onClose, lists, selectedListId, onSelectList, includeToday = false }: SelectListModalProps) {
   if (!isOpen) return null;
 
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
-
   const listItemsWithDefault = includeToday
     ? [{ id: 0, name: "Today", color: "currentColor", count: 0, isShared: false }, ...lists]
     : lists;
 
   return (
-    <div className="fixed inset-0 z-[10002] pointer-events-none">
-      <div className="absolute inset-0 pointer-events-auto bg-black/75 backdrop-blur-sm transition-opacity duration-300" onClick={onClose} aria-hidden />
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-xl bg-card pb-[60px] pt-5 desktop-bottom-sheet">
-          <div className="flex shrink-0 w-full flex-col items-center gap-2.5">
-            <div className="h-5 w-24 shrink-0 text-muted-foreground">
-              <svg className="block size-full" fill="none" viewBox="0 0 100 20" aria-hidden>
-                <line stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5" x1="13" x2="87" y1="10" y2="10" />
-              </svg>
-            </div>
-          </div>
-          <div className="w-full shrink-0 px-5">
+    <AppSheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} title="Add to list">
+          <div className="w-full shrink-0">
             <h2 className="text-xl font-medium tracking-tight text-foreground">Add to list</h2>
           </div>
-          <div className="flex flex-1 flex-col w-full overflow-x-hidden overflow-y-auto px-5 [-webkit-overflow-scrolling:touch] min-h-0" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+          <div className="flex flex-1 flex-col w-full min-h-0">
             <div className="flex flex-col gap-4 pt-4 pb-2">
               {listItemsWithDefault.map((list) => (
                 <div
@@ -83,8 +61,6 @@ export function SelectListModal({ isOpen, onClose, lists, selectedListId, onSele
               ))}
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </AppSheet>
   );
 }
