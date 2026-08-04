@@ -1120,9 +1120,17 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
             {/* Agent Comment Thread */}
             {onSendComment && (
               <div className="flex flex-col gap-3 w-full">
-                <p className="text-sm text-muted-foreground tracking-tight">AI Agent</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground tracking-tight">Staff</p>
+                  {(task as any).aiStatus === 'pending' && (
+                    <span className="text-xs rounded-full bg-blue-500/10 text-blue-500 px-2.5 py-1">With the staff overnight</span>
+                  )}
+                  {(task as any).aiStatus === 'done' && (
+                    <span className="text-xs rounded-full bg-green-500/10 text-green-600 px-2.5 py-1">Draft ready</span>
+                  )}
+                </div>
 
-                {/* Working indicator */}
+                {/* Sending indicator */}
                 {isAssigning && (
                   <div className="rounded-xl bg-secondary px-4 py-3 w-full">
                     <div className="flex items-center gap-2.5">
@@ -1131,7 +1139,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                         <span className="size-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '150ms' }} />
                         <span className="size-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
-                      <p className="text-sm text-muted-foreground">Searching the web...</p>
+                      <p className="text-sm text-muted-foreground">Sending to the staff...</p>
                     </div>
                   </div>
                 )}
@@ -1145,7 +1153,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                     }`}
                   >
                     <p className="text-xs text-muted-foreground mb-1.5 font-medium">
-                      {comment.author === 'ai' ? 'AI' : 'You'}
+                      {comment.author === 'ai' ? 'Staff' : 'You'}
                     </p>
                     <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                       {linkifyText(comment.content)}
@@ -1173,7 +1181,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                         setFollowUpText('');
                       }
                     }}
-                    placeholder={comments.length === 0 ? "Ask the AI anything about this task..." : "Ask a follow-up question..."}
+                    placeholder={comments.length === 0 ? "Brief the staff — a draft arrives overnight..." : "Send a follow-up brief..."}
                     rows={1}
                     className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none min-h-[44px] leading-relaxed disabled:opacity-50"
                     style={{ overflow: 'hidden' }}
