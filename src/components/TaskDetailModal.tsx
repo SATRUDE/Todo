@@ -9,7 +9,7 @@ import { TaskNoteModal } from "./TaskNoteModal";
 import { TaskTypeModal } from "./TaskTypeModal";
 import { linkifyText } from "../lib/textUtils";
 import { supabase } from "../lib/supabase";
-import { Bomb } from "lucide-react";
+import { Bomb, Copy, Check } from "lucide-react";
 
 interface ListItem {
   id: number;
@@ -465,6 +465,44 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     if (selectedMilestoneId === null) return "Milestone";
     const milestone = milestones.find(m => m.id === selectedMilestoneId);
     return milestone ? milestone.name : "Milestone";
+  };
+
+  const [contextCopied, setContextCopied] = useState(false);
+
+  // Assemble the full task context as plain text: paste it into a terminal,
+  // a chat, an email — anywhere the task needs to travel with its context.
+  const handleCopyContext = async () => {
+    const lines: string[] = [];
+    lines.push(`Task: ${(taskInput || task.text || '').trim()}`);
+    if (deadline) {
+      const d = deadline.date;
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      lines.push(`Due: ${dateStr}${deadline.time && deadline.time.trim() ? ` ${deadline.time}` : ''}${deadline.recurring ? ` (recurring: ${deadline.recurring})` : ''}`);
+    }
+    const list = lists.find(l => l.id === selectedListId);
+    if (list) lines.push(`List: ${list.name}`);
+    const milestone = selectedMilestoneId !== null ? milestones.find(m => m.id === selectedMilestoneId) : undefined;
+    if (milestone) lines.push(`Milestone: ${milestone.name}`);
+    if ((taskDescription || '').trim()) lines.push('', 'Description:', taskDescription.trim());
+    if (subtasks.length > 0) {
+      lines.push('', 'Subtasks:');
+      subtasks.forEach(s => lines.push(`- [${s.completed ? 'x' : ' '}] ${s.text}`));
+    }
+    if (notesForTask.length > 0) {
+      lines.push('', 'Notes:');
+      notesForTask.forEach(n => lines.push(`- ${n.content}`));
+    }
+    if (comments.length > 0) {
+      lines.push('', 'Thread:');
+      comments.forEach(c => lines.push(`${c.author === 'ai' ? 'Staff' : 'Me'}: ${c.content}`));
+    }
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setContextCopied(true);
+      setTimeout(() => setContextCopied(false), 2000);
+    } catch (err) {
+      console.error('Copy context failed:', err);
+    }
   };
 
   if (!isOpen) return null;
@@ -1052,6 +1090,19 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                     </svg>
                     Follow up
+                  </button>
+                )}
+
+                {/* Copy Button — full task context to the clipboard */}
+                {task.id >= 0 && (
+                  <button
+                    type="button"
+                    className="flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
+                    onClick={handleCopyContext}
+                    aria-label="Copy task context"
+                  >
+                    {contextCopied ? <Check className="size-5 shrink-0" strokeWidth={1.5} /> : <Copy className="size-5 shrink-0" strokeWidth={1.5} />}
+                    {contextCopied ? 'Copied' : 'Copy'}
                   </button>
                 )}
 
