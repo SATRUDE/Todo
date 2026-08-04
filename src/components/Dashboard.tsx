@@ -52,9 +52,10 @@ interface DashboardProps {
   onNavigateToDrinkWater?: () => void;
   onNavigateToFocusSessions?: () => void;
   onNavigateToCalorieCounter?: () => void;
+  onNavigateToMenus?: () => void;
 }
 
-export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCommonTasks, onNavigateToDailyTasks, onNavigateToGoals, onNavigateToNotes, onNavigateToDrinkWater, onNavigateToFocusSessions, onNavigateToCalorieCounter }: DashboardProps) {
+export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCommonTasks, onNavigateToDailyTasks, onNavigateToGoals, onNavigateToNotes, onNavigateToDrinkWater, onNavigateToFocusSessions, onNavigateToCalorieCounter, onNavigateToMenus }: DashboardProps) {
   const [calorieSubtitle, setCalorieSubtitle] = useState<{ text: string; over: boolean } | null>(null);
 
   useEffect(() => {
@@ -132,6 +133,15 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCom
               iconPath="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5S13 5.64 13 3c0 2.64 1 4.5 3 6.5s3 4.5 3 6.5a7 7 0 0 1-6 6.92"
               colorClass="text-cyan-500"
               onClick={onNavigateToDrinkWater ?? (() => {})}
+            />
+          </div>
+
+          <div className="flex gap-4 w-full">
+            <DashboardCard
+              label="Menu"
+              iconPath="M3 11h18M5 11a7 7 0 0 0 14 0M8.5 11V9.5a3.5 3.5 0 0 1 7 0V11M12 21v-3m-5 3h10"
+              colorClass="text-amber-500"
+              onClick={onNavigateToMenus ?? (() => {})}
             />
           </div>
 

@@ -134,6 +134,63 @@ async function sendNotification(subscription, todo, supabase) {
   }
 }
 
+/**
+ * Notify once when a new weekly menu draft lands in the `menus` table
+ * (the overnight chef routine files drafts; the app's Menu page is where
+ * they get reviewed and published). Claim-then-send, same race guard as
+ * todo reminders. Silently a no-op if the menus table doesn't exist yet.
+ */
+async function notifyMenuDrafts(supabase) {
+  const { data: drafts, error } = await supabase
+    .from('menus')
+    .select('*')
+    .eq('status', 'draft')
+    .is('notified_at', null);
+  if (error) {
+    if (error.code !== '42P01') console.error('❌ Menu draft check failed:', error.message);
+    return;
+  }
+  for (const menu of drafts || []) {
+    const { data: claimed } = await supabase
+      .from('menus')
+      .update({ notified_at: new Date().toISOString() })
+      .eq('id', menu.id)
+      .is('notified_at', null)
+      .select();
+    if (!claimed || claimed.length === 0) continue;
+
+    const { data: subs } = await supabase
+      .from('push_subscriptions')
+      .select('*')
+      .eq('user_id', menu.user_id);
+    for (const subscription of subs || []) {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: subscription.endpoint,
+            keys: { p256dh: subscription.p256dh, auth: subscription.auth },
+          },
+          JSON.stringify({
+            title: "Remy's weekly menu is ready",
+            body: `Uke ${menu.week_number} is drafted and waiting for your review in the app.`,
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            tag: `menu-${menu.id}`,
+            data: { url: '/' },
+          })
+        );
+        console.log(`✅ Sent menu-draft notification for Uke ${menu.week_number}`);
+      } catch (err) {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          await supabase.from('push_subscriptions').delete().eq('id', subscription.id);
+        } else {
+          console.error('❌ Menu notification failed:', err.statusCode || err.message);
+        }
+      }
+    }
+  }
+}
+
 module.exports = async function handler(req, res) {
   // Only allow GET requests (for cron) or POST (for manual triggering)
   if (req.method !== 'GET' && req.method !== 'POST') {
@@ -325,6 +382,9 @@ module.exports = async function handler(req, res) {
         console.log(`⚠️ Failed to send notifications for todo #${todo.id}, but it's already marked as notified`);
       }
     }
+
+    // Weekly menu drafts piggyback on the same cron
+    await notifyMenuDrafts(supabase);
 
     console.log(`\n✅ Reminder check complete!`);
     console.log(`   Successfully sent: ${successCount} notifications`);
