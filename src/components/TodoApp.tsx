@@ -2225,11 +2225,11 @@ export function TodoApp() {
         
         // Check if tasks already exist for these dates and generate missing ones
         for (const targetDate of datesToGenerate) {
-          // Check if an incomplete task with the same text/description/date already exists.
-          // Completed tasks don't block regeneration — a completed Monday task shouldn't
-          // prevent the same template generating for a future Monday.
+          // A task with the same text/description/date blocks regeneration whether
+          // open OR completed: a completed instance means that occurrence is done,
+          // not missing. Excluding completed rows here resurrected finished tasks
+          // the moment they were ticked (same rule as generateTasksFromDailyTasks).
           const existingTask = displayExistingTasks.find(todo => {
-            if (todo.completed) return false;
             // Compare text/description after trimming. Todos store a trimmed
             // description (createTask) while common tasks may store untrimmed
             // text — an exact compare here would never match and the template
