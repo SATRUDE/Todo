@@ -1,4 +1,5 @@
 import { useState, useEffect, KeyboardEvent } from "react";
+import { AppSheet } from "./AppSheet";
 
 interface AddFolderModalProps {
   isOpen: boolean;
@@ -41,28 +42,7 @@ export function AddFolderModal({ isOpen, onClose, onAddFolder }: AddFolderModalP
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[10002] pointer-events-none"
-      style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10002 }}
-    >
-      <div
-        className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
-        onClick={onClose}
-        style={{
-          backgroundColor: "rgba(0, 0, 0, 0.75)",
-          backdropFilter: "blur(4px)",
-        }}
-      />
-
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="flex flex-col items-center rounded-t-xl w-full max-h-[90vh] overflow-hidden bg-card desktop-bottom-sheet">
-          <div className="flex flex-col gap-2.5 items-center shrink-0 w-full pt-5">
-            <div className="h-5 w-24 shrink-0 text-muted-foreground">
-              <svg className="block size-full" fill="none" viewBox="0 0 100 20" stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5">
-                <line x1="13" x2="87" y1="10" y2="10" />
-              </svg>
-            </div>
-          </div>
+    <AppSheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} title="New folder">
 
           <div className="flex flex-col w-full gap-6 pb-10 px-5">
             <div className="flex flex-col gap-8 items-start w-full">
@@ -94,8 +74,6 @@ export function AddFolderModal({ isOpen, onClose, onAddFolder }: AddFolderModalP
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </AppSheet>
   );
 }

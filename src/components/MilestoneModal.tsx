@@ -1,6 +1,6 @@
 import { useState, useEffect, KeyboardEvent, useRef } from "react";
+import { AppSheet } from "./AppSheet";
 import { toast } from "sonner";
-import { createPortal } from "react-dom";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
 import { DeadlineModal } from "./DeadlineModal";
 
@@ -160,31 +160,9 @@ export function MilestoneModal({
 
   if (!isOpen) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[10001] pointer-events-none" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10001 }}>
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 pointer-events-auto transition-opacity duration-300"
-        onClick={onClose}
-        style={{ 
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(4px)'
-        }}
-      />
-      
-      {/* Bottom Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="bg-background flex flex-col gap-[40px] items-center overflow-clip pb-[60px] pt-[20px] px-0 relative rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet">
-          {/* Handle */}
-          <div className="flex flex-col gap-[10px] items-center relative shrink-0 w-full">
-            <div className="h-[20px] relative shrink-0 w-[100px]">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
-                <g>
-                  <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
-                </g>
-              </svg>
-            </div>
-          </div>
+  return (
+    <>
+    <AppSheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} title="Milestone">
 
           {/* Content */}
           <div className="flex flex-col gap-[32px] items-start px-[20px] py-0 relative shrink-0 w-full">
@@ -305,8 +283,8 @@ export function MilestoneModal({
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        
+    </AppSheet>
 
       {/* Deadline Modal */}
       <DeadlineModal
@@ -316,7 +294,6 @@ export function MilestoneModal({
         onClearDeadline={() => setDeadline(null)}
         currentDeadline={deadline}
       />
-    </div>,
-    document.body
+    </>
   );
 }

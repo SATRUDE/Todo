@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { createPortal } from "react-dom";
+import { AppSheet } from "./AppSheet";
 import { X, Search } from "lucide-react";
 
 interface Todo {
@@ -140,26 +140,8 @@ export function AddTasksToSessionModal({
     groups.push({ key: "unassigned", label: <span className="text-muted-foreground">Unassigned</span>, tasks: unassignedTasks });
   }
 
-  return createPortal(
-    <div className="fixed inset-0 z-[10001] pointer-events-none" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10001 }}>
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 pointer-events-auto"
-        onClick={onClose}
-        style={{ backgroundColor: "rgba(0, 0, 0, 0.75)", backdropFilter: "blur(4px)" }}
-      />
-
-      {/* Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 animate-slide-up pointer-events-auto flex justify-center">
-        <div className="bg-background flex flex-col rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet" style={{ maxHeight: "85vh" }}>
-          {/* Handle */}
-          <div className="flex justify-center pt-5 pb-2 shrink-0">
-            <div className="h-[20px] w-[100px]">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
-                <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
-              </svg>
-            </div>
-          </div>
+  return (
+    <AppSheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} title="Add tasks to session">
 
           {/* Header */}
           <div className="flex items-center justify-between px-5 pb-4 shrink-0">
@@ -241,9 +223,6 @@ export function AddTasksToSessionModal({
                 : "Select tasks to add"}
             </button>
           </div>
-        </div>
-      </div>
-    </div>,
-    document.body
+    </AppSheet>
   );
 }
