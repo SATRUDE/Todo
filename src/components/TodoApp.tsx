@@ -100,6 +100,7 @@ import {
   type SessionTaskWithTodo,
   fetchTaskComments,
   addTaskComment,
+  updateTaskAiStatus,
   fetchAiInstructions,
   type TaskComment
 } from "../lib/database";
@@ -138,6 +139,7 @@ interface Todo {
   };
   type?: 'task' | 'reminder'; // Task type: 'task' or 'reminder'
   updatedAt?: string; // ISO timestamp string
+  aiStatus?: string | null; // 'pending' = queued for the overnight staff round, 'done' = draft delivered
 }
 
 interface ListItem {
@@ -2571,8 +2573,6 @@ export function TodoApp() {
     const task = todos.find(t => t.id === taskId);
     if (!task) return;
 
-    const previousComments = [...commentsForTask];
-
     const tempId = -Date.now();
     const tempComment: TaskComment = { id: tempId, todo_id: taskId, author: 'user', content };
     setCommentsForTask(prev => [...prev, tempComment]);
@@ -2582,27 +2582,16 @@ export function TodoApp() {
       const savedUserComment = await addTaskComment(taskId, content, 'user');
       setCommentsForTask(prev => prev.map(c => c.id === tempId ? savedUserComment : c));
 
-      const conversationHistory = [...previousComments, savedUserComment].map(c => ({
-        author: c.author,
-        content: c.content,
-      }));
-
-      const res = await fetch('/api/agent-task', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          taskText: task.text,
-          taskDescription: task.description || '',
-          conversationHistory,
-          customInstructions: aiInstructions,
-        }),
-      });
-      if (!res.ok) throw new Error('Agent request failed');
-      const data = await res.json();
-      const aiComment = await addTaskComment(taskId, data.comment, 'ai');
-      setCommentsForTask(prev => [...prev, aiComment]);
+      // Queue the task for the overnight staff round (Mark OS) rather than a
+      // paid instant API: the scheduled routine reads ai_status = 'pending',
+      // answers as an 'ai' comment overnight, and flips the status to 'done'.
+      await updateTaskAiStatus(taskId, 'pending');
+      setTodos(prev => prev.map(t => t.id === taskId ? { ...t, aiStatus: 'pending' } : t));
+      if (selectedTask?.id === taskId) {
+        setSelectedTask(prev => prev ? { ...prev, aiStatus: 'pending' } : prev);
+      }
     } catch (err) {
-      console.error('[agent follow-up] Error:', err);
+      console.error('[hand to staff] Error:', err);
       setCommentsForTask(prev => prev.filter(c => c.id !== tempId));
     } finally {
       setAssigningTaskIds(prev => {

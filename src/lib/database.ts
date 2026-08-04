@@ -472,6 +472,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     timesDelayed: dbTodo.times_delayed && dbTodo.times_delayed > 0 ? dbTodo.times_delayed : undefined,
     type: dbTodo.type || 'task', // Default to 'task' if not set
     updatedAt: dbTodo.updated_at,
+    aiStatus: dbTodo.ai_status || undefined,
   }
 }
 
