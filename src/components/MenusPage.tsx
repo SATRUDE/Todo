@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { fetchMenus, updateMenuContent, createMenuDraft, Menu } from '../lib/database';
 import { supabase } from '../lib/supabase';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface MenusPageProps {
   onBack: () => void;
@@ -61,9 +62,15 @@ export function MenusPage({ onBack }: MenusPageProps) {
     }, 800);
   };
 
-  const handlePublish = async () => {
+  const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
+
+  const handlePublish = () => {
     if (!draft) return;
-    if (!window.confirm(`Publish Uke ${draft.week_number} to the shared Notion page?`)) return;
+    setIsPublishConfirmOpen(true);
+  };
+
+  const performPublish = async () => {
+    if (!draft) return;
     setIsPublishing(true);
     setError(null);
     try {
@@ -182,6 +189,14 @@ export function MenusPage({ onBack }: MenusPageProps) {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={isPublishConfirmOpen}
+        onOpenChange={setIsPublishConfirmOpen}
+        title={draft ? `Publish Uke ${draft.week_number}?` : 'Publish?'}
+        description="The menu goes onto the shared Notion page, where Ida sees it."
+        confirmLabel="Post to Notion"
+        onConfirm={performPublish}
+      />
     </div>
   );
 }

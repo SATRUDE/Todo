@@ -1,4 +1,5 @@
 import { useState, useEffect, KeyboardEvent, useRef, ChangeEvent, Fragment } from "react";
+import { toast } from "sonner";
 import { createPortal } from "react-dom";
 import svgPaths from "../imports/svg-e51h379o38";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
@@ -218,13 +219,13 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      toast.error('Please select an image file');
       return;
     }
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('Image size must be less than 10MB');
+      toast.error('Image size must be less than 10MB');
       return;
     }
 
@@ -274,7 +275,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     } catch (error) {
       console.error('Error uploading image:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Failed to upload image: ${errorMessage}. Please check that the Supabase Storage bucket 'task-images' is set up correctly.`);
+      toast.error(`Failed to upload image: ${errorMessage}. Please check that the Supabase Storage bucket 'task-images' is set up correctly.`);
     } finally {
       setIsUploadingImage(false);
       // Reset input
@@ -309,7 +310,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
       setImageUrl(null);
     } catch (error) {
       console.error('Error deleting image:', error);
-      alert('Failed to delete image. Please try again.');
+      toast.error('Failed to delete image. Please try again.');
     }
   };
 

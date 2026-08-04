@@ -73,7 +73,10 @@ export function TaskRow({
       <div className="flex gap-2 items-center w-full min-w-0">
         {showCheckbox && todo.type !== "reminder" && (
           <div
-            className="shrink-0 size-6 cursor-pointer"
+            className="shrink-0 size-6 box-content p-2.5 -m-2.5 cursor-pointer"
+            role="checkbox"
+            aria-checked={todo.completed}
+            aria-label={todo.completed ? "Mark as not done" : "Mark as done"}
             onClick={(e) => {
               e.stopPropagation();
               onToggle(todo.id);

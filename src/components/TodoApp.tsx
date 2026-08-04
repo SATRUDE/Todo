@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import svgPaths from "../imports/svg-y4ms3lw2z2";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { AddTaskModal } from "./AddTaskModal";
@@ -1059,30 +1060,30 @@ export function TodoApp() {
           const success = await sendSubscriptionToServer(subscription);
           if (success) {
             console.log('✅ Subscription saved to server successfully');
-            alert('Notifications enabled! You will receive reminders for due todos.');
+            toast.success('Notifications enabled! You will receive reminders for due todos.');
           } else {
             console.error('❌ Failed to save subscription to server');
-            alert('Notifications enabled locally, but failed to save to server. Check console for details.');
+            toast.error('Notifications enabled locally, but failed to save to server. Check console for details.');
           }
         } else {
           console.error('❌ Failed to create push subscription');
         }
       } else if (permission === 'denied') {
-        alert('Notification permission was previously denied. Please enable notifications in your browser settings to receive reminders.');
+        toast.error('Notification permission was previously denied. Please enable notifications in your browser settings to receive reminders.');
       } else {
         // Permission is 'default' - user dismissed the prompt
         console.log('Notification permission prompt was dismissed');
       }
     } catch (error) {
       console.error('Error enabling notifications:', error);
-      alert('Error enabling notifications: ' + (error as Error).message);
+      toast.error('Error enabling notifications: ' + (error as Error).message);
     }
   }, []);
 
   // Handle test notification
   const handleTestNotification = useCallback(async () => {
     if (notificationPermission !== 'granted') {
-      alert('Notification permission not granted. Please enable notifications first.');
+      toast.info('Notification permission not granted. Please enable notifications first.');
       return;
     }
 
@@ -1095,7 +1096,7 @@ export function TodoApp() {
       if (subscription) {
         const pushTriggered = await sendTestPushNotification(subscription);
         if (pushTriggered) {
-          alert('Push notification triggered! It may take a few seconds to arrive.');
+          toast.success('Push notification triggered! It may take a few seconds to arrive.');
           return;
         }
       } else {
@@ -1143,15 +1144,15 @@ export function TodoApp() {
           return;
         } catch (swError) {
           console.error('Service worker notification failed:', swError);
-          alert('Failed to show notification via service worker. Check console for details.');
+          toast.error('Failed to show notification via service worker. Check console for details.');
         }
       }
       
       console.error('Neither service worker nor Notification API is available');
-      alert('Notifications are not supported in this browser.');
+      toast.error('Notifications are not supported in this browser.');
     } catch (error) {
       console.error('Error showing test notification:', error);
-      alert('Failed to show notification. Check console for details.');
+      toast.error('Failed to show notification. Check console for details.');
     }
   }, [notificationPermission]);
 
@@ -1166,7 +1167,7 @@ export function TodoApp() {
     if (!('serviceWorker' in navigator)) {
       console.log('Service workers not supported');
       if (showChecking) {
-        alert('Service workers are not supported in this browser.');
+        toast.error('Service workers are not supported in this browser.');
       }
       return;
     }
@@ -1181,7 +1182,7 @@ export function TodoApp() {
         console.log('No service worker registration found');
         if (showChecking) {
           setIsCheckingUpdate(false);
-          alert('No service worker found. The app may not be installed as a PWA.');
+          toast.error('No service worker found. The app may not be installed as a PWA.');
         }
         return;
       }
@@ -1195,7 +1196,7 @@ export function TodoApp() {
         setUpdateAvailable(true);
         if (showChecking) {
           setIsCheckingUpdate(false);
-          alert('Update available! Click "Check for update" again to reload and apply the update.');
+          toast.info('Update available! Click "Check for update" again to reload and apply the update.');
         }
         return;
       }
@@ -1221,7 +1222,7 @@ export function TodoApp() {
               setUpdateAvailable(true);
               if (showChecking) {
                 setIsCheckingUpdate(false);
-                alert('Update available! Click "Check for update" again to reload and apply the update.');
+                toast.info('Update available! Click "Check for update" again to reload and apply the update.');
               }
             }
           }
@@ -1245,7 +1246,7 @@ export function TodoApp() {
           const currentUpdateAvailable = localStorage.getItem('app_version') !== APP_VERSION;
           if (!currentUpdateAvailable) {
             console.log('✅ App is up to date');
-            alert('You are using the latest version of the app.');
+            toast.success('You are using the latest version of the app.');
           }
         }, 1500);
       }
@@ -1253,7 +1254,7 @@ export function TodoApp() {
       console.error('❌ Error checking for updates:', error);
       if (showChecking) {
         setIsCheckingUpdate(false);
-        alert('Error checking for updates: ' + (error as Error).message);
+        toast.error('Error checking for updates: ' + (error as Error).message);
       }
     }
   }, []);
@@ -1547,7 +1548,7 @@ export function TodoApp() {
     } catch (error) {
       console.error('Error adding task:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
-      alert(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1574,7 +1575,7 @@ export function TodoApp() {
     } catch (error) {
       console.error('Error adding task to list:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
-      alert(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1601,7 +1602,7 @@ export function TodoApp() {
     } catch (error) {
       console.error('Error adding task to milestone:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
-      alert(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1705,7 +1706,7 @@ export function TodoApp() {
       }
     } catch (error) {
       console.error('Error updating common task:', error);
-      alert(`Failed to update common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to update common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1720,7 +1721,7 @@ export function TodoApp() {
       setTodos(displayTasks);
     } catch (error) {
       console.error('Error deleting common task:', error);
-      alert(`Failed to delete common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to delete common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1737,7 +1738,7 @@ export function TodoApp() {
       }
     } catch (error) {
       console.error('Error creating common task:', error);
-      alert(`Failed to create common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to create common task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1763,7 +1764,7 @@ export function TodoApp() {
       setTodos(displayTasks);
     } catch (error) {
       console.error('Error adding common task to list:', error);
-      alert(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1911,7 +1912,7 @@ export function TodoApp() {
       setDailyTasks(updatedDailyTasks);
     } catch (error) {
       console.error('Error updating daily task:', error);
-      alert(`Failed to update daily task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to update daily task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1921,7 +1922,7 @@ export function TodoApp() {
       setDailyTasks(dailyTasks.filter(task => task.id !== id));
     } catch (error) {
       console.error('Error deleting daily task:', error);
-      alert(`Failed to delete daily task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to delete daily task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1936,7 +1937,7 @@ export function TodoApp() {
     } catch (error) {
       console.error('Error creating daily task:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      alert(`Failed to create daily task: ${errorMessage}`);
+      toast.error(`Failed to create daily task: ${errorMessage}`);
     }
   };
 
@@ -1952,7 +1953,7 @@ export function TodoApp() {
       setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
     } catch (error) {
       console.error('Error updating note:', error);
-      alert(`Failed to update note: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to update note: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1962,7 +1963,7 @@ export function TodoApp() {
       setNotes((prev) => prev.filter((n) => n.id !== id));
     } catch (error) {
       console.error('Error deleting note:', error);
-      alert(`Failed to delete note: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to delete note: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1974,7 +1975,7 @@ export function TodoApp() {
       setFocusSessions((prev) => [created, ...prev]);
     } catch (error) {
       console.error('Error creating focus session:', error);
-      alert(`Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1985,7 +1986,7 @@ export function TodoApp() {
       if (selectedSession?.id === id) setSelectedSession(updated);
     } catch (error) {
       console.error('Error updating focus session:', error);
-      alert(`Failed to update session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to update session: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1999,7 +2000,7 @@ export function TodoApp() {
       }
     } catch (error) {
       console.error('Error deleting focus session:', error);
-      alert(`Failed to delete session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to delete session: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -2055,7 +2056,7 @@ export function TodoApp() {
       setSelectedSessionTasks(tasks);
     } catch (error) {
       console.error('Error adding tasks to session:', error);
-      alert(`Failed to add tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to add tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -2066,7 +2067,7 @@ export function TodoApp() {
       setSelectedSessionTasks((prev) => prev.filter((st) => st.task_id !== taskId));
     } catch (error) {
       console.error('Error removing task from session:', error);
-      alert(`Failed to remove task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to remove task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -2132,7 +2133,7 @@ export function TodoApp() {
       console.log(`Reset common tasks: deleted ${tasksToDelete.length} tasks and regenerated`);
     } catch (error) {
       console.error('Error resetting common tasks:', error);
-      alert(`Failed to reset common tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to reset common tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -2352,7 +2353,7 @@ export function TodoApp() {
       }
     } catch (error) {
       console.error('Error updating goal:', error);
-      alert(`Failed to update goal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to update goal: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -2362,7 +2363,7 @@ export function TodoApp() {
       setGoals(goals.filter(goal => goal.id !== id));
     } catch (error) {
       console.error('Error deleting goal:', error);
-      alert(`Failed to delete goal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to delete goal: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -2373,7 +2374,7 @@ export function TodoApp() {
       setGoals([...goals, displayGoal]);
     } catch (error) {
       console.error('Error creating goal:', error);
-      alert(`Failed to create goal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to create goal: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -3849,10 +3850,10 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
               const createdTask = await createTask(overdueTask);
               const appTodo = dbTodoToDisplayTodo(createdTask);
               setTodos(prevTodos => [...prevTodos, appTodo]);
-              alert("Overdue test task created! Go to Today page to see it.");
+              toast.success("Overdue test task created! Go to Today page to see it.");
             } catch (error) {
               console.error('Error creating overdue task:', error);
-              alert("Failed to create overdue task. Check console for details.");
+              toast.error("Failed to create overdue task. Check console for details.");
             }
           }}
         />
@@ -3861,12 +3862,12 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
 
       {/* Bottom Navigation */}
       {currentPage !== "workshop" && (
-      <nav className="flex gap-10 items-center justify-center py-5 pb-[60px] fixed bottom-0 left-0 right-0 w-full bg-card border-t border-border z-[1000]" aria-label="Main navigation">
+      <nav className="flex gap-6 items-center justify-center py-3 pb-[max(env(safe-area-inset-bottom),2.5rem)] fixed bottom-0 left-0 right-0 w-full bg-card border-t border-border z-[1000]" aria-label="Main navigation">
         
         {/* Calendar Icon */}
         <button
           type="button"
-          className="relative shrink-0 size-8 cursor-pointer p-0 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
+          className="relative shrink-0 size-11 cursor-pointer p-1.5 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
           onClick={() => {
             setCurrentPage("today");
             setSelectedList(null);
@@ -3890,7 +3891,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         {/* Dashboard Icon */}
         <button
           type="button"
-          className="relative shrink-0 size-8 cursor-pointer p-0 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
+          className="relative shrink-0 size-11 cursor-pointer p-1.5 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
           onClick={() => {
             setCurrentPage("dashboard");
             setSelectedList(null);
@@ -3914,7 +3915,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         {/* Plus Icon */}
         <button
           type="button"
-          className="relative shrink-0 size-8 cursor-pointer p-0 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
+          className="relative shrink-0 size-11 cursor-pointer p-1.5 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
           onClick={() => setIsModalOpen(true)}
           aria-label="Add task"
         >
@@ -3935,7 +3936,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         {/* List Icon */}
         <button
           type="button"
-          className="relative shrink-0 size-8 cursor-pointer p-0 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
+          className="relative shrink-0 size-11 cursor-pointer p-1.5 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
           onClick={() => {
             setCurrentPage("lists");
             setSelectedList(null);
@@ -3959,7 +3960,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         {/* Settings Icon */}
         <button
           type="button"
-          className="relative shrink-0 size-8 cursor-pointer p-0 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
+          className="relative shrink-0 size-11 cursor-pointer p-1.5 border-none bg-transparent rounded hover:opacity-80 transition-opacity"
           onClick={() => {
             setCurrentPage("settings");
             setSelectedList(null);

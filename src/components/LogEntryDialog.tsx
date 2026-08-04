@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ConfirmDialog } from "./ConfirmDialog";
 import {
   Dialog,
   DialogContent,
@@ -153,9 +154,15 @@ export function LogEntryDialog({
     }
   };
 
-  const handleDelete = async () => {
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  const handleDelete = () => {
     if (!initialEntry) return;
-    if (!confirm("Delete this entry?")) return;
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const performDelete = async () => {
+    if (!initialEntry) return;
     setSubmitting(true);
     try {
       await deleteCalorieLog(initialEntry.id);
@@ -316,6 +323,14 @@ export function LogEntryDialog({
             </div>
           </DialogFooter>
         </form>
+        <ConfirmDialog
+          open={isDeleteConfirmOpen}
+          onOpenChange={setIsDeleteConfirmOpen}
+          title="Delete this entry?"
+          confirmLabel="Delete"
+          destructive
+          onConfirm={performDelete}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -1,4 +1,5 @@
 import { useState, useEffect, KeyboardEvent, useRef } from "react";
+import { toast } from "sonner";
 import { createPortal } from "react-dom";
 import deleteIconPaths from "../imports/svg-u66msu10qs";
 import { DeadlineModal } from "./DeadlineModal";
@@ -110,7 +111,7 @@ export function MilestoneModal({
       onClose();
     } catch (error) {
       console.error('Error saving milestone:', error);
-      alert('Failed to save milestone. Check console for details.');
+      toast.error('Failed to save milestone. Check console for details.');
     }
   };
 
