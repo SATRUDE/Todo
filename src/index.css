@@ -79,13 +79,16 @@
 
 .dark {
   --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
+  /* The app's real text colour (#E1E6EE), not stock shadcn near-white:
+     tokens follow the design, so tokenised components look identical. */
+  --foreground: 216 28% 91%;
   --card: 240 10% 3.9%;
-  --card-foreground: 0 0% 98%;
+  --card-foreground: 216 28% 91%;
   --popover: 240 10% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 0 0% 98%;
-  --primary-foreground: 240 5.9% 10%;
+  --popover-foreground: 216 28% 91%;
+  /* Brand blue (#0B64F9) as primary, so Button/Checkbox defaults carry it. */
+  --primary: 217 95% 51%;
+  --primary-foreground: 0 0% 98%;
   --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 0 0% 98%;
   --muted: 240 3.7% 15.9%;
