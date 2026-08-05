@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { GoalDetailModal } from "./GoalDetailModal";
 import { supabase } from "../lib/supabase";
 import { fetchMilestones, Milestone, fetchMilestoneUpdatesForMilestones, MilestoneUpdate } from "../lib/database";
+import { goalStatusPillStyle } from "../lib/goalStatus";
 
 interface Goal {
   id: number;
@@ -421,16 +422,6 @@ export function Goals({
 
   const goalsInsights = goalsReport ? parseGoalsInsights(goalsReport) : [];
 
-  // Helper function to get status badge color
-  const getStatusColor = (status: string | null): string => {
-    if (!status) return '#5b5d62';
-    const statusLower = status.toLowerCase();
-    if (statusLower.includes('on track')) return '#00C853';
-    if (statusLower.includes('at risk')) return '#FFB300';
-    if (statusLower.includes('failing')) return '#F44336';
-    return '#5b5d62';
-  };
-
   // Helper function to extract milestone completion percentage
   const getMilestonePercentage = (progressSummary: GoalInsight['progressSummary']): number => {
     if (!progressSummary || !progressSummary.milestonesCompleted) return 0;
@@ -518,14 +509,13 @@ export function Goals({
                 className="relative shrink-0 size-[32px] cursor-pointer"
                 onClick={onBack}
               >
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
+                <svg className="block size-full stroke-foreground" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
                   <g>
-                    <path 
-                      d="M20 8L12 16L20 24" 
-                      stroke="#E1E6EE" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth="2" 
+                    <path
+                      d="M20 8L12 16L20 24"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
                     />
                   </g>
                 </svg>
@@ -540,11 +530,10 @@ export function Goals({
                 className="relative shrink-0 size-[32px] cursor-pointer"
                 onClick={handleCreateNewGoal}
               >
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
+                <svg className="block size-full stroke-foreground" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
                   <g>
                     <path
                       d="M16 6V26M26 16H6"
-                      stroke="#E1E6EE"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth="2"
@@ -574,9 +563,8 @@ export function Goals({
                   return (
                     <div
                       key={goal.id}
-                      className="rounded-[12px] w-full min-w-0 cursor-pointer overflow-hidden"
-                      style={{ 
-                        backgroundColor: '#1f2022',
+                      className="bg-secondary rounded-[12px] w-full min-w-0 cursor-pointer overflow-hidden"
+                      style={{
                         padding: '16px'
                       }}
                       onClick={() => handleGoalClick(goal)}
@@ -584,7 +572,7 @@ export function Goals({
                       {/* Header: Due date and Status */}
                       <div className="flex items-center justify-between mb-[12px]">
                         {metrics.nextDueDate ? (
-                          <p className="font-normal font-normal text-[14px]" style={{ color: '#A1A1AA' }}>
+                          <p className="font-normal font-normal text-[14px] text-muted-foreground">
                             {formatDueDate(metrics.nextDueDate)}
                           </p>
                         ) : (
@@ -596,18 +584,7 @@ export function Goals({
                             style={{
                               padding: '4px 10px',
                               borderRadius: '6px',
-                              backgroundColor:
-                                metrics.status === 'On track'
-                                  ? 'rgba(76, 175, 80, 0.2)'
-                                  : metrics.status === 'At risk'
-                                    ? 'rgba(255, 193, 7, 0.2)'
-                                    : 'rgba(244, 67, 54, 0.2)',
-                              color:
-                                metrics.status === 'On track'
-                                  ? '#81c784'
-                                  : metrics.status === 'At risk'
-                                    ? '#ffca28'
-                                    : '#e57373',
+                              ...goalStatusPillStyle(metrics.status),
                             }}
                           >
                             {metrics.status}
@@ -622,13 +599,13 @@ export function Goals({
 
                       {/* Milestone Progress */}
                       {metrics.totalMilestones > 0 && (
-                        <p className="font-normal font-normal text-[14px] mb-[8px]" style={{ color: '#A1A1AA' }}>
+                        <p className="font-normal font-normal text-[14px] mb-[8px] text-muted-foreground">
                           {metrics.completedMilestones}/{metrics.totalMilestones} milestones completed
                         </p>
                       )}
 
                       {/* Recent Activity */}
-                      <p className="font-normal font-normal text-[14px]" style={{ color: '#5b5d62' }}>
+                      <p className="font-normal font-normal text-[14px] text-muted-foreground">
                         {metrics.recentCompletedTasks} task{metrics.recentCompletedTasks !== 1 ? 's' : ''} completed in last week
                       </p>
                     </div>
@@ -649,8 +626,7 @@ export function Goals({
                         fill="none"
                         viewBox="0 0 24 24"
                         strokeWidth="1.5"
-                        stroke="#5b5d62"
-                        className="block size-full"
+                        className="block size-full stroke-muted-foreground"
                       >
                         <path
                           strokeLinecap="round"
