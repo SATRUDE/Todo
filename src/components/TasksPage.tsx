@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search, StickyNote, ChevronRight, Zap, Calendar, Bomb } from "lucide-react";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { linkifyText } from "../lib/textUtils";
+import { goalStatusPillStyle } from "../lib/goalStatus";
 
 const LIST_ICON_PATH = svgPathsToday.p1c6a4380;
 
@@ -395,15 +396,11 @@ function GoalStatusBadge({
 }: {
   status: "On track" | "At risk" | "Failing";
 }) {
-  const styles = {
-    "On track": "bg-emerald-500/20 text-emerald-400",
-    "At risk": "bg-amber-500/20 text-amber-400",
-    Failing: "bg-destructive/20 text-red-400",
-  };
   return (
     <Badge
       variant="secondary"
-      className={`text-[13px] font-medium px-2.5 py-0.5 rounded-md ${styles[status]}`}
+      className="text-[13px] font-medium px-2.5 py-0.5 rounded-md"
+      style={goalStatusPillStyle(status)}
     >
       {status}
     </Badge>

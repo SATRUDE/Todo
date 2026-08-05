@@ -75,6 +75,15 @@
   --chart-3: 197 37% 24%;
   --chart-4: 43 74% 66%;
   --chart-5: 27 87% 67%;
+  /* Goal status pills. Opaque on purpose: the pill sits on three different
+     surfaces, so a translucent tint would composite to a different colour on
+     each. Every pair measures above 4.5:1 in both themes. */
+  --status-good-bg: 136.2 46.4% 89%;
+  --status-good-fg: 150.8 68.4% 22.4%;
+  --status-warn-bg: 40.9 85.5% 89.2%;
+  --status-warn-fg: 38.2 86.1% 22.5%;
+  --status-bad-bg: 3.6 80.5% 92%;
+  --status-bad-fg: 4.2 70.4% 31.8%;
 }
 
 .dark {
@@ -105,6 +114,14 @@
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
+  /* Kept close to the pills' previous dark appearance, so dark mode barely
+     moves. The one real change is Failing, which was 4.38:1 and failed AA. */
+  --status-good-bg: 136.4 23.4% 18.4%;
+  --status-good-fg: 138.1 47.7% 70%;
+  --status-warn-bg: 39.3 31.2% 18.2%;
+  --status-warn-fg: 42.7 84.7% 61.6%;
+  --status-bad-bg: 5.2 24.2% 18.6%;
+  --status-bad-fg: 5.5 68.8% 74.9%;
 }
 
 @layer base {

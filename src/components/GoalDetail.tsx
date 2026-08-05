@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { GoalDetailModal } from "./GoalDetailModal";
 import { MilestoneModal } from "./MilestoneModal";
 import { linkifyText } from "../lib/textUtils";
+import { goalStatusPillStyle } from "../lib/goalStatus";
 
 interface Goal {
   id: number;
@@ -192,14 +193,13 @@ export function GoalDetail({
                 className="relative shrink-0 size-[32px] cursor-pointer"
                 onClick={onBack}
               >
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
+                <svg className="block size-full stroke-foreground" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
                   <g>
-                    <path 
-                      d="M20 8L12 16L20 24" 
-                      stroke="#E1E6EE" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth="2" 
+                    <path
+                      d="M20 8L12 16L20 24"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
                     />
                   </g>
                 </svg>
@@ -218,11 +218,10 @@ export function GoalDetail({
               className="relative shrink-0 size-[32px] cursor-pointer"
               onClick={handleCreateNewMilestone}
             >
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
+              <svg className="block size-full stroke-foreground" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
                 <g>
                   <path
                     d="M16 6V26M26 16H6"
-                    stroke="#E1E6EE"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth="2"
@@ -235,8 +234,8 @@ export function GoalDetail({
           {/* AI score + explanation (from DB, same as today-page card; updated when recalibrated) */}
           {goal?.id && (goalStatus || goalExplanation) && (
             <div
-              className="flex flex-col gap-[10px] items-start relative shrink-0 w-full"
-              style={{ padding: '14px 16px', backgroundColor: '#1F2022', borderRadius: '10px' }}
+              className="bg-secondary flex flex-col gap-[10px] items-start relative shrink-0 w-full"
+              style={{ padding: '14px 16px', borderRadius: '10px' }}
             >
               {goalStatus && (
                 <div className="flex items-center gap-[8px] relative shrink-0">
@@ -245,18 +244,7 @@ export function GoalDetail({
                     style={{
                       padding: '4px 10px',
                       borderRadius: '6px',
-                      backgroundColor:
-                        goalStatus === 'On track'
-                          ? 'rgba(76, 175, 80, 0.2)'
-                          : goalStatus === 'At risk'
-                            ? 'rgba(255, 193, 7, 0.2)'
-                            : 'rgba(244, 67, 54, 0.2)',
-                      color:
-                        goalStatus === 'On track'
-                          ? '#81c784'
-                          : goalStatus === 'At risk'
-                            ? '#ffca28'
-                            : '#e57373',
+                      ...goalStatusPillStyle(goalStatus),
                     }}
                   >
                     {goalStatus}
@@ -311,8 +299,8 @@ export function GoalDetail({
                   {activeMilestones.map((milestone) => (
                 <div
                   key={milestone.id}
-                  className="flex flex-col items-start justify-center relative shrink-0 w-full cursor-pointer"
-                  style={{ padding: '16px', backgroundColor: '#1F2022', borderRadius: '8px' }}
+                  className="bg-secondary flex flex-col items-start justify-center relative shrink-0 w-full cursor-pointer"
+                  style={{ padding: '16px', borderRadius: '8px' }}
                   onClick={() => {
                     if (onSelectMilestone) {
                       onSelectMilestone(milestone);
@@ -341,8 +329,7 @@ export function GoalDetail({
                               fill="none"
                               viewBox="0 0 24 24"
                               strokeWidth="1.5"
-                              stroke="#E1E6EE"
-                              className="size-6"
+                              className="size-6 stroke-foreground"
                             >
                               <path
                                 strokeLinecap="round"
@@ -377,8 +364,8 @@ export function GoalDetail({
                       {achievedMilestones.map((milestone) => (
                         <div
                           key={milestone.id}
-                          className="flex flex-col items-start justify-center relative shrink-0 w-full cursor-pointer opacity-60"
-                          style={{ padding: '16px', backgroundColor: '#1F2022', borderRadius: '8px' }}
+                          className="bg-secondary flex flex-col items-start justify-center relative shrink-0 w-full cursor-pointer opacity-60"
+                          style={{ padding: '16px', borderRadius: '8px' }}
                           onClick={() => {
                             if (onSelectMilestone) {
                               onSelectMilestone(milestone);
@@ -406,8 +393,7 @@ export function GoalDetail({
                                       fill="none"
                                       viewBox="0 0 24 24"
                                       strokeWidth="1.5"
-                                      stroke="#5B5D62"
-                                      className="size-6"
+                                      className="size-6 stroke-muted-foreground"
                                     >
                                       <path
                                         strokeLinecap="round"
