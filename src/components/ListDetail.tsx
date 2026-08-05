@@ -145,14 +145,13 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                   className="relative shrink-0 size-[32px] cursor-pointer"
                   onClick={onBack}
                 >
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
+                  <svg className="block size-full stroke-foreground" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
                     <g>
-                      <path 
-                        d="M20 8L12 16L20 24" 
-                        stroke="#E1E6EE" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth="2" 
+                      <path
+                        d="M20 8L12 16L20 24"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
                       />
                     </g>
                   </svg>
@@ -171,9 +170,9 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                   className="relative shrink-0 size-[32px] cursor-pointer"
                   onClick={() => setIsAddTaskModalOpen(true)}
                 >
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
+                  <svg className="block size-full stroke-foreground" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
                     <g>
-                      <path d="M16 6V26M26 16H6" stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                      <path d="M16 6V26M26 16H6" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
                     </g>
                   </svg>
                 </div>
@@ -196,8 +195,8 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                     viewBox="0 0 24 24" 
                     strokeWidth="1.5" 
                     stroke="currentColor" 
-                    className="size-6"
-                    style={{ width: '20px', height: '20px', color: '#e1e6ee' }}
+                    className="size-6 text-foreground"
+                    style={{ width: '20px', height: '20px' }}
                   >
                     <path 
                       strokeLinecap="round" 
@@ -236,8 +235,8 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                         viewBox="0 0 24 24" 
                         strokeWidth="1.5" 
                         stroke="currentColor" 
-                        className="size-6"
-                        style={{ width: '20px', height: '20px', color: '#e1e6ee' }}
+                        className="size-6 text-foreground"
+                        style={{ width: '20px', height: '20px' }}
                       >
                         <path 
                           strokeLinecap="round" 
@@ -254,9 +253,8 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
             {/* Reminders Box */}
             {reminders.length > 0 && (
               <div 
-                className="flex flex-col gap-[10px] items-start px-[16px] relative mb-[24px]"
-                style={{ 
-                  backgroundColor: '#1f2022',
+                className="bg-secondary flex flex-col gap-[10px] items-start px-[16px] relative mb-[24px]"
+                style={{
                   paddingTop: '16px',
                   paddingBottom: '16px',
                   borderRadius: '8px',
@@ -298,10 +296,9 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                     <div className="flex items-center justify-center relative shrink-0">
                       <div className={`flex-none ${isRemindersExpanded ? 'rotate-[180deg]' : ''} transition-transform`}>
                         <div className="relative size-[20px]">
-                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                          <svg className="block size-full stroke-foreground" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                             <path
                               d="M6 9L12 15L18 9"
-                              stroke="#E1E6EE"
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth="2"
@@ -326,7 +323,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                         <div className="flex gap-[8px] items-center w-full min-w-0">
                           {/* Bell Icon */}
                           <div className="relative shrink-0 size-[24px]">
-                            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#E1E6EE">
+                            <svg className="block size-full stroke-foreground" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" strokeWidth="1.5">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
                             </svg>
                           </div>
@@ -351,7 +348,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                                   <g>
                                     <path
                                       d={svgPathsToday.p19fddb00}
-                                      stroke="#5B5D62"
+                                      className="stroke-muted-foreground"
                                       strokeLinecap="round"
                                       strokeLinejoin="round"
                                       strokeWidth="1.5"
@@ -393,12 +390,11 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                             <div className="flex gap-[4px] items-center justify-center pl-[32px] relative shrink-0">
                               <div className="relative shrink-0 size-[20px]">
                                 <svg
-                                  className="block size-full"
+                                  className="block size-full stroke-muted-foreground"
                                   fill="none"
                                   preserveAspectRatio="none"
                                   viewBox="0 0 24 24"
                                   strokeWidth="1.5"
-                                  stroke="#5B5D62"
                                 >
                                   <path
                                     strokeLinecap="round"
@@ -440,18 +436,17 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                         }}
                       >
                         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                          <circle 
-                            cx="12" 
-                            cy="12" 
-                            r="11.625" 
-                            stroke="#E1E6EE" 
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="11.625"
                             strokeWidth="0.75"
-                            fill={todo.completed ? "#E1E6EE" : "none"}
+                            className={todo.completed ? "stroke-foreground fill-foreground" : "stroke-foreground fill-none"}
                           />
                           {todo.completed && (
                             <path
                               d="M7 12L10 15L17 8"
-                              stroke="#110c10"
+                              className="stroke-background"
                               strokeWidth="2"
                               strokeLinecap="round"
                               strokeLinejoin="round"
@@ -503,7 +498,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                             <g>
                               <path
                                 d={svgPathsToday.p19fddb00}
-                                stroke="#5B5D62"
+                                className="stroke-muted-foreground"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth="1.5"
@@ -530,7 +525,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                             <g>
                               <path
                                 d={svgPathsToday.p31f04100}
-                                stroke="#5B5D62"
+                                className="stroke-muted-foreground"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth="1.25"
@@ -587,7 +582,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                               viewBox="0 0 24 24"
                             >
                               <g>
-                                <path d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0" stroke="#5B5D62" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                                <path d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0" className="stroke-muted-foreground" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
                               </g>
                             </svg>
                           </div>
@@ -613,7 +608,7 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                               <g>
                                 <path
                                   d="M6 6.878V6a2.25 2.25 0 0 1 2.25-2.25h7.5A2.25 2.25 0 0 1 18 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 0 0 4.5 9v.878m13.5-3A2.25 2.25 0 0 1 19.5 9v.878m0 0a2.246 2.246 0 0 0-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0 1 21 12v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6c0-.98.626-1.813 1.5-2.122"
-                                  stroke="#5B5D62"
+                                  className="stroke-muted-foreground"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   strokeWidth="1.5"
@@ -635,12 +630,11 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                         <div className="flex gap-[4px] items-center justify-center relative shrink-0">
                           <div className="relative shrink-0 size-[20px]">
                             <svg
-                              className="block size-full"
+                              className="block size-full stroke-muted-foreground"
                               fill="none"
                               preserveAspectRatio="none"
                               viewBox="0 0 24 24"
                               strokeWidth="1.5"
-                              stroke="#5B5D62"
                             >
                               <path
                                 strokeLinecap="round"
