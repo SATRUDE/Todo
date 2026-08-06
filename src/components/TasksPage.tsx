@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search, StickyNote, ChevronRight, Zap, Calendar, Bomb } from "lucide-react";
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { linkifyText } from "../lib/textUtils";
