@@ -103,11 +103,13 @@ import {
   fetchTaskComments,
   addTaskComment,
   updateTaskAiStatus,
+  updateTaskStatus as updateTaskStatusDb,
   fetchAiInstructions,
   type TaskComment
 } from "../lib/database";
-import { 
-  requestNotificationPermission, 
+import { taskStatusOf, type TaskStatus } from "../lib/taskStatus";
+import {
+  requestNotificationPermission,
   subscribeToPushNotifications,
   sendSubscriptionToServer,
   getPushSubscription,
@@ -140,6 +142,7 @@ interface Todo {
     recurring?: string;
   };
   type?: 'task' | 'reminder'; // Task type: 'task' or 'reminder'
+  status?: TaskStatus; // Where the task has got to; read it via taskStatusOf
   updatedAt?: string; // ISO timestamp string
   aiStatus?: string | null; // 'pending' = queued for the overnight staff round, 'done' = draft delivered
 }
@@ -276,6 +279,9 @@ export function TodoApp() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [selectedTimeRange, setSelectedTimeRange] = useState<"today" | "tomorrow" | "week" | "month" | "allTime">("today");
   const [selectedListFilterIds, setSelectedListFilterIds] = useState<Set<number>>(new Set());
+  // null means every status. Session state on purpose: a filter that survived a
+  // reload would be an easy way to lose track of tasks you thought you had.
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | null>(null);
   const [isFilterListsModalOpen, setIsFilterListsModalOpen] = useState(false);
   const [isScheduledExpanded, setIsScheduledExpanded] = useState(true);
   const [calendarPendingEventsCount, setCalendarPendingEventsCount] = useState<number>(0);
@@ -2490,6 +2496,41 @@ export function TodoApp() {
     }
   };
 
+  /**
+   * Set a task's status, keeping completion in step.
+   *
+   * Picking Done ticks the task off and files it in the completed list exactly
+   * as the checkbox would; picking anything else on a finished task brings it
+   * back. Without that, the Done counter, the completed list and the overdue
+   * calculation would all carry on reading `completed` while the pill said
+   * something else.
+   */
+  const setTaskStatus = async (taskId: number, status: TaskStatus) => {
+    const todo = todos.find(t => t.id === taskId);
+    if (!todo) return;
+
+    const shouldBeCompleted = status === 'done';
+    const isCompleted = !!todo.completed;
+
+    const completion = shouldBeCompleted === isCompleted
+      ? undefined
+      : {
+          completed: shouldBeCompleted,
+          list_id: shouldBeCompleted
+            ? COMPLETED_LIST_ID
+            : (todo.listId !== undefined ? todo.listId : TODAY_LIST_ID),
+        };
+
+    try {
+      const updated = await updateTaskStatusDb(taskId, status, completion);
+      const updatedDisplayTodo = dbTodoToDisplayTodo(updated);
+      setTodos(prev => prev.map(t => (t.id === taskId ? updatedDisplayTodo : t)));
+      setSelectedTask(prev => (prev && prev.id === taskId ? updatedDisplayTodo : prev));
+    } catch (error) {
+      console.error('Error updating task status:', error);
+    }
+  };
+
   const deleteTask = async (taskId: number) => {
     try {
       await deleteTaskDb(taskId);
@@ -2833,6 +2874,14 @@ export function TodoApp() {
         }
       }
       
+      // Apply the status filter if one is set
+      if (statusFilter) {
+        if (taskStatusOf(todo) !== statusFilter) return false;
+        // Filtering to Done is a request to see finished work, so the
+        // completed gate below has to stand aside for it.
+        return true;
+      }
+
       // Show task if:
       // 1. It's not completed, OR
       // 2. It was recently completed (within 1 second)
@@ -3253,6 +3302,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
                 setIsReviewMissedDeadlinesOpen(true);
               }
             }}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
             selectedListFilterIds={selectedListFilterIds}
             lists={lists}
             onRemoveListFilter={(listId) => {
@@ -4028,6 +4079,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           task={selectedTask}
           onUpdateTask={updateTask}
           onDeleteTask={deleteTask}
+          onUpdateStatus={setTaskStatus}
           lists={lists}
           milestones={allMilestonesWithGoals}
           onFetchSubtasks={handleFetchSubtasks}

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { isTaskStatus, type TaskStatus } from './taskStatus'
 
 // Check if we're in development mode (localhost)
 const isDevelopment = () => {
@@ -77,6 +78,7 @@ export interface Todo {
   deadline_recurring?: string
   times_delayed?: number // How many times the deadline has been changed/delayed
   type?: 'task' | 'reminder' // Task type: 'task' or 'reminder'
+  status?: TaskStatus // Where the task has got to: 'todo' | 'in_progress' | 'waiting' | 'done'
   ai_status?: string | null // 'pending' | 'running' | 'done' | null
   bomb_mode?: boolean
   created_at?: string
@@ -271,6 +273,7 @@ export function dbTodoToAppTodo(dbTodo: any): Todo {
     deadline_recurring: dbTodo.deadline_recurring,
     times_delayed: dbTodo.times_delayed || 0,
     type: dbTodo.type || 'task', // Default to 'task' if not set
+    status: isTaskStatus(dbTodo.status) ? dbTodo.status : 'todo', // Default for rows predating the column
     ai_status: dbTodo.ai_status || null,
     bomb_mode: dbTodo.bomb_mode ?? false,
     created_at: dbTodo.created_at,
@@ -410,6 +413,11 @@ export function appTodoToDbTodo(todo: any): any {
     dbTodo.type = 'task'
   }
 
+  // Note: status is deliberately absent. It has exactly one writer,
+  // updateTaskStatus, so no ordinary edit can reset it as a side effect, and
+  // callers that spread a whole task in here (the subtask handlers) cannot
+  // carry it along by accident.
+
   // Handle bomb_mode
   if (typeof todo.bomb_mode === 'boolean') {
     dbTodo.bomb_mode = todo.bomb_mode
@@ -471,6 +479,7 @@ export function dbTodoToDisplayTodo(dbTodo: Todo): any {
     deadline,
     timesDelayed: dbTodo.times_delayed && dbTodo.times_delayed > 0 ? dbTodo.times_delayed : undefined,
     type: dbTodo.type || 'task', // Default to 'task' if not set
+    status: isTaskStatus(dbTodo.status) ? dbTodo.status : 'todo',
     updatedAt: dbTodo.updated_at,
     aiStatus: dbTodo.ai_status || undefined,
   }
@@ -764,6 +773,44 @@ export async function updateTask(id: number, todo: any): Promise<Todo> {
     console.error('Error message:', error.message)
     console.error('Error details:', JSON.stringify(error, null, 2))
     console.error('DB Todo being sent:', JSON.stringify(dbTodo, null, 2))
+    throw error
+  }
+
+  return dbTodoToAppTodo(data)
+}
+
+/**
+ * Write just a task's status, and optionally its completion alongside.
+ *
+ * Deliberately not routed through updateTask: that one rebuilds the whole row
+ * from whatever the caller passed, so using it here would let a status change
+ * quietly rewrite the deadline or the list. This touches the columns named and
+ * nothing else. `completion` is supplied when Done is picked or unpicked, so
+ * that the checkbox and the completed list stay in step with the status.
+ */
+export async function updateTaskStatus(
+  id: number,
+  status: TaskStatus,
+  completion?: { completed: boolean; list_id: number }
+): Promise<Todo> {
+  const userId = await ensureAuthenticated()
+
+  const patch: any = { status }
+  if (completion) {
+    patch.completed = completion.completed
+    patch.list_id = completion.list_id
+  }
+
+  const { data, error } = await supabase
+    .from('todos')
+    .update(patch)
+    .eq('id', id)
+    .or(`user_id.eq.${userId},user_id.is.null`)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating task status:', error)
     throw error
   }
 
