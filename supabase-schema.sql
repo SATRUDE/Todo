@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS todos (
   deadline_recurring TEXT, -- 'daily', 'weekly', 'weekday', 'monthly'
   deadline_notified_at TIMESTAMP WITH TIME ZONE, -- Track when notification was sent for this deadline
   type TEXT DEFAULT 'task' CHECK (type IN ('task', 'reminder')), -- Task type: 'task' or 'reminder'
+  status TEXT DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'waiting', 'done')), -- Where the task has got to
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -32,6 +33,7 @@ CREATE TABLE IF NOT EXISTS todos (
 CREATE INDEX IF NOT EXISTS idx_todos_list_id ON todos(list_id);
 CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed);
 CREATE INDEX IF NOT EXISTS idx_todos_deadline_date ON todos(deadline_date);
+CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status);
 CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id);
 CREATE INDEX IF NOT EXISTS idx_lists_user_id ON lists(user_id);
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions(user_id);

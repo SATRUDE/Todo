@@ -6,6 +6,9 @@ import { Clock, LayoutList, ChevronDown, Bell, CheckCircle2, AlertCircle, Search
 import svgPathsToday from "../imports/svg-z2a631st9g";
 import { linkifyText } from "../lib/textUtils";
 import { goalStatusPillStyle } from "../lib/goalStatus";
+import { taskStatusOf, type TaskStatus } from "../lib/taskStatus";
+import { TaskStatusPill } from "./TaskStatusPill";
+import { TaskStatusFilter } from "./TaskStatusFilter";
 
 const LIST_ICON_PATH = svgPathsToday.p1c6a4380;
 
@@ -24,6 +27,7 @@ export interface Todo {
   deadline?: { date: Date; time: string; recurring?: string };
   timesDelayed?: number;
   bomb_mode?: boolean;
+  status?: TaskStatus;
 }
 
 export interface ListItem {
@@ -66,6 +70,8 @@ export function TaskRow({
   const subtaskCount = getSubtaskCount?.(todo.id) ?? 0;
   const noteCount = getNoteCount?.(todo.id) ?? 0;
   const description = todo.description?.trim();
+  const status = taskStatusOf(todo);
+  const showsStatus = status === "in_progress" || status === "waiting";
 
   return (
     <div
@@ -131,8 +137,9 @@ export function TaskRow({
         </div>
       )}
 
-      {(time || list || subtaskCount > 0 || noteCount > 0 || (todo.timesDelayed && todo.timesDelayed > 0) || todo.bomb_mode) && (
+      {(showsStatus || time || list || subtaskCount > 0 || noteCount > 0 || (todo.timesDelayed && todo.timesDelayed > 0) || todo.bomb_mode) && (
         <div className="flex gap-2 items-center pl-8 flex-wrap">
+          <TaskStatusPill status={status} />
           {time && (
             <div className="flex gap-1 items-center text-muted-foreground">
               <Clock className="size-5 shrink-0" />
@@ -423,6 +430,10 @@ export interface TasksPageProps {
   onDoneCardClick: () => void;
   onOverdueCardClick: () => void;
 
+  // Status filter
+  statusFilter: TaskStatus | null;
+  onStatusFilterChange: (value: TaskStatus | null) => void;
+
   // Filter tags
   selectedListFilterIds: Set<number>;
   lists: ListItem[];
@@ -479,6 +490,8 @@ export function TasksPage(props: TasksPageProps) {
     missedDeadlinesCount,
     onDoneCardClick,
     onOverdueCardClick,
+    statusFilter,
+    onStatusFilterChange,
     selectedListFilterIds,
     lists,
     onRemoveListFilter,
@@ -658,8 +671,15 @@ export function TasksPage(props: TasksPageProps) {
           </div>
         )}
 
-        {/* Time range tabs */}
-        <TimeRangeTabs value={selectedTimeRange} onChange={onTimeRangeChange} />
+        {/* Time range tabs and status filter, one block: both narrow the same list */}
+        <div className="flex flex-col gap-3 w-full">
+          <TimeRangeTabs value={selectedTimeRange} onChange={onTimeRangeChange} />
+          <TaskStatusFilter
+            value={statusFilter}
+            onChange={onStatusFilterChange}
+            className="px-5"
+          />
+        </div>
 
         {/* Status cards */}
         <div className="flex gap-4 w-full px-5">

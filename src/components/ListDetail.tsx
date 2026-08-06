@@ -4,6 +4,9 @@ import svgPathsToday from "../imports/svg-z2a631st9g";
 import { AddTaskModal } from "./AddTaskModal";
 import { AddListModal } from "./AddListModal";
 import { linkifyText } from "../lib/textUtils";
+import { TASK_STATUSES, taskStatusOf, type TaskStatus } from "../lib/taskStatus";
+import { TaskStatusPill } from "./TaskStatusPill";
+import { TaskStatusFilter } from "./TaskStatusFilter";
 
 interface Todo {
   id: number;
@@ -20,6 +23,7 @@ interface Todo {
     recurring?: string;
   };
   type?: 'task' | 'reminder';
+  status?: TaskStatus;
 }
 
 interface ListFolder {
@@ -75,10 +79,21 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
   const [isRemindersExpanded, setIsRemindersExpanded] = useState(true);
-  
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | null>(null);
+
+  // Only offer statuses this list actually holds, so there are no chips that
+  // can only ever return nothing. An open list has no Done tasks in it, they
+  // live in the completed list. The selected chip is always kept, so it cannot
+  // disappear from under the filter it is applying.
+  const presentStatuses = TASK_STATUSES.filter(
+    status => status === statusFilter || tasks.some(todo => taskStatusOf(todo) === status)
+  );
+
+  const matchesStatus = (todo: Todo) => !statusFilter || taskStatusOf(todo) === statusFilter;
+
   // Filter tasks into reminders and regular tasks
-  const reminders = tasks.filter(todo => todo.type === 'reminder');
-  const regularTasks = tasks.filter(todo => todo.type !== 'reminder');
+  const reminders = tasks.filter(todo => todo.type === 'reminder' && matchesStatus(todo));
+  const regularTasks = tasks.filter(todo => todo.type !== 'reminder' && matchesStatus(todo));
 
   const handleAddTask = (taskText: string, description?: string, _listId?: number, _deadline?: { date: Date; time: string; recurring?: string }, type?: 'task' | 'reminder') => {
     // onAddTask from parent expects just taskText and already knows the listId
@@ -178,6 +193,16 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
                 </div>
               )}
             </div>
+
+            {/* Status filter. Hidden when the list holds a single status, where
+                it could only ever be a no-op. */}
+            {presentStatuses.length > 1 && (
+              <TaskStatusFilter
+                value={statusFilter}
+                onChange={setStatusFilter}
+                statuses={presentStatuses}
+              />
+            )}
 
             {/* Date Filter Pill */}
             {dateFilter && isCompletedList && onClearDateFilter && (
@@ -485,6 +510,9 @@ export function ListDetail({ listId, listName, listColor, isShared, listFolderId
 
                   {/* Metadata Row */}
                   <div className="flex gap-[8px] items-start flex-wrap pl-[32px]">
+                    {/* Status */}
+                    <TaskStatusPill status={taskStatusOf(todo)} />
+
                     {/* Time */}
                     {todo.time && (
                       <div className="flex gap-[4px] items-center justify-center pr-0 py-0 relative shrink-0">

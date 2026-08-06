@@ -8,6 +8,8 @@ import { SelectMilestoneModal } from "./SelectMilestoneModal";
 import { DeadlineModal } from "./DeadlineModal";
 import { TaskNoteModal } from "./TaskNoteModal";
 import { TaskTypeModal } from "./TaskTypeModal";
+import { TaskStatusModal } from "./TaskStatusModal";
+import { TASK_STATUS_LABELS, taskStatusOf, taskStatusPillStyle, type TaskStatus } from "../lib/taskStatus";
 import { linkifyText } from "../lib/textUtils";
 import { supabase } from "../lib/supabase";
 import { Bomb, Copy, Check } from "lucide-react";
@@ -45,6 +47,7 @@ interface Todo {
   };
   timesDelayed?: number;
   type?: 'task' | 'reminder';
+  status?: TaskStatus;
 }
 
 interface TaskComment {
@@ -61,6 +64,12 @@ interface TaskDetailModalProps {
   task: Todo;
   onUpdateTask: (taskId: number, text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null, bombMode?: boolean) => void;
   onDeleteTask: (taskId: number) => void;
+  /**
+   * Applied straight away rather than on save, like Defuse. Status is a single
+   * tap and the sheet stays open afterwards, so waiting for Save would leave
+   * the pill showing something the store does not yet agree with.
+   */
+  onUpdateStatus?: (taskId: number, status: TaskStatus) => void | Promise<void>;
   onCreateTask?: (text: string, description?: string | null, listId?: number, milestoneId?: number, deadline?: { date: Date; time: string; recurring?: string } | null, type?: 'task' | 'reminder', imageUrl?: string | null, bombMode?: boolean) => void;
   lists?: ListItem[];
   milestones?: MilestoneWithGoal[];
@@ -104,7 +113,7 @@ function getTextNodes(element: Node): Text[] {
   return textNodes;
 }
 
-export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks, onConvertToDailyTask, onConvertToCommonTask, sessionsForTask = [], onAddToSession, comments = [], isAssigning = false, onSendComment, predecessorChain = [], onFollowUp, onTaskChainClick }: TaskDetailModalProps) {
+export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteTask, onUpdateStatus, onCreateTask, lists = [], milestones = [], onFetchSubtasks, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, onToggleSubtask, notesForTask = [], onAddNote, onUpdateNote, onDeleteNote, onNavigateToDailyTasks, onNavigateToCommonTasks, onConvertToDailyTask, onConvertToCommonTask, sessionsForTask = [], onAddToSession, comments = [], isAssigning = false, onSendComment, predecessorChain = [], onFollowUp, onTaskChainClick }: TaskDetailModalProps) {
   const [taskInput, setTaskInput] = useState(task.text);
   const [taskDescription, setTaskDescription] = useState(task.description || "");
   const [imageUrl, setImageUrl] = useState<string | null>(task.imageUrl || null);
@@ -117,6 +126,8 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   const [deadline, setDeadline] = useState<{ date: Date; time: string; recurring?: string } | null>(task.deadline || null);
   const [taskType, setTaskType] = useState<'task' | 'reminder'>(task.type || 'task');
   const [bombMode, setBombMode] = useState(task.bomb_mode ?? false);
+  const [taskStatus, setTaskStatus] = useState<TaskStatus>(taskStatusOf(task));
+  const [isTaskStatusModalOpen, setIsTaskStatusModalOpen] = useState(false);
   const [subtasks, setSubtasks] = useState<Todo[]>([]);
   const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
   const [editingSubtaskId, setEditingSubtaskId] = useState<number | null>(null);
@@ -141,6 +152,7 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
       setNewSubtaskText('');
       setIsNoteModalOpen(false);
       setIsTaskTypeModalOpen(false);
+      setIsTaskStatusModalOpen(false);
       setFollowUpText('');
       return;
     }
@@ -152,7 +164,8 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
     setDeadline(task.deadline || null);
     setTaskType(task.type || 'task');
     setBombMode(task.bomb_mode ?? false);
-    
+    setTaskStatus(taskStatusOf(task));
+
     // Load subtasks when modal opens
     if (onFetchSubtasks && task.id) {
       setIsLoadingSubtasks(true);
@@ -986,6 +999,22 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
                   {taskType === 'task' ? 'Task' : 'Reminder'}
                 </button>
 
+                {/* Status Button - only for saved tasks, a new task starts at To do */}
+                {onUpdateStatus && task.id >= 0 && taskType === 'task' && (
+                  <button
+                    type="button"
+                    className="flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full bg-secondary px-4 py-1 text-lg text-foreground transition-colors hover:bg-accent"
+                    onClick={() => setIsTaskStatusModalOpen(true)}
+                  >
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: taskStatusPillStyle(taskStatus).color }}
+                      aria-hidden
+                    />
+                    {TASK_STATUS_LABELS[taskStatus]}
+                  </button>
+                )}
+
                 {/* Deadline Button */}
                 <button
                   type="button"
@@ -1289,6 +1318,16 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
         onClose={() => setIsTaskTypeModalOpen(false)}
         currentType={taskType}
         onSelectType={handleSelectTaskType}
+      />
+
+      <TaskStatusModal
+        isOpen={isTaskStatusModalOpen}
+        onClose={() => setIsTaskStatusModalOpen(false)}
+        currentStatus={taskStatus}
+        onSelectStatus={(status) => {
+          setTaskStatus(status);
+          onUpdateStatus?.(task.id, status);
+        }}
       />
 
     </>
