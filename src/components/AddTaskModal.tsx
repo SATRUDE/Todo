@@ -187,6 +187,7 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
       setTaskType('task');
       setImageUrl(null);
       setIsTaskTypeModalOpen(false);
+      setIsSelectSessionOpen(false);
       setVoiceSuccessAdded(null);
       setVoiceProcessing(false);
       setVoiceProcessingTranscript("");
@@ -876,42 +877,47 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
         onSelectType={handleSelectTaskType}
       />
 
-      {/* Session Picker */}
-      {isSelectSessionOpen && (
-        <div className="fixed inset-0 z-[10002] flex items-end justify-center pointer-events-auto">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setIsSelectSessionOpen(false)} />
-          <div className="relative w-full max-w-lg rounded-t-xl bg-card px-5 pt-5 pb-8 flex flex-col gap-4">
-            <p className="text-lg font-medium text-foreground">Assign to session</p>
-            <div className="flex flex-col gap-2">
-              {selectedSessionId && (
-                <button
-                  type="button"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-muted-foreground hover:bg-secondary transition-colors text-base"
-                  onClick={() => { setSelectedSessionId(null); setIsSelectSessionOpen(false); }}
-                >
-                  None
-                </button>
-              )}
-              {sessions.map(session => (
-                <button
-                  key={session.id}
-                  type="button"
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors text-base ${selectedSessionId === session.id ? 'bg-secondary' : 'hover:bg-secondary'}`}
-                  onClick={() => { setSelectedSessionId(session.id); setIsSelectSessionOpen(false); }}
-                >
-                  <span className="size-3 rounded-full shrink-0" style={{ backgroundColor: session.color }} />
-                  <span className="text-foreground">{session.name}</span>
-                  {selectedSessionId === session.id && (
-                    <svg className="ml-auto size-4 text-foreground shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Session Picker. On AppSheet like every other picker here: a plain
+          overlay reads as an interaction outside the drawer and closes the
+          sheet underneath it. */}
+      <AppSheet
+        open={isSelectSessionOpen}
+        onOpenChange={(open) => { if (!open) setIsSelectSessionOpen(false); }}
+        title="Assign to session"
+      >
+        <div className="w-full shrink-0">
+          <h2 className="text-xl font-medium tracking-tight text-foreground">Assign to session</h2>
         </div>
-      )}
+        <div className="flex flex-col gap-1 pb-6 pt-4">
+          {selectedSessionId && (
+            <button
+              type="button"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-4 py-3 text-left text-lg text-muted-foreground transition-colors hover:bg-accent"
+              onClick={() => { setSelectedSessionId(null); setIsSelectSessionOpen(false); }}
+            >
+              None
+            </button>
+          )}
+          {sessions.map(session => (
+            <button
+              key={session.id}
+              type="button"
+              className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-4 py-3 text-left text-lg text-foreground transition-colors hover:bg-accent ${selectedSessionId === session.id ? 'bg-secondary' : ''}`}
+              onClick={() => { setSelectedSessionId(session.id); setIsSelectSessionOpen(false); }}
+            >
+              <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: session.color }} />
+              {session.name}
+              {selectedSessionId === session.id && (
+                <span className="ml-auto size-5 shrink-0 text-primary">
+                  <svg fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </AppSheet>
 
       {/* Hidden file input for image upload */}
       <input
