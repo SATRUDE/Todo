@@ -2610,12 +2610,6 @@ export interface Menu {
   week_number: number
   year: number
   content: string
-  /**
-   * Ingredients per Norwegian day name, held apart from `content` so the dish
-   * list can be settled before they are pulled in. Absent on rows drafted
-   * before the column existed, which reads as "nothing saved".
-   */
-  ingredients?: Record<string, string> | null
   status: 'draft' | 'published'
   notified_at?: string | null
   published_at?: string | null
@@ -2645,26 +2639,6 @@ export async function updateMenuContent(menuId: number, content: string): Promis
     .eq('id', menuId)
   if (error) {
     console.error('Error updating menu:', error)
-    throw error
-  }
-}
-
-/**
- * Save the ingredients a day was carrying, so removing them from the dish list
- * is not the same as losing them. Deliberately its own call: `ingredients` must
- * never ride along on an unrelated menu update.
- *
- * Tolerates the column being absent (an older database), since the point of it
- * is convenience, not correctness of the menu itself.
- */
-export async function updateMenuIngredients(menuId: number, ingredients: Record<string, string>): Promise<void> {
-  await ensureAuthenticated()
-  const { error } = await (supabase as any)
-    .from('menus')
-    .update({ ingredients, updated_at: new Date().toISOString() })
-    .eq('id', menuId)
-  if (error) {
-    console.error('Error saving menu ingredients:', error)
     throw error
   }
 }
