@@ -7,6 +7,37 @@ interface MenusPageProps {
   onBack: () => void;
 }
 
+// The stored format uses `---` lines to divide the days, which the Notion publish step
+// turns into real dividers. Pasted into a message thread those lines just read as noise,
+// so a copy is tidied into a plain readable week instead.
+function formatForMessage(content: string, week: number): string {
+  const body = content
+    .split('\n')
+    .map(line => (line.trim() === '---' ? '' : line))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return `Uke ${week}\n\n${body}`;
+}
+
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  // Older iOS Safari, and any context where the async clipboard is unavailable
+  const el = document.createElement('textarea');
+  el.value = text;
+  el.setAttribute('readonly', '');
+  el.style.position = 'fixed';
+  el.style.opacity = '0';
+  document.body.appendChild(el);
+  el.select();
+  const ok = document.execCommand('copy');
+  document.body.removeChild(el);
+  if (!ok) throw new Error('Copy failed');
+}
+
 // ISO week number (Norwegian convention: weeks start Monday)
 function isoWeek(date: Date): { week: number; year: number } {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -26,7 +57,9 @@ export function MenusPage({ onBack }: MenusPageProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const draft = menus.find(m => m.status === 'draft') || null;
   const archive = menus.filter(m => m.id !== draft?.id);
@@ -45,6 +78,20 @@ export function MenusPage({ onBack }: MenusPageProps) {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => () => { if (copiedTimer.current) clearTimeout(copiedTimer.current); }, []);
+
+  const handleCopy = async (key: string, content: string, week: number) => {
+    setError(null);
+    try {
+      await copyText(formatForMessage(content, week));
+      setCopiedKey(key);
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopiedKey(null), 2000);
+    } catch {
+      setError('Could not copy the menu. Select the text and copy it by hand.');
+    }
+  };
 
   const scheduleSave = (content: string) => {
     setDraftContent(content);
@@ -137,14 +184,23 @@ export function MenusPage({ onBack }: MenusPageProps) {
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-foreground">Uke {draft.week_number} · draft</h2>
-            <button
-              type="button"
-              onClick={handlePublish}
-              disabled={isPublishing}
-              className={`rounded-full px-5 py-2 text-sm font-medium transition-colors ${isPublishing ? 'bg-muted text-muted-foreground' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-            >
-              {isPublishing ? 'Publishing…' : 'Post to Notion'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleCopy('draft', draftContent, draft.week_number)}
+                className="rounded-full bg-secondary px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              >
+                {copiedKey === 'draft' ? 'Copied' : 'Copy'}
+              </button>
+              <button
+                type="button"
+                onClick={handlePublish}
+                disabled={isPublishing}
+                className={`rounded-full px-5 py-2 text-sm font-medium transition-colors ${isPublishing ? 'bg-muted text-muted-foreground' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+              >
+                {isPublishing ? 'Publishing…' : 'Post to Notion'}
+              </button>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground">Edit freely; it saves as you type. Nothing reaches the shared Notion page until you post it.</p>
           <textarea
@@ -156,7 +212,7 @@ export function MenusPage({ onBack }: MenusPageProps) {
         </div>
       ) : (
         <div className="rounded-xl bg-secondary px-4 py-6 text-sm text-muted-foreground">
-          No draft waiting. Remy files the next one on Sunday, or start from a previous week below.
+          No draft waiting. Remy files the next one on Friday, or start from a previous week below.
         </div>
       )}
 
@@ -176,13 +232,22 @@ export function MenusPage({ onBack }: MenusPageProps) {
               {expandedId === menu.id && (
                 <div className="mt-3 flex flex-col gap-3">
                   <pre className="whitespace-pre-wrap text-xs text-muted-foreground leading-relaxed font-mono">{menu.content}</pre>
-                  <button
-                    type="button"
-                    onClick={() => handleUseAsDraft(menu)}
-                    className="self-start rounded-full bg-background px-4 py-1.5 text-sm text-foreground hover:bg-accent"
-                  >
-                    Use as this week's draft
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(`week-${menu.id}`, menu.content, menu.week_number)}
+                      className="rounded-full bg-background px-4 py-1.5 text-sm text-foreground hover:bg-accent"
+                    >
+                      {copiedKey === `week-${menu.id}` ? 'Copied' : 'Copy'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUseAsDraft(menu)}
+                      className="rounded-full bg-background px-4 py-1.5 text-sm text-foreground hover:bg-accent"
+                    >
+                      Use as this week's draft
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
