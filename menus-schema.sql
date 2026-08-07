@@ -7,8 +7,11 @@ CREATE TABLE IF NOT EXISTS menus (
   week_number INTEGER NOT NULL,
   year INTEGER NOT NULL,
   content TEXT NOT NULL,
-  -- Ingredients per Norwegian day name, held apart from content so the dish
-  -- list can be settled first and the ingredients pulled in afterwards.
+  -- Dormant. Added when the plan was for Remy to file the dishes and the
+  -- ingredients apart; the filtering moved into the Copy sheet instead, so the
+  -- whole week lives in `content` again and nothing writes this. Kept because
+  -- it is already applied on the live database (see the migration of the same
+  -- name); dropping it is an attended migration if it never earns its place.
   ingredients JSONB,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
   notified_at TIMESTAMPTZ,
