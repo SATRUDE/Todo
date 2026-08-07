@@ -37,9 +37,15 @@ new migration rather than editing an applied one.
 
 This goes through Supabase's Management API, not PostgREST, because PostgREST
 cannot run DDL. It needs `SUPABASE_ACCESS_TOKEN` (a Supabase personal access
-token) in `.env.local`; the service-role key is not enough. That token is
-deliberately local only and is **not** in the cloud routines' environment, so an
-unattended overnight run cannot alter the schema on its own.
+token) in `.env.local`; the service-role key is not enough.
+
+The overnight rounds run it as `--unattended`, which allows a migration to **add
+things and nothing else**: `create table`, `create index`, `create view`,
+`alter table ... add column`/`add constraint`, `comment on`. Anything that
+touches row data, drops something or tightens a constraint is refused and named.
+Nobody is watching an overnight round, so the worst an unattended migration can
+leave behind is an unused column. Backfills, deletions, drops and `set not null`
+stay attended: apply those from a chat where someone can read the result.
 
 Files predating this tool were pasted into the SQL editor by hand, so `--status`
 listing one as "not recorded" does not mean it was never applied.

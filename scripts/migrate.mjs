@@ -24,6 +24,11 @@
  *   node scripts/migrate.mjs --status
  *   node scripts/migrate.mjs migration-add-task-status.sql --dry-run
  *   node scripts/migrate.mjs migration-add-task-status.sql
+ *   node scripts/migrate.mjs migration-x.sql --unattended   # for the night round
+ *
+ * --unattended is the mode the overnight rounds run in. It allows a migration
+ * to ADD things and nothing else: no row data may be touched and nothing may be
+ * dropped or tightened. See ALLOWED below for the exact line.
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
@@ -106,6 +111,43 @@ async function applied() {
   return Array.isArray(rows) ? rows : [];
 }
 
+/**
+ * What an unattended run may do.
+ *
+ * Additive DDL only. Nobody is watching an overnight round, so it may give the
+ * database new places to put things and nothing else: no row data touched, so a
+ * bad migration cannot destroy or rewrite Mark's tasks, and nothing dropped or
+ * tightened, so it cannot break the running app either. That leaves the failure
+ * mode of an unattended migration at "an unused column exists", which is
+ * recoverable at leisure.
+ *
+ * Backfills, deletions, drops and NOT NULL tightening stay attended: run them
+ * from a chat, where someone can read the result.
+ */
+const ALLOWED = [
+  /^create\s+(unique\s+)?index(\s+concurrently)?\s+/,
+  /^create\s+table\s+/,
+  /^create\s+(or\s+replace\s+)?view\s+/,
+  /^alter\s+table\s+\S+\s+add\s+(column|constraint)\s+/,
+  /^comment\s+on\s+/,
+];
+
+/** Strip comments and string literals, then split into statements. */
+function statements(body) {
+  const bare = body
+    .replace(/--[^\n]*/g, ' ')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/'(?:[^']|'')*'/g, "''");
+  return bare
+    .split(';')
+    .map(s => s.trim().replace(/\s+/g, ' ').toLowerCase())
+    .filter(Boolean);
+}
+
+function refusedFor(body) {
+  return statements(body).filter(s => !ALLOWED.some(rx => rx.test(s)));
+}
+
 function migrationFiles() {
   return readdirSync(ROOT).filter(f => /^migration-.*\.sql$/.test(f)).sort();
 }
@@ -126,7 +168,7 @@ async function status() {
   );
 }
 
-async function apply(file, { dryRun }) {
+async function apply(file, { dryRun, unattended }) {
   const name = basename(file);
   const path = join(ROOT, name);
   let body;
@@ -136,6 +178,20 @@ async function apply(file, { dryRun }) {
     die(`No such migration: ${name}`);
   }
   const checksum = createHash('sha256').update(body).digest('hex').slice(0, 16);
+
+  if (unattended) {
+    const refused = refusedFor(body);
+    if (refused.length) {
+      die(
+        `${name} cannot be applied by an unattended run.\n\n` +
+        '  An overnight round may only add things: create table, create index,\n' +
+        '  create view, alter table add column or add constraint, comment on.\n' +
+        '  These statements are none of those:\n\n' +
+        refused.map(s => `    ${s.slice(0, 120)}${s.length > 120 ? '...' : ''};`).join('\n') +
+        '\n\n  Apply this one from a chat, where someone can read the result.',
+      );
+    }
+  }
 
   // A dry run touches nothing, so it works before the token exists.
   if (dryRun) {
@@ -176,13 +232,14 @@ async function apply(file, { dryRun }) {
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
+const unattended = args.includes('--unattended');
 const target = args.find(a => !a.startsWith('--'));
 
 try {
   if (args.includes('--status') || !target) {
     await status();
   } else {
-    await apply(target, { dryRun });
+    await apply(target, { dryRun, unattended });
   }
 } catch (err) {
   die(err.message);
