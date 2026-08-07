@@ -1,10 +1,66 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchMenus, updateMenuContent, createMenuDraft, Menu } from '../lib/database';
+import { fetchMenus, updateMenuContent, updateMenuIngredients, createMenuDraft, Menu } from '../lib/database';
 import { supabase } from '../lib/supabase';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface MenusPageProps {
   onBack: () => void;
+}
+
+const DAY_PATTERN = /^(mandag|tirsdag|onsdag|torsdag|fredag|lørdag|søndag)\b/i;
+
+interface DayBlock {
+  /** Canonical Norwegian day name, as stored in the ingredients map */
+  day: string;
+  dayLineIndex: number;
+  ingredientLineIndexes: number[];
+  ingredientText: string;
+}
+
+/**
+ * Walk the plain-text week and find each day line and the ingredient lines
+ * sitting under it. Index-based rather than re-serialising, so nothing Mark has
+ * typed elsewhere in the draft gets reformatted by an add or a remove.
+ */
+function parseDays(content: string): DayBlock[] {
+  const lines = content.split('\n');
+  const days: DayBlock[] = [];
+  let current: DayBlock | null = null;
+  lines.forEach((raw, i) => {
+    const line = raw.trim();
+    if (/^-{3,}$/.test(line)) { current = null; return; }
+    if (!line) return;
+    if (line.startsWith('💡')) { current = null; return; }
+    const match = DAY_PATTERN.exec(line);
+    if (match) {
+      const day = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+      current = { day, dayLineIndex: i, ingredientLineIndexes: [], ingredientText: '' };
+      days.push(current);
+      return;
+    }
+    if (current) {
+      current.ingredientLineIndexes.push(i);
+      current.ingredientText = current.ingredientText ? `${current.ingredientText}\n${line}` : line;
+    }
+  });
+  return days;
+}
+
+/** Drop the ingredient lines under the named days, leaving the dish lines alone. */
+function stripIngredients(content: string, days: DayBlock[]): string {
+  const drop = new Set(days.flatMap(d => d.ingredientLineIndexes));
+  if (!drop.size) return content;
+  return content.split('\n').filter((_, i) => !drop.has(i)).join('\n');
+}
+
+/** Put a day's ingredients back on the line directly under its dish. */
+function insertIngredients(content: string, additions: { dayLineIndex: number; text: string }[]): string {
+  const lines = content.split('\n');
+  // Descending, so an earlier insert cannot shift a later index
+  for (const add of [...additions].sort((a, b) => b.dayLineIndex - a.dayLineIndex)) {
+    lines.splice(add.dayLineIndex + 1, 0, ...add.text.split('\n'));
+  }
+  return lines.join('\n');
 }
 
 // The stored format uses `---` lines to divide the days, which the Notion publish step
@@ -58,6 +114,7 @@ export function MenusPage({ onBack }: MenusPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [pendingStash, setPendingStash] = useState<Record<string, string>>({});
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -80,6 +137,55 @@ export function MenusPage({ onBack }: MenusPageProps) {
   useEffect(() => { load(); }, []);
 
   useEffect(() => () => { if (copiedTimer.current) clearTimeout(copiedTimer.current); }, []);
+
+  // What each day is carrying right now, derived from the text on screen
+  const draftDays = draft ? parseDays(draftContent) : [];
+  // Where a day's ingredients come from when they are not in the dish list:
+  // what Remy filed, plus anything removed in this session that is not saved yet.
+  const savedIngredients: Record<string, string> = { ...(draft?.ingredients || {}), ...pendingStash };
+  const daysWithIngredients = draftDays.filter(d => d.ingredientLineIndexes.length > 0);
+  const daysAddable = draftDays.filter(d => d.ingredientLineIndexes.length === 0 && savedIngredients[d.day]);
+
+  /** Write the draft straight through, ahead of the debounce, so a click cannot race a keystroke. */
+  const commitContent = async (content: string) => {
+    if (!draft) return;
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+    setDraftContent(content);
+    try {
+      setIsSaving(true);
+      await updateMenuContent(draft.id, content);
+    } catch {
+      setError('Could not save the draft');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemoveIngredients = async (days: DayBlock[]) => {
+    if (!draft || !days.length) return;
+    setError(null);
+    const removed: Record<string, string> = {};
+    for (const d of days) if (d.ingredientText) removed[d.day] = d.ingredientText;
+    setPendingStash(prev => ({ ...prev, ...removed }));
+    await commitContent(stripIngredients(draftContent, days));
+    // Keep them for next time. A database without the column just means this
+    // visit remembers them and a later one does not, never a lost dish list.
+    try {
+      await updateMenuIngredients(draft.id, { ...(draft.ingredients || {}), ...pendingStash, ...removed });
+    } catch {
+      setError('Removed from the list, but I could not save them for later. They will come back until you reload.');
+    }
+  };
+
+  const handleAddIngredients = async (days: DayBlock[]) => {
+    if (!draft || !days.length) return;
+    setError(null);
+    const additions = days
+      .filter(d => savedIngredients[d.day])
+      .map(d => ({ dayLineIndex: d.dayLineIndex, text: savedIngredients[d.day] }));
+    if (!additions.length) return;
+    await commitContent(insertIngredients(draftContent, additions));
+  };
 
   const handleCopy = async (key: string, content: string, week: number) => {
     setError(null);
@@ -202,13 +308,74 @@ export function MenusPage({ onBack }: MenusPageProps) {
               </button>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">Edit freely; it saves as you type. Nothing reaches the shared Notion page until you post it.</p>
+          <p className="text-xs text-muted-foreground">Settle the dishes first; ingredients go in below when you are happy with the week. Nothing reaches the shared Notion page until you post it.</p>
           <textarea
             value={draftContent}
             onChange={(e) => scheduleSave(e.target.value)}
             rows={16}
             className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground outline-none resize-y leading-relaxed font-mono"
           />
+
+          {draftDays.length > 0 && (
+            <div className="flex flex-col gap-2 rounded-xl bg-secondary px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-medium text-foreground">Ingredients</h3>
+                <div className="flex items-center gap-2">
+                  {daysAddable.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleAddIngredients(daysAddable)}
+                      className="rounded-full bg-blue-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-600"
+                    >
+                      Add ingredients
+                    </button>
+                  )}
+                  {daysWithIngredients.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveIngredients(daysWithIngredients)}
+                      className="rounded-full bg-background px-4 py-1.5 text-sm text-foreground hover:bg-accent"
+                    >
+                      Remove all
+                    </button>
+                  )}
+                </div>
+              </div>
+              <ul className="flex flex-col divide-y divide-border">
+                {draftDays.map(d => {
+                  const has = d.ingredientLineIndexes.length > 0;
+                  const saved = savedIngredients[d.day];
+                  return (
+                    <li key={`${d.day}-${d.dayLineIndex}`} className="flex items-start justify-between gap-3 py-2">
+                      <div className="min-w-0">
+                        <span className="text-sm text-foreground">{d.day}</span>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {has ? d.ingredientText.replace(/\n/g, ' · ') : saved ? 'not in the list' : 'none saved'}
+                        </p>
+                      </div>
+                      {has ? (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveIngredients([d])}
+                          className="shrink-0 rounded-full bg-background px-3 py-1 text-xs text-foreground hover:bg-accent"
+                        >
+                          Remove
+                        </button>
+                      ) : saved ? (
+                        <button
+                          type="button"
+                          onClick={() => handleAddIngredients([d])}
+                          className="shrink-0 rounded-full bg-background px-3 py-1 text-xs text-foreground hover:bg-accent"
+                        >
+                          Add
+                        </button>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
       ) : (
         <div className="rounded-xl bg-secondary px-4 py-6 text-sm text-muted-foreground">
