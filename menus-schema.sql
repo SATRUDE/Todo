@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS menus (
   week_number INTEGER NOT NULL,
   year INTEGER NOT NULL,
   content TEXT NOT NULL,
+  -- Ingredients per Norwegian day name, held apart from content so the dish
+  -- list can be settled first and the ingredients pulled in afterwards.
+  ingredients JSONB,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
   notified_at TIMESTAMPTZ,
   published_at TIMESTAMPTZ,
