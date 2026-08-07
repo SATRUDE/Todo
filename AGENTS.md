@@ -21,6 +21,35 @@ React + Vite + TypeScript PWA todo app backed by Supabase. See `README.md` for s
 - **Tests:** `npx vitest run` (runs Storybook browser tests via Playwright/Chromium)
 - **Lint:** No ESLint config exists; use `npx tsc --noEmit` for type-checking (requires adding a `tsconfig.json`)
 
+### Database migrations
+
+Schema changes live in `migration-*.sql` at the repo root and are applied with:
+
+```
+node scripts/migrate.mjs --status                       # what this tool has recorded
+node scripts/migrate.mjs migration-name.sql --dry-run   # print it, touch nothing
+node scripts/migrate.mjs migration-name.sql             # apply, in one transaction
+```
+
+Each applied file is recorded in a `schema_migrations` table, so re-running is a
+no-op and an already-applied file that has since been edited is refused. Write a
+new migration rather than editing an applied one.
+
+This goes through Supabase's Management API, not PostgREST, because PostgREST
+cannot run DDL. It needs `SUPABASE_ACCESS_TOKEN` (a Supabase personal access
+token) in `.env.local`; the service-role key is not enough.
+
+The overnight rounds run it as `--unattended`, which allows a migration to **add
+things and nothing else**: `create table`, `create index`, `create view`,
+`alter table ... add column`/`add constraint`, `comment on`. Anything that
+touches row data, drops something or tightens a constraint is refused and named.
+Nobody is watching an overnight round, so the worst an unattended migration can
+leave behind is an unused column. Backfills, deletions, drops and `set not null`
+stay attended: apply those from a chat where someone can read the result.
+
+Files predating this tool were pasted into the SQL editor by hand, so `--status`
+listing one as "not recorded" does not mean it was never applied.
+
 ### Non-obvious caveats
 
 - The app requires Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) in a `.env` file. Without valid credentials, the frontend renders the sign-in page but auth calls fail with "Failed to fetch". The Supabase client code (`src/lib/supabase.ts`) gracefully falls back to a placeholder client.
