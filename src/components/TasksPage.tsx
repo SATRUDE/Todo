@@ -147,16 +147,18 @@ export function TaskRow({
             </div>
           )}
           {list && (
-            <div
-              className="flex gap-1 items-center text-muted-foreground"
-              style={{ color: list.color }}
-            >
+            <div className="flex gap-1 items-center text-muted-foreground">
+              {/* The list colour is identity, not information: it tints the
+                  glyph, and the name reads on the same muted ink as the time,
+                  subtask and note chips beside it. Same treatment as the list
+                  detail screen. */}
               <svg
                 className="size-5 shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 strokeWidth="1.5"
+                style={{ color: list.color }}
               >
                 <path
                   d={LIST_ICON_PATH}
@@ -168,7 +170,7 @@ export function TaskRow({
             </div>
           )}
           {todo.timesDelayed && todo.timesDelayed > 0 && (
-            <div className="flex gap-1 items-center" style={{ color: "rgb(239, 65, 35)" }}>
+            <div className="flex gap-1 items-center" style={{ color: "hsl(var(--status-bad-fg))" }}>
               <svg
                 className="size-5 shrink-0"
                 fill="none"
@@ -217,7 +219,13 @@ interface StatusCardProps {
   icon: React.ReactNode;
   label: string;
   count: number;
-  accentColor: string;
+  /**
+   * Which semantic tone the tile carries. Resolved to the --status-* tokens
+   * rather than taken as a raw colour, so the tile follows the app's own
+   * theme switch and cannot be handed a literal that only works on one
+   * background. Same tokens as the task status pills on the rows below.
+   */
+  tone: "good" | "bad";
   onClick?: () => void;
   disabled?: boolean;
 }
@@ -226,10 +234,11 @@ export function StatusCard({
   icon,
   label,
   count,
-  accentColor,
+  tone,
   onClick,
   disabled = false,
 }: StatusCardProps) {
+  const accentColor = `hsl(var(--status-${tone}-fg))`;
   return (
     <Card
       className={`flex-1 rounded-lg border border-border bg-card transition-opacity ${
@@ -687,7 +696,7 @@ export function TasksPage(props: TasksPageProps) {
             icon={<CheckCircle2 className="size-6" />}
             label="Done"
             count={tasksCompletedCount}
-            accentColor="rgb(0, 200, 83)"
+            tone="good"
             onClick={onDoneCardClick}
             disabled={tasksCompletedCount === 0}
           />
@@ -695,7 +704,7 @@ export function TasksPage(props: TasksPageProps) {
             icon={<AlertCircle className="size-6" />}
             label="Overdue"
             count={missedDeadlinesCount}
-            accentColor="rgb(239, 65, 35)"
+            tone="bad"
             onClick={onOverdueCardClick}
             disabled={missedDeadlinesCount === 0}
           />
