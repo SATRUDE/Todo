@@ -57,11 +57,11 @@ export function SelectMilestoneModal({ isOpen, onClose, milestones, selectedMile
                           <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                             {selectedMilestoneId === milestone.id ? (
                               <g>
-                                <circle cx="12" cy="12" fill="#110C10" r="11.25" stroke="#E1E6EE" strokeWidth="1.5" />
-                                <circle cx="12" cy="12" fill="#E1E6EE" r="6" />
+                                <circle cx="12" cy="12" r="11.25" strokeWidth="1.5" className="fill-none stroke-foreground" />
+                                <circle cx="12" cy="12" r="6" className="fill-foreground" />
                               </g>
                             ) : (
-                              <circle cx="12" cy="12" fill="#110C10" r="11.25" stroke="#E1E6EE" strokeWidth="1.5" />
+                              <circle cx="12" cy="12" r="11.25" strokeWidth="1.5" className="fill-none stroke-foreground" />
                             )}
                           </svg>
                         </div>
