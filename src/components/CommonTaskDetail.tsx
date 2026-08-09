@@ -102,14 +102,13 @@ export function CommonTaskDetail({
                 className="relative shrink-0 size-[32px] cursor-pointer"
                 onClick={onBack}
               >
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
+                <svg className="block size-full stroke-foreground" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
                   <g>
-                    <path 
-                      d="M20 8L12 16L20 24" 
-                      stroke="#E1E6EE" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth="2" 
+                    <path
+                      d="M20 8L12 16L20 24"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
                     />
                   </g>
                 </svg>
@@ -204,11 +203,10 @@ export function CommonTaskDetail({
                   className="relative shrink-0 size-[32px] cursor-pointer"
                   onClick={onBack}
                 >
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
+                  <svg className="block size-full stroke-foreground" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
                     <g>
                       <path
                         d="M20 8L12 16L20 24"
-                        stroke="#E1E6EE"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth="2"
@@ -286,18 +284,17 @@ export function CommonTaskDetail({
                         }}
                       >
                         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                          <circle 
-                            cx="12" 
-                            cy="12" 
-                            r="11.625" 
-                            stroke="#E1E6EE" 
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="11.625"
                             strokeWidth="0.75"
-                            fill={todo.completed ? "#E1E6EE" : "none"}
+                            className={todo.completed ? "stroke-foreground fill-foreground" : "stroke-foreground fill-none"}
                           />
                           {todo.completed && (
                             <path
                               d="M7 12L10 15L17 8"
-                              stroke="#110c10"
+                              className="stroke-background"
                               strokeWidth="2"
                               strokeLinecap="round"
                               strokeLinejoin="round"
@@ -348,7 +345,7 @@ export function CommonTaskDetail({
                               <g>
                                 <path
                                   d={svgPathsToday.p19fddb00}
-                                  stroke="#5B5D62"
+                                  className="stroke-muted-foreground"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   strokeWidth="1.5"
@@ -375,7 +372,7 @@ export function CommonTaskDetail({
                               <g>
                                 <path
                                   d={svgPathsToday.p31f04100}
-                                  stroke="#5B5D62"
+                                  className="stroke-muted-foreground"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   strokeWidth="1.25"
