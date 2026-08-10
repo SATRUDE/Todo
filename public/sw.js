@@ -12,7 +12,7 @@ self.addEventListener('push', function(event) {
   console.log('Push notification received:', event);
 
   let notificationData = {
-    title: 'Todo App',
+    title: 'Mark OS',
     body: 'You have a new notification',
     icon: '/icon-192.png',
     badge: '/icon-192.png',

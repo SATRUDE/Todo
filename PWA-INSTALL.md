@@ -1,6 +1,6 @@
-# Installing the Todo App as a PWA
+# Installing Mark OS as a PWA
 
-Your Todo app is now a Progressive Web App (PWA)! You can install it on your phone or computer and it will work like a native app without showing the browser UI.
+Mark OS is a Progressive Web App (PWA)! You can install it on your phone or computer and it will work like a native app without showing the browser UI.
 
 ## How to Install
 

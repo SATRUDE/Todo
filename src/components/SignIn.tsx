@@ -140,7 +140,7 @@ export function SignIn({ onSignIn }: SignInProps) {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl">
-            {isSignUp ? 'Create account' : 'Sign in to Todo'}
+            {isSignUp ? 'Create account' : 'Sign in to Mark OS'}
           </CardTitle>
           <CardDescription>
             {isSignUp ? 'Create an account to get started' : 'Enter your email and password'}

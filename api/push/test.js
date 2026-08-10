@@ -48,7 +48,7 @@ module.exports = async function handler(req, res) {
   }
 
   const payload = JSON.stringify({
-    title: 'Todo App',
+    title: 'Mark OS',
     body: 'Push notifications are working!',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
