@@ -16,9 +16,9 @@ export default defineConfig({
     registerType: 'autoUpdate',
     includeAssets: ['favicon.ico', 'icon-192.png', 'icon-512.png'],
     manifest: {
-      name: 'Todo App',
-      short_name: 'Todo',
-      description: 'A simple and elegant todo app',
+      name: 'Mark OS',
+      short_name: 'Mark OS',
+      description: 'Mark OS: tasks, goals, sessions and the week, in one place.',
       theme_color: '#110c10',
       background_color: '#110c10',
       display: 'standalone',

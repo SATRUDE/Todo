@@ -1,7 +1,7 @@
 {
-  "name": "Todo App",
-  "short_name": "Todo",
-  "description": "A simple and elegant todo app",
+  "name": "Mark OS",
+  "short_name": "Mark OS",
+  "description": "Mark OS: tasks, goals, sessions and the week, in one place.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#110c10",

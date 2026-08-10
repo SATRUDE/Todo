@@ -1,7 +1,7 @@
 
-  # Simple Todo App
+  # Mark OS
 
-  This is a code bundle for Simple Todo App. The original project is available at https://www.figma.com/design/PD6MkmTYskww1TB4X2wCvC/Simple-Todo-App.
+  This is the Mark OS app (formerly the Todo app). The original project is available at https://www.figma.com/design/PD6MkmTYskww1TB4X2wCvC/Simple-Todo-App.
 
   ## Setup
 

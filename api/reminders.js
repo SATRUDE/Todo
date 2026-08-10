@@ -95,7 +95,7 @@ function isTodoDue(todo, logContext = '') {
 async function sendNotification(subscription, todo, supabase) {
   try {
     const payload = JSON.stringify({
-      title: 'Todo Reminder',
+      title: 'Mark OS reminder',
       body: todo.text.length > 100 ? todo.text.substring(0, 100) + '...' : todo.text,
       icon: '/icon-192.png',
       badge: '/icon-192.png',
