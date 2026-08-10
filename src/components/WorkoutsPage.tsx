@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   WORKOUT_EFFORTS,
   WORKOUT_KINDS,
+  WORKOUT_MUSCLE_SECTIONS,
   createWorkoutLog,
   deleteWorkoutLog,
   fetchWorkoutLogs,
@@ -9,6 +10,7 @@ import {
   type WorkoutEffort,
   type WorkoutKind,
   type WorkoutLog,
+  type WorkoutMuscle,
 } from "../lib/database";
 import { AppSheet } from "./AppSheet";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -42,6 +44,30 @@ const EFFORT_LABELS: Record<WorkoutEffort, string> = {
   steady: "Steady",
   hard: "Hard",
 };
+
+/**
+ * The stored keys are Mickey's, so they are snake_case and abbreviated. He needs
+ * them unchanged; Mark should not have to read them.
+ */
+const MUSCLE_LABELS: Record<WorkoutMuscle, string> = {
+  chest: "Chest",
+  back: "Back",
+  front_delts: "Front delts",
+  side_delts: "Side delts",
+  rear_delts: "Rear delts",
+  traps: "Traps",
+  biceps: "Biceps",
+  triceps: "Triceps",
+  forearms: "Forearms",
+  quads: "Quads",
+  hamstrings: "Hamstrings",
+  glutes: "Glutes",
+  calves: "Calves",
+  abs: "Abs",
+};
+
+/** Kinds where naming the muscles worked is worth asking for. */
+const MUSCLE_KINDS: WorkoutKind[] = ["gym"];
 
 function startOfDay(date: Date): Date {
   const d = new Date(date);
@@ -86,6 +112,14 @@ function summariseLog(log: WorkoutLog): string {
   return parts.join(", ");
 }
 
+/** "Chest, triceps, front delts" — the muscles line under a gym session. */
+function summariseMuscles(log: WorkoutLog): string | null {
+  if (!log.muscles?.length) return null;
+  return log.muscles
+    .map((m, i) => (i === 0 ? MUSCLE_LABELS[m] : MUSCLE_LABELS[m].toLowerCase()))
+    .join(", ");
+}
+
 interface ChipProps {
   label: string;
   selected: boolean;
@@ -122,6 +156,7 @@ function LogWorkoutSheet({ isOpen, onClose, editing, onSaved }: LogWorkoutSheetP
   const [duration, setDuration] = useState("");
   const [distance, setDistance] = useState("");
   const [effort, setEffort] = useState<WorkoutEffort | null>(null);
+  const [muscles, setMuscles] = useState<WorkoutMuscle[]>([]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,12 +169,20 @@ function LogWorkoutSheet({ isOpen, onClose, editing, onSaved }: LogWorkoutSheetP
     setDuration(editing?.duration_min != null ? String(editing.duration_min) : "");
     setDistance(editing?.distance_km != null ? String(Number(editing.distance_km)) : "");
     setEffort(editing?.effort ?? null);
+    setMuscles(editing?.muscles ?? []);
     setNotes(editing?.notes ?? "");
     setError(null);
     setSaving(false);
   }, [isOpen, editing]);
 
   const wantsDistance = DISTANCE_KINDS.includes(kind);
+  const wantsMuscles = MUSCLE_KINDS.includes(kind);
+
+  function toggleMuscle(muscle: WorkoutMuscle) {
+    setMuscles((prev) =>
+      prev.includes(muscle) ? prev.filter((m) => m !== muscle) : [...prev, muscle],
+    );
+  }
 
   async function handleSave() {
     const durationMin = duration.trim() ? Number(duration) : null;
@@ -153,8 +196,9 @@ function LogWorkoutSheet({ isOpen, onClose, editing, onSaved }: LogWorkoutSheetP
       setError("Give the distance in kilometres.");
       return;
     }
-    if (durationMin == null && distanceKm == null && !notes.trim()) {
-      setError("Add a duration, a distance or a note, so there is something to read.");
+    const keptMuscles = wantsMuscles ? muscles : [];
+    if (durationMin == null && distanceKm == null && !notes.trim() && keptMuscles.length === 0) {
+      setError("Add a duration, a distance, the muscles or a note, so there is something to read.");
       return;
     }
 
@@ -167,6 +211,7 @@ function LogWorkoutSheet({ isOpen, onClose, editing, onSaved }: LogWorkoutSheetP
         durationMin: durationMin == null ? null : Math.round(durationMin),
         distanceKm,
         effort,
+        muscles: keptMuscles,
         notes,
       };
       if (editing) {
@@ -268,6 +313,27 @@ function LogWorkoutSheet({ isOpen, onClose, editing, onSaved }: LogWorkoutSheetP
             ))}
           </div>
         </div>
+
+        {wantsMuscles && (
+          <div className="flex flex-col gap-3">
+            <span className="text-sm text-muted-foreground">What you worked</span>
+            {WORKOUT_MUSCLE_SECTIONS.map((section) => (
+              <div key={section.label} className="flex flex-col gap-2">
+                <span className="text-xs text-muted-foreground">{section.label}</span>
+                <div className="flex flex-wrap gap-2">
+                  {section.muscles.map((m) => (
+                    <Chip
+                      key={m}
+                      label={MUSCLE_LABELS[m]}
+                      selected={muscles.includes(m)}
+                      onClick={() => toggleMuscle(m)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="flex flex-col gap-2">
           <label htmlFor="workout-notes" className="text-sm text-muted-foreground">
@@ -401,6 +467,7 @@ export function WorkoutsPage({ onBack }: { onBack: () => void }) {
                 <h2 className="text-sm font-medium text-muted-foreground">{formatDayHeading(dateKey)}</h2>
                 {dayLogs.map((log) => {
                   const summary = summariseLog(log);
+                  const muscleLine = summariseMuscles(log);
                   return (
                     <div
                       key={log.id}
@@ -418,6 +485,7 @@ export function WorkoutsPage({ onBack }: { onBack: () => void }) {
                           {KIND_LABELS[log.kind]}
                           {summary && <span className="text-muted-foreground"> · {summary}</span>}
                         </p>
+                        {muscleLine && <p className="mt-1 text-sm text-muted-foreground">{muscleLine}</p>}
                         {log.notes && <p className="mt-1 text-sm text-muted-foreground">{log.notes}</p>}
                         {log.seen_by_trainer_at && (
                           <p className="mt-1 text-xs text-muted-foreground">Mickey has this one</p>

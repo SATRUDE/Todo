@@ -2672,6 +2672,23 @@ export type WorkoutKind = (typeof WORKOUT_KINDS)[number]
 export const WORKOUT_EFFORTS = ['easy', 'steady', 'hard'] as const
 export type WorkoutEffort = (typeof WORKOUT_EFFORTS)[number]
 
+/**
+ * Muscle groups, in the exact keys Mickey counts weekly volume in
+ * (muscle_map.py MUSCLE_SECTIONS in marks-magazine). Kept identical on purpose:
+ * a logged session then drops straight into his 10-20 sets/muscle/week picture.
+ * The database has a CHECK constraint holding the same list.
+ */
+export const WORKOUT_MUSCLE_SECTIONS = [
+  {
+    label: 'Upper body',
+    muscles: ['chest', 'back', 'front_delts', 'side_delts', 'rear_delts', 'traps', 'biceps', 'triceps', 'forearms'],
+  },
+  { label: 'Lower body', muscles: ['quads', 'hamstrings', 'glutes', 'calves'] },
+  { label: 'Core', muscles: ['abs'] },
+] as const
+
+export type WorkoutMuscle = (typeof WORKOUT_MUSCLE_SECTIONS)[number]['muscles'][number]
+
 export interface WorkoutLog {
   id: number
   user_id: string
@@ -2680,6 +2697,7 @@ export interface WorkoutLog {
   duration_min: number | null
   distance_km: number | null
   effort: WorkoutEffort | null
+  muscles: WorkoutMuscle[] | null
   notes: string | null
   seen_by_trainer_at: string | null
   created_at: string
@@ -2692,6 +2710,7 @@ export interface WorkoutLogInput {
   durationMin?: number | null
   distanceKm?: number | null
   effort?: WorkoutEffort | null
+  muscles?: WorkoutMuscle[] | null
   notes?: string | null
 }
 
@@ -2724,6 +2743,7 @@ export async function createWorkoutLog(entry: WorkoutLogInput): Promise<WorkoutL
       duration_min: entry.durationMin ?? null,
       distance_km: entry.distanceKm ?? null,
       effort: entry.effort ?? null,
+      muscles: entry.muscles?.length ? entry.muscles : null,
       notes: entry.notes?.trim() ? entry.notes.trim() : null,
     })
     .select()
@@ -2749,6 +2769,7 @@ export async function updateWorkoutLog(
   if (patch.durationMin !== undefined) update.duration_min = patch.durationMin
   if (patch.distanceKm !== undefined) update.distance_km = patch.distanceKm
   if (patch.effort !== undefined) update.effort = patch.effort
+  if (patch.muscles !== undefined) update.muscles = patch.muscles?.length ? patch.muscles : null
   if (patch.notes !== undefined) update.notes = patch.notes?.trim() ? patch.notes.trim() : null
 
   const { data, error } = await (supabase as any)
