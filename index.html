@@ -2,17 +2,28 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <script>
-      (function() {
-        var k = 'todo-app-theme';
-        var v = localStorage.getItem(k);
-        if (v !== 'light') document.documentElement.classList.add('dark');
-      })();
-    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Mark OS: tasks, goals, sessions and the week, in one place." />
-    <meta name="theme-color" content="#110c10" />
+    <!-- Dark is the default theme, so this is the dark --background token
+         resolved. The script below flips it when the saved theme is light, and
+         src/hooks/useThemeColorMeta.ts keeps it in step from then on. -->
+    <meta name="theme-color" content="#09090b" />
+    <script>
+      // Runs before first paint: sets the theme class and matches the browser
+      // chrome to it, so a light-mode load never flashes a near-black bar.
+      // Sits after the meta above on purpose, so the tag exists to be rewritten.
+      (function() {
+        var k = 'todo-app-theme';
+        var v = localStorage.getItem(k);
+        if (v !== 'light') {
+          document.documentElement.classList.add('dark');
+        } else {
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute('content', '#ffffff');
+        }
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Mark OS" />
