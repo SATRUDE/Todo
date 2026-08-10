@@ -53,9 +53,10 @@ interface DashboardProps {
   onNavigateToFocusSessions?: () => void;
   onNavigateToCalorieCounter?: () => void;
   onNavigateToMenus?: () => void;
+  onNavigateToWorkouts?: () => void;
 }
 
-export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCommonTasks, onNavigateToDailyTasks, onNavigateToGoals, onNavigateToNotes, onNavigateToDrinkWater, onNavigateToFocusSessions, onNavigateToCalorieCounter, onNavigateToMenus }: DashboardProps) {
+export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCommonTasks, onNavigateToDailyTasks, onNavigateToGoals, onNavigateToNotes, onNavigateToDrinkWater, onNavigateToFocusSessions, onNavigateToCalorieCounter, onNavigateToMenus, onNavigateToWorkouts }: DashboardProps) {
   const [calorieSubtitle, setCalorieSubtitle] = useState<{ text: string; over: boolean } | null>(null);
 
   useEffect(() => {
@@ -159,6 +160,15 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCom
               onClick={onNavigateToCalorieCounter ?? (() => {})}
               subtitle={calorieSubtitle?.text}
               subtitleClass={calorieSubtitle?.over ? "text-red-500" : "text-muted-foreground"}
+            />
+          </div>
+
+          <div className="flex gap-4 w-full">
+            <DashboardCard
+              label="Workouts"
+              iconPath="M6.75 6.75v10.5m-3-8.25v6m13.5-8.25v10.5m3-8.25v6M6.75 12h10.5"
+              colorClass="text-lime-500"
+              onClick={onNavigateToWorkouts ?? (() => {})}
             />
           </div>
         </div>

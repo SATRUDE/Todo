@@ -2656,3 +2656,122 @@ export async function createMenuDraft(content: string, weekNumber: number, year:
   }
   return data
 }
+
+// ---------------------------------------------------------------------------
+// Workout logs
+//
+// Runs and gym sessions Mark logs by hand. PUSH covers resistance training
+// only, so this is where the trainer desk gets everything else. The table is
+// also the queue: Mickey's routine reads rows with seen_by_trainer_at IS NULL
+// and stamps them, which is why nothing here ever writes that column.
+// ---------------------------------------------------------------------------
+
+export const WORKOUT_KINDS = ['run', 'gym', 'ride', 'walk', 'swim', 'other'] as const
+export type WorkoutKind = (typeof WORKOUT_KINDS)[number]
+
+export const WORKOUT_EFFORTS = ['easy', 'steady', 'hard'] as const
+export type WorkoutEffort = (typeof WORKOUT_EFFORTS)[number]
+
+export interface WorkoutLog {
+  id: number
+  user_id: string
+  workout_date: string
+  kind: WorkoutKind
+  duration_min: number | null
+  distance_km: number | null
+  effort: WorkoutEffort | null
+  notes: string | null
+  seen_by_trainer_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkoutLogInput {
+  date: Date
+  kind: WorkoutKind
+  durationMin?: number | null
+  distanceKm?: number | null
+  effort?: WorkoutEffort | null
+  notes?: string | null
+}
+
+export async function fetchWorkoutLogs(limit = 60): Promise<WorkoutLog[]> {
+  const userId = await ensureAuthenticated()
+  const { data, error } = await (supabase as any)
+    .from('workout_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .order('workout_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) {
+    console.error('Error fetching workout logs:', error)
+    throw error
+  }
+  return (data ?? []) as WorkoutLog[]
+}
+
+export async function createWorkoutLog(entry: WorkoutLogInput): Promise<WorkoutLog> {
+  const userId = await ensureAuthenticated()
+  const workoutDate = formatLocalDate(entry.date)
+  if (!workoutDate) throw new Error('Invalid date')
+  const { data, error } = await (supabase as any)
+    .from('workout_logs')
+    .insert({
+      user_id: userId,
+      workout_date: workoutDate,
+      kind: entry.kind,
+      duration_min: entry.durationMin ?? null,
+      distance_km: entry.distanceKm ?? null,
+      effort: entry.effort ?? null,
+      notes: entry.notes?.trim() ? entry.notes.trim() : null,
+    })
+    .select()
+    .single()
+  if (error) {
+    console.error('Error creating workout log:', error)
+    throw error
+  }
+  return data as WorkoutLog
+}
+
+export async function updateWorkoutLog(
+  id: number,
+  patch: Partial<Omit<WorkoutLogInput, 'date'>> & { date?: Date }
+): Promise<WorkoutLog> {
+  await ensureAuthenticated()
+  const update: Record<string, unknown> = {}
+  if (patch.date !== undefined) {
+    const workoutDate = formatLocalDate(patch.date)
+    if (workoutDate) update.workout_date = workoutDate
+  }
+  if (patch.kind !== undefined) update.kind = patch.kind
+  if (patch.durationMin !== undefined) update.duration_min = patch.durationMin
+  if (patch.distanceKm !== undefined) update.distance_km = patch.distanceKm
+  if (patch.effort !== undefined) update.effort = patch.effort
+  if (patch.notes !== undefined) update.notes = patch.notes?.trim() ? patch.notes.trim() : null
+
+  const { data, error } = await (supabase as any)
+    .from('workout_logs')
+    .update(update)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) {
+    console.error('Error updating workout log:', error)
+    throw error
+  }
+  return data as WorkoutLog
+}
+
+export async function deleteWorkoutLog(id: number): Promise<void> {
+  await ensureAuthenticated()
+  const { error } = await (supabase as any)
+    .from('workout_logs')
+    .delete()
+    .eq('id', id)
+  if (error) {
+    console.error('Error deleting workout log:', error)
+    throw error
+  }
+}

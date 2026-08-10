@@ -29,6 +29,7 @@ import { Notes } from "./Notes";
 import { NoteDetail } from "./NoteDetail";
 import { DrinkWater } from "./DrinkWater";
 import { CalorieCounter } from "./CalorieCounter";
+import { WorkoutsPage } from "./WorkoutsPage";
 import { FocusSessions } from "./FocusSessions";
 import { FocusSessionDetail } from "./FocusSessionDetail";
 import { TasksPage } from "./TasksPage";
@@ -156,7 +157,7 @@ interface ListItem {
   folderId?: number | null;
 }
 
-type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop" | "notes" | "noteDetail" | "search" | "focusSessions" | "focusSessionDetail" | "drinkWater" | "calorieCounter" | "menus";
+type Page = "today" | "dashboard" | "lists" | "listDetail" | "settings" | "calendarSync" | "commonTasks" | "commonTaskDetail" | "dailyTasks" | "goals" | "goalDetail" | "milestoneDetail" | "resetPassword" | "workshop" | "notes" | "noteDetail" | "search" | "focusSessions" | "focusSessionDetail" | "drinkWater" | "calorieCounter" | "menus" | "workouts";
 
 const COMPLETED_LIST_ID = -1;
 const TODAY_LIST_ID = 0;
@@ -3430,6 +3431,7 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
           onNavigateToFocusSessions={() => setCurrentPage("focusSessions")}
           onNavigateToCalorieCounter={() => setCurrentPage("calorieCounter")}
           onNavigateToMenus={() => setCurrentPage("menus")}
+          onNavigateToWorkouts={() => setCurrentPage("workouts")}
         />
       ) : currentPage === "menus" ? (
         <MenusPage onBack={() => setCurrentPage("dashboard")} />
@@ -3437,6 +3439,8 @@ VITE_SUPABASE_URL=your_project_url{'\n'}VITE_SUPABASE_ANON_KEY=your_anon_key
         <DrinkWater onBack={() => setCurrentPage("dashboard")} />
       ) : currentPage === "calorieCounter" ? (
         <CalorieCounter onBack={() => setCurrentPage("dashboard")} />
+      ) : currentPage === "workouts" ? (
+        <WorkoutsPage onBack={() => setCurrentPage("dashboard")} />
       ) : currentPage === "calendarSync" ? (
         <CalendarSync 
           onBack={() => setCurrentPage("dashboard")}
