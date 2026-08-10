@@ -243,16 +243,16 @@ export function GoalDetailModal({
 
                     {/* Trash Icon - Only show for existing goals */}
                     {goal.id >= 0 && (
-                      <div 
-                        className="relative shrink-0 size-[24px] cursor-pointer hover:opacity-70"
+                      <button
+                        type="button"
+                        className="shrink-0 size-6 cursor-pointer text-foreground hover:opacity-70"
                         onClick={handleDelete}
+                        aria-label="Delete goal"
                       >
-                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                          <g>
-                            <path d={deleteIconPaths.pf5e3c80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                          </g>
+                        <svg className="block size-full" fill="none" viewBox="0 0 24 24">
+                          <path d={deleteIconPaths.pf5e3c80} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
                         </svg>
-                      </div>
+                      </button>
                     )}
                   </div>
 
