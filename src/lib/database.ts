@@ -2796,3 +2796,133 @@ export async function deleteWorkoutLog(id: number): Promise<void> {
     throw error
   }
 }
+
+// ---------------------------------------------------------------------------
+// PUSH exports
+//
+// Mark's lifting history comes out of the PUSH app as one ~5 MB JSON file. It
+// used to reach the system only by him committing it to the marks-magazine repo,
+// which is why the committed copy went a month stale. Uploading it here puts it
+// next to the sessions he logs by hand, and Mickey's routine applies whichever
+// upload it has not applied yet.
+// ---------------------------------------------------------------------------
+
+const GYM_EXPORTS_BUCKET = 'gym-exports'
+
+export interface PushExport {
+  id: number
+  user_id: string
+  storage_path: string
+  size_bytes: number | null
+  workout_count: number | null
+  latest_workout_date: string | null
+  uploaded_at: string
+  applied_at: string | null
+  created_at: string
+}
+
+/** What a PUSH export looks like once parsed: a list of workouts. */
+export interface PushExportSummary {
+  workoutCount: number
+  latestWorkoutDate: string | null
+}
+
+/**
+ * Read the shape of a PUSH export without trusting it.
+ *
+ * The file is a JSON array of workouts, each with `workoutDetails` and
+ * `exercises`. Anything else is almost certainly the wrong file, and it is far
+ * better to say so at the picker than to hand Mickey something he cannot
+ * process at 03:13. The date key has moved between PUSH versions, so several
+ * plausible names are tried rather than one guessed.
+ */
+export function summarisePushExport(parsed: unknown): PushExportSummary {
+  if (!Array.isArray(parsed)) {
+    throw new Error('That is not a PUSH export: the file should be a list of workouts.')
+  }
+  if (parsed.length === 0) {
+    throw new Error('That export has no workouts in it.')
+  }
+  const first = parsed[0] as Record<string, unknown> | null
+  if (!first || typeof first !== 'object' || !('workoutDetails' in first)) {
+    throw new Error('That does not look like a PUSH export. Export again from PUSH and pick the JSON file.')
+  }
+
+  let latest: string | null = null
+  for (const entry of parsed as Record<string, unknown>[]) {
+    const details = (entry?.workoutDetails ?? {}) as Record<string, unknown>
+    const raw = details.date ?? details.startTime ?? details.start ?? details.createdAt ?? entry?.date
+    if (typeof raw !== 'string' && typeof raw !== 'number') continue
+    const parsedDate = new Date(raw)
+    if (Number.isNaN(parsedDate.getTime())) continue
+    const key = formatLocalDate(parsedDate)
+    if (key && (latest == null || key > latest)) latest = key
+  }
+
+  return { workoutCount: parsed.length, latestWorkoutDate: latest }
+}
+
+export async function fetchPushExports(limit = 10): Promise<PushExport[]> {
+  const userId = await ensureAuthenticated()
+  const { data, error } = await (supabase as any)
+    .from('push_exports')
+    .select('*')
+    .eq('user_id', userId)
+    .order('uploaded_at', { ascending: false })
+    .limit(limit)
+  if (error) {
+    console.error('Error fetching PUSH exports:', error)
+    throw error
+  }
+  return (data ?? []) as PushExport[]
+}
+
+/**
+ * Put a PUSH export in the bucket and queue it for the trainer routine.
+ *
+ * The file is validated before anything is uploaded, so a wrong pick costs
+ * nothing. Nothing overwrites: each upload is its own object, which keeps the
+ * old one around if a bad export ever needs backing out of.
+ */
+export async function uploadPushExport(file: File): Promise<PushExport> {
+  const userId = await ensureAuthenticated()
+
+  const text = await file.text()
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    throw new Error('That file is not valid JSON.')
+  }
+  const summary = summarisePushExport(parsed)
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const path = `${userId}/push-${stamp}.json`
+
+  const { error: uploadError } = await supabase.storage
+    .from(GYM_EXPORTS_BUCKET)
+    .upload(path, file, { contentType: 'application/json', upsert: false })
+  if (uploadError) {
+    console.error('Error uploading PUSH export:', uploadError)
+    throw new Error(uploadError.message || 'The upload failed.')
+  }
+
+  const { data, error } = await (supabase as any)
+    .from('push_exports')
+    .insert({
+      user_id: userId,
+      storage_path: path,
+      size_bytes: file.size,
+      workout_count: summary.workoutCount,
+      latest_workout_date: summary.latestWorkoutDate,
+    })
+    .select()
+    .single()
+  if (error) {
+    // The row is what Mickey reads, so an orphaned object is worse than none.
+    await supabase.storage.from(GYM_EXPORTS_BUCKET).remove([path])
+    console.error('Error recording PUSH export:', error)
+    throw error
+  }
+  return data as PushExport
+}

@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   WORKOUT_EFFORTS,
   WORKOUT_KINDS,
   WORKOUT_MUSCLE_SECTIONS,
   createWorkoutLog,
   deleteWorkoutLog,
+  fetchPushExports,
   fetchWorkoutLogs,
   updateWorkoutLog,
+  uploadPushExport,
+  type PushExport,
   type WorkoutEffort,
   type WorkoutKind,
   type WorkoutLog,
@@ -363,6 +366,113 @@ function LogWorkoutSheet({ isOpen, onClose, editing, onSaved }: LogWorkoutSheetP
   );
 }
 
+/** "6 Aug" / "6 Aug 2025" — a stored YYYY-MM-DD, read short. */
+function formatShortDate(key: string): string {
+  const date = parseDateKey(key);
+  const today = new Date();
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
+  });
+}
+
+/**
+ * Uploading the PUSH export.
+ *
+ * PUSH holds the lifting history and only exports it as a file, so this is the
+ * one part of Mark's training that cannot be typed in. It used to reach the
+ * system by him committing the file to the marks-magazine repo, and the copy
+ * there went a month stale, which is the whole reason this exists. Mickey applies
+ * the newest upload on his next round.
+ */
+function PushImportCard() {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [latest, setLatest] = useState<PushExport | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [justUploaded, setJustUploaded] = useState<PushExport | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const rows = await fetchPushExports(1);
+      setLatest(rows[0] ?? null);
+    } catch (err) {
+      console.error("Failed to load PUSH exports:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    setJustUploaded(null);
+    try {
+      const row = await uploadPushExport(file);
+      setLatest(row);
+      setJustUploaded(row);
+    } catch (err) {
+      console.error("Failed to upload PUSH export:", err);
+      setError(err instanceof Error ? err.message : "The upload failed.");
+    } finally {
+      setBusy(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  }
+
+  const shown = justUploaded ?? latest;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card px-4 py-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-base text-foreground">From PUSH</h2>
+        <p className="text-sm text-muted-foreground">
+          Export your history in PUSH and drop the JSON here. Mickey rebuilds your strength and volume
+          numbers from it overnight.
+        </p>
+      </div>
+
+      <input
+        ref={fileInput}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={(e) => void handleFile(e.target.files?.[0])}
+      />
+
+      <Button variant="secondary" disabled={busy} onClick={() => fileInput.current?.click()}>
+        {busy ? "Uploading…" : "Choose a PUSH export"}
+      </Button>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {justUploaded && (
+        <p className="text-sm text-foreground">
+          Taken: {justUploaded.workout_count ?? 0} workouts
+          {justUploaded.latest_workout_date && `, the newest from ${formatShortDate(justUploaded.latest_workout_date)}`}.
+          Mickey picks it up on his next round.
+        </p>
+      )}
+
+      {!justUploaded && shown && (
+        <p className="text-sm text-muted-foreground">
+          Last upload {formatShortDate(shown.uploaded_at.slice(0, 10))}: {shown.workout_count ?? 0} workouts
+          {shown.latest_workout_date && `, newest ${formatShortDate(shown.latest_workout_date)}`}.
+          {shown.applied_at ? " Mickey has applied it." : " Waiting for Mickey."}
+        </p>
+      )}
+
+      {!shown && !error && (
+        <p className="text-sm text-muted-foreground">Nothing uploaded yet.</p>
+      )}
+    </div>
+  );
+}
+
 export function WorkoutsPage({ onBack }: { onBack: () => void }) {
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -449,6 +559,8 @@ export function WorkoutsPage({ onBack }: { onBack: () => void }) {
         >
           Log a session
         </Button>
+
+        <PushImportCard />
 
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
