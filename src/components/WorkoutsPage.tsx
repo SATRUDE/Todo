@@ -1,14 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   WORKOUT_EFFORTS,
   WORKOUT_KINDS,
+  WORKOUT_MUSCLE_SECTIONS,
   createWorkoutLog,
   deleteWorkoutLog,
+  fetchPushExports,
   fetchWorkoutLogs,
   updateWorkoutLog,
+  uploadPushExport,
+  type PushExport,
   type WorkoutEffort,
   type WorkoutKind,
   type WorkoutLog,
+  type WorkoutMuscle,
 } from "../lib/database";
 import { AppSheet } from "./AppSheet";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -42,6 +47,30 @@ const EFFORT_LABELS: Record<WorkoutEffort, string> = {
   steady: "Steady",
   hard: "Hard",
 };
+
+/**
+ * The stored keys are Mickey's, so they are snake_case and abbreviated. He needs
+ * them unchanged; Mark should not have to read them.
+ */
+const MUSCLE_LABELS: Record<WorkoutMuscle, string> = {
+  chest: "Chest",
+  back: "Back",
+  front_delts: "Front delts",
+  side_delts: "Side delts",
+  rear_delts: "Rear delts",
+  traps: "Traps",
+  biceps: "Biceps",
+  triceps: "Triceps",
+  forearms: "Forearms",
+  quads: "Quads",
+  hamstrings: "Hamstrings",
+  glutes: "Glutes",
+  calves: "Calves",
+  abs: "Abs",
+};
+
+/** Kinds where naming the muscles worked is worth asking for. */
+const MUSCLE_KINDS: WorkoutKind[] = ["gym"];
 
 function startOfDay(date: Date): Date {
   const d = new Date(date);
@@ -86,6 +115,14 @@ function summariseLog(log: WorkoutLog): string {
   return parts.join(", ");
 }
 
+/** "Chest, triceps, front delts" — the muscles line under a gym session. */
+function summariseMuscles(log: WorkoutLog): string | null {
+  if (!log.muscles?.length) return null;
+  return log.muscles
+    .map((m, i) => (i === 0 ? MUSCLE_LABELS[m] : MUSCLE_LABELS[m].toLowerCase()))
+    .join(", ");
+}
+
 interface ChipProps {
   label: string;
   selected: boolean;
@@ -122,6 +159,7 @@ function LogWorkoutSheet({ isOpen, onClose, editing, onSaved }: LogWorkoutSheetP
   const [duration, setDuration] = useState("");
   const [distance, setDistance] = useState("");
   const [effort, setEffort] = useState<WorkoutEffort | null>(null);
+  const [muscles, setMuscles] = useState<WorkoutMuscle[]>([]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,12 +172,20 @@ function LogWorkoutSheet({ isOpen, onClose, editing, onSaved }: LogWorkoutSheetP
     setDuration(editing?.duration_min != null ? String(editing.duration_min) : "");
     setDistance(editing?.distance_km != null ? String(Number(editing.distance_km)) : "");
     setEffort(editing?.effort ?? null);
+    setMuscles(editing?.muscles ?? []);
     setNotes(editing?.notes ?? "");
     setError(null);
     setSaving(false);
   }, [isOpen, editing]);
 
   const wantsDistance = DISTANCE_KINDS.includes(kind);
+  const wantsMuscles = MUSCLE_KINDS.includes(kind);
+
+  function toggleMuscle(muscle: WorkoutMuscle) {
+    setMuscles((prev) =>
+      prev.includes(muscle) ? prev.filter((m) => m !== muscle) : [...prev, muscle],
+    );
+  }
 
   async function handleSave() {
     const durationMin = duration.trim() ? Number(duration) : null;
@@ -153,8 +199,9 @@ function LogWorkoutSheet({ isOpen, onClose, editing, onSaved }: LogWorkoutSheetP
       setError("Give the distance in kilometres.");
       return;
     }
-    if (durationMin == null && distanceKm == null && !notes.trim()) {
-      setError("Add a duration, a distance or a note, so there is something to read.");
+    const keptMuscles = wantsMuscles ? muscles : [];
+    if (durationMin == null && distanceKm == null && !notes.trim() && keptMuscles.length === 0) {
+      setError("Add a duration, a distance, the muscles or a note, so there is something to read.");
       return;
     }
 
@@ -167,6 +214,7 @@ function LogWorkoutSheet({ isOpen, onClose, editing, onSaved }: LogWorkoutSheetP
         durationMin: durationMin == null ? null : Math.round(durationMin),
         distanceKm,
         effort,
+        muscles: keptMuscles,
         notes,
       };
       if (editing) {
@@ -269,6 +317,27 @@ function LogWorkoutSheet({ isOpen, onClose, editing, onSaved }: LogWorkoutSheetP
           </div>
         </div>
 
+        {wantsMuscles && (
+          <div className="flex flex-col gap-3">
+            <span className="text-sm text-muted-foreground">What you worked</span>
+            {WORKOUT_MUSCLE_SECTIONS.map((section) => (
+              <div key={section.label} className="flex flex-col gap-2">
+                <span className="text-xs text-muted-foreground">{section.label}</span>
+                <div className="flex flex-wrap gap-2">
+                  {section.muscles.map((m) => (
+                    <Chip
+                      key={m}
+                      label={MUSCLE_LABELS[m]}
+                      selected={muscles.includes(m)}
+                      onClick={() => toggleMuscle(m)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex flex-col gap-2">
           <label htmlFor="workout-notes" className="text-sm text-muted-foreground">
             Anything Mickey should know
@@ -294,6 +363,113 @@ function LogWorkoutSheet({ isOpen, onClose, editing, onSaved }: LogWorkoutSheetP
         </div>
       </div>
     </AppSheet>
+  );
+}
+
+/** "6 Aug" / "6 Aug 2025" — a stored YYYY-MM-DD, read short. */
+function formatShortDate(key: string): string {
+  const date = parseDateKey(key);
+  const today = new Date();
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
+  });
+}
+
+/**
+ * Uploading the PUSH export.
+ *
+ * PUSH holds the lifting history and only exports it as a file, so this is the
+ * one part of Mark's training that cannot be typed in. It used to reach the
+ * system by him committing the file to the marks-magazine repo, and the copy
+ * there went a month stale, which is the whole reason this exists. Mickey applies
+ * the newest upload on his next round.
+ */
+function PushImportCard() {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [latest, setLatest] = useState<PushExport | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [justUploaded, setJustUploaded] = useState<PushExport | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const rows = await fetchPushExports(1);
+      setLatest(rows[0] ?? null);
+    } catch (err) {
+      console.error("Failed to load PUSH exports:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    setJustUploaded(null);
+    try {
+      const row = await uploadPushExport(file);
+      setLatest(row);
+      setJustUploaded(row);
+    } catch (err) {
+      console.error("Failed to upload PUSH export:", err);
+      setError(err instanceof Error ? err.message : "The upload failed.");
+    } finally {
+      setBusy(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  }
+
+  const shown = justUploaded ?? latest;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card px-4 py-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-base text-foreground">From PUSH</h2>
+        <p className="text-sm text-muted-foreground">
+          Export your history in PUSH and drop the JSON here. Mickey rebuilds your strength and volume
+          numbers from it overnight.
+        </p>
+      </div>
+
+      <input
+        ref={fileInput}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={(e) => void handleFile(e.target.files?.[0])}
+      />
+
+      <Button variant="secondary" disabled={busy} onClick={() => fileInput.current?.click()}>
+        {busy ? "Uploading…" : "Choose a PUSH export"}
+      </Button>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {justUploaded && (
+        <p className="text-sm text-foreground">
+          Taken: {justUploaded.workout_count ?? 0} workouts
+          {justUploaded.latest_workout_date && `, the newest from ${formatShortDate(justUploaded.latest_workout_date)}`}.
+          Mickey picks it up on his next round.
+        </p>
+      )}
+
+      {!justUploaded && shown && (
+        <p className="text-sm text-muted-foreground">
+          Last upload {formatShortDate(shown.uploaded_at.slice(0, 10))}: {shown.workout_count ?? 0} workouts
+          {shown.latest_workout_date && `, newest ${formatShortDate(shown.latest_workout_date)}`}.
+          {shown.applied_at ? " Mickey has applied it." : " Waiting for Mickey."}
+        </p>
+      )}
+
+      {!shown && !error && (
+        <p className="text-sm text-muted-foreground">Nothing uploaded yet.</p>
+      )}
+    </div>
   );
 }
 
@@ -384,6 +560,8 @@ export function WorkoutsPage({ onBack }: { onBack: () => void }) {
           Log a session
         </Button>
 
+        <PushImportCard />
+
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : loadFailed ? (
@@ -401,6 +579,7 @@ export function WorkoutsPage({ onBack }: { onBack: () => void }) {
                 <h2 className="text-sm font-medium text-muted-foreground">{formatDayHeading(dateKey)}</h2>
                 {dayLogs.map((log) => {
                   const summary = summariseLog(log);
+                  const muscleLine = summariseMuscles(log);
                   return (
                     <div
                       key={log.id}
@@ -418,6 +597,7 @@ export function WorkoutsPage({ onBack }: { onBack: () => void }) {
                           {KIND_LABELS[log.kind]}
                           {summary && <span className="text-muted-foreground"> · {summary}</span>}
                         </p>
+                        {muscleLine && <p className="mt-1 text-sm text-muted-foreground">{muscleLine}</p>}
                         {log.notes && <p className="mt-1 text-sm text-muted-foreground">{log.notes}</p>}
                         {log.seen_by_trainer_at && (
                           <p className="mt-1 text-xs text-muted-foreground">Mickey has this one</p>
