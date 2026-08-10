@@ -115,14 +115,16 @@ export function CreateSessionModal({
               <div className="flex gap-[8px] items-center justify-between relative shrink-0 w-full">
                 <div />
                 {editingSession && (
-                  <div
-                    className="relative shrink-0 size-[24px] cursor-pointer opacity-100 hover:opacity-70"
+                  <button
+                    type="button"
+                    className="shrink-0 size-6 cursor-pointer text-foreground hover:opacity-70"
                     onClick={handleDelete}
+                    aria-label="Delete session"
                   >
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                      <path d={deleteIconPaths.pf5e3c80} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                    <svg className="block size-full" fill="none" viewBox="0 0 24 24">
+                      <path d={deleteIconPaths.pf5e3c80} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
                     </svg>
-                  </div>
+                  </button>
                 )}
               </div>
             </div>
