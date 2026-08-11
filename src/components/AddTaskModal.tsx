@@ -279,9 +279,11 @@ export function AddTaskModal({ isOpen, onClose, onAddTask, onUpdateTask, onDelet
   };
 
   const getSelectedListColor = () => {
-    if (selectedListId === null) return "#E1E6EE";
+    // No list chosen, or an id that matches none: inherit the chip's own
+    // text-foreground, the way the Deadline and Session chips beside it do.
+    if (selectedListId === null) return "currentColor";
     const list = lists.find(l => l.id === selectedListId);
-    return list ? list.color : "#E1E6EE";
+    return list ? list.color : "currentColor";
   };
 
   const handleSelectMilestone = (milestoneId: number) => {

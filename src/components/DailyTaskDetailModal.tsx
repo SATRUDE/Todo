@@ -196,13 +196,13 @@ export function DailyTaskDetailModal({
               <div className="content-center flex flex-wrap gap-[8px] items-center relative shrink-0 w-full">
                 {/* Add to List Button */}
                 <div 
-                  className="bg-secondary flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-secondary/90"
+                  className="bg-secondary text-foreground flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-secondary/90"
                   onClick={() => setIsSelectListOpen(true)}
                 >
                   <div className="relative shrink-0 size-[20px]">
                     <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
                       <g>
-                        <path d={svgPaths.p1dfd6800} stroke="#E1E6EE" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
+                        <path d={svgPaths.p1dfd6800} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" />
                       </g>
                     </svg>
                   </div>

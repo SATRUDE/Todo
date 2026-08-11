@@ -470,9 +470,12 @@ export function TaskDetailModal({ isOpen, onClose, task, onUpdateTask, onDeleteT
   };
 
   const getSelectedListColor = () => {
-    if (selectedListId === null) return "var(--muted-foreground)";
+    // var(--muted-foreground) is a bare HSL triplet, not a colour, so it was
+    // an invalid value that fell back to the inherited foreground anyway.
+    // currentColor says the same thing and says it on purpose.
+    if (selectedListId === null) return "currentColor";
     const list = lists.find(l => l.id === selectedListId);
-    return list ? list.color : "var(--muted-foreground)";
+    return list ? list.color : "currentColor";
   };
 
   const getSelectedMilestoneName = () => {
