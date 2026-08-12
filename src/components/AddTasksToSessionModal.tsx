@@ -154,9 +154,9 @@ export function AddTasksToSessionModal({
         <div className="bg-background flex flex-col rounded-tl-[32px] rounded-tr-[32px] w-full desktop-bottom-sheet" style={{ maxHeight: "85vh" }}>
           {/* Handle */}
           <div className="flex justify-center pt-5 pb-2 shrink-0">
-            <div className="h-[20px] w-[100px]">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 100 20">
-                <line stroke="#E1E6EE" strokeLinecap="round" strokeOpacity="0.1" strokeWidth="6" x1="13" x2="87" y1="7" y2="7" />
+            <div className="h-5 w-24 shrink-0 text-muted-foreground">
+              <svg className="block size-full" fill="none" viewBox="0 0 100 20" stroke="currentColor" strokeLinecap="round" strokeOpacity="0.3" strokeWidth="5">
+                <line x1="13" x2="87" y1="10" y2="10" />
               </svg>
             </div>
           </div>
