@@ -65,7 +65,11 @@ function DrawerContent({
         )}
         {...props}
       >
-        <div className="bg-muted mx-auto mt-4 hidden h-2 w-[100px] shrink-0 rounded-full group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
+        {/* Diverges from upstream shadcn, which uses bg-muted: on the light card
+            that is #F4F4F5 on #FFFFFF, 1.10:1, so the handle all but disappears in
+            the theme Mark uses daily. bg-muted-foreground/30 is the same value the
+            hand-rolled sheets draw their handle at. Keep on `shadcn add drawer`. */}
+        <div className="bg-muted-foreground/30 mx-auto mt-4 hidden h-2 w-[100px] shrink-0 rounded-full group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
         {children}
       </DrawerPrimitive.Content>
     </DrawerPortal>
