@@ -255,14 +255,20 @@ export function ReviewMissedDeadlinesModal({
                     {/* Action Buttons */}
                     <div className="flex gap-[8px] items-start relative shrink-0" data-node-id="36:545">
                       {/* New Deadline Button */}
-                      <div 
-                        className="bg-[rgba(11,100,249,0.25)] flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(11,100,249,0.3)] transition-colors"
+                      <button
+                        type="button"
+                        className="flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
                         onClick={() => {
                           if (onNewDeadlineClick) {
                             onNewDeadlineClick(todo);
                           }
                         }}
-                        style={{ backgroundColor: 'rgba(11,100,249,0.25)', borderRadius: '100px' }}
+                        style={{
+                          backgroundColor: 'hsl(var(--status-info-bg))',
+                          color: 'hsl(var(--status-info-fg))',
+                          borderRadius: '100px',
+                        }}
+                        aria-label={`Set a new deadline for ${todo.text}`}
                         data-node-id="36:532"
                       >
                         <div className="relative shrink-0 size-[20px]" data-node-id="36:533">
@@ -275,7 +281,7 @@ export function ReviewMissedDeadlinesModal({
                             <g>
                               <path
                                 d={iconPaths.p186add80}
-                                stroke="#4b93f8"
+                                stroke="currentColor"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth="1.25"
@@ -283,22 +289,27 @@ export function ReviewMissedDeadlinesModal({
                             </g>
                           </svg>
                         </div>
-                        <p 
-                          className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" 
-                          style={{ color: '#4b93f8' }}
+                        <span
+                          className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre"
                           data-node-id="36:535"
                         >
                           New deadline
-                        </p>
-                      </div>
+                        </span>
+                      </button>
 
                       {/* Delete Button */}
-                      <div 
-                        className="bg-[rgba(239,65,35,0.2)] flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[rgba(239,65,35,0.25)] transition-colors"
+                      <button
+                        type="button"
+                        className="flex gap-[4px] items-center justify-center px-[16px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
                         onClick={() => {
                           onDeleteTask(todo.id);
                         }}
-                        style={{ backgroundColor: 'rgba(239,65,35,0.2)', borderRadius: '100px' }}
+                        style={{
+                          backgroundColor: 'hsl(var(--status-bad-bg))',
+                          color: 'hsl(var(--status-bad-fg))',
+                          borderRadius: '100px',
+                        }}
+                        aria-label={`Delete ${todo.text}`}
                         data-node-id="36:537"
                       >
                         <div className="relative shrink-0 size-[20px]" data-node-id="36:542">
@@ -311,7 +322,7 @@ export function ReviewMissedDeadlinesModal({
                             <g>
                               <path
                                 d={iconPaths.pf5e3c80}
-                                stroke="#ef4123"
+                                stroke="currentColor"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth="1.5"
@@ -319,14 +330,13 @@ export function ReviewMissedDeadlinesModal({
                             </g>
                           </svg>
                         </div>
-                        <p 
-                          className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre" 
-                          style={{ color: '#ef4123' }}
+                        <span
+                          className="font-normal font-normal leading-[1.5] not-italic relative shrink-0 text-[18px] text-nowrap tracking-[-0.198px] whitespace-pre"
                           data-node-id="36:540"
                         >
                           Delete
-                        </p>
-                      </div>
+                        </span>
+                      </button>
                     </div>
                   </div>
                 );
