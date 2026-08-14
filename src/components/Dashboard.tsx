@@ -92,17 +92,29 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCom
         </h1>
 
         <div className="flex flex-col gap-4 w-full">
+          {/*
+            Two accents per tile: the -700 step for light, the original for dark.
+            The bright steps were picked on a near-black ground and measure 1.9
+            to 3.8 to 1 on the light card, so ten of the eleven labels sat under
+            AA in the theme Mark uses daily.
+
+            Not a dark: variant, on purpose. See the note in src/lib/goalStatus.ts:
+            this project declares no custom dark variant, so dark: compiles to a
+            prefers-color-scheme query and follows the operating system, while the
+            app's theme is a .dark class set from its own switch with enableSystem
+            off. [.dark_&]: targets that class directly.
+          */}
           <div className="flex gap-4 w-full">
             <DashboardCard
               label="Calendar sync"
               iconPath="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
-              colorClass="text-emerald-400"
+              colorClass="text-emerald-700 [.dark_&]:text-emerald-400"
               onClick={onNavigateToCalendarSync ?? (() => {})}
             />
             <DashboardCard
               label="Common tasks"
               iconPath="m9 9 6-6m0 0 6 6m-6-6v12a6 6 0 0 1-12 0v-3"
-              colorClass="text-orange-500"
+              colorClass="text-orange-700 [.dark_&]:text-orange-500"
               onClick={onNavigateToCommonTasks ?? (() => {})}
             />
           </div>
@@ -117,7 +129,7 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCom
             <DashboardCard
               label="Goals"
               iconPath="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0"
-              colorClass="text-blue-400"
+              colorClass="text-blue-700 [.dark_&]:text-blue-400"
               onClick={onNavigateToGoals ?? (() => {})}
             />
           </div>
@@ -126,13 +138,13 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCom
             <DashboardCard
               label="Notes"
               iconPath="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"
-              colorClass="text-violet-400"
+              colorClass="text-violet-700 [.dark_&]:text-violet-400"
               onClick={() => onNavigateToNotes?.()}
             />
             <DashboardCard
               label="Drink water"
               iconPath="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5S13 5.64 13 3c0 2.64 1 4.5 3 6.5s3 4.5 3 6.5a7 7 0 0 1-6 6.92"
-              colorClass="text-cyan-500"
+              colorClass="text-cyan-700 [.dark_&]:text-cyan-500"
               onClick={onNavigateToDrinkWater ?? (() => {})}
             />
           </div>
@@ -141,7 +153,7 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCom
             <DashboardCard
               label="Menu"
               iconPath="M3 11h18M5 11a7 7 0 0 0 14 0M8.5 11V9.5a3.5 3.5 0 0 1 7 0V11M12 21v-3m-5 3h10"
-              colorClass="text-amber-500"
+              colorClass="text-amber-700 [.dark_&]:text-amber-500"
               onClick={onNavigateToMenus ?? (() => {})}
             />
           </div>
@@ -150,16 +162,16 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCom
             <DashboardCard
               label="Sessions"
               iconPath="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"
-              colorClass="text-violet-400"
+              colorClass="text-violet-700 [.dark_&]:text-violet-400"
               onClick={onNavigateToFocusSessions ?? (() => {})}
             />
             <DashboardCard
               label="Calories"
               iconPath="M12 2.25c-.5 1.5-2 3-2 4.5 0 1.5 1 2.25 2 2.25s2-.75 2-2.25c0-1.5-1.5-3-2-4.5ZM7.5 11.25a4.5 4.5 0 0 0-1.5 3.5C6 18 9 21.75 12 21.75s6-3.75 6-7a4.5 4.5 0 0 0-1.5-3.5c-1 0-1.5 1-1.5 2 0 .75-.5 1.5-1.5 1.5h-3c-1 0-1.5-.75-1.5-1.5 0-1-.5-2-1.5-2Z"
-              colorClass="text-rose-400"
+              colorClass="text-rose-700 [.dark_&]:text-rose-400"
               onClick={onNavigateToCalorieCounter ?? (() => {})}
               subtitle={calorieSubtitle?.text}
-              subtitleClass={calorieSubtitle?.over ? "text-red-500" : "text-muted-foreground"}
+              subtitleClass={calorieSubtitle?.over ? "text-red-700 [.dark_&]:text-red-500" : "text-muted-foreground"}
             />
           </div>
 
@@ -167,7 +179,7 @@ export function Dashboard({ onAddTask, onNavigateToCalendarSync, onNavigateToCom
             <DashboardCard
               label="Workouts"
               iconPath="M6.75 6.75v10.5m-3-8.25v6m13.5-8.25v10.5m3-8.25v6M6.75 12h10.5"
-              colorClass="text-lime-500"
+              colorClass="text-lime-700 [.dark_&]:text-lime-500"
               onClick={onNavigateToWorkouts ?? (() => {})}
             />
           </div>
