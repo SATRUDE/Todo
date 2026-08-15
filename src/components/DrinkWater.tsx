@@ -88,10 +88,14 @@ export function DrinkWater({ onBack }: { onBack: () => void }) {
       </header>
 
       <div className="flex flex-1 flex-col gap-6 overflow-auto px-4 py-6 pb-[100px]">
-        <Card className="border-0 bg-gradient-to-br from-cyan-50 to-sky-50 dark:from-cyan-950/30 dark:to-sky-950/30">
+        {/* Accent colours carry a light step and a dark step. The dark half is
+            written [.dark_&]: and not dark:, because this project declares no
+            custom dark variant, so dark: compiles to a prefers-color-scheme
+            query and follows the phone rather than the app's own theme switch. */}
+        <Card className="border-0 bg-gradient-to-br from-cyan-50 to-sky-50 [.dark_&]:from-cyan-950/30 [.dark_&]:to-sky-950/30">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-3">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-cyan-500/20 text-cyan-600 dark:text-cyan-400">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-cyan-500/20 text-cyan-700 [.dark_&]:text-cyan-400">
                 <Droplets className="size-7" />
               </div>
               <div>
@@ -142,7 +146,7 @@ export function DrinkWater({ onBack }: { onBack: () => void }) {
                   key={log.id}
                   className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3"
                 >
-                  <CheckCircle2 className="size-5 shrink-0 text-cyan-500" />
+                  <CheckCircle2 className="size-5 shrink-0 text-cyan-700 [.dark_&]:text-cyan-500" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground">
                       Sent at {formatTime(log.scheduled_slot)}
