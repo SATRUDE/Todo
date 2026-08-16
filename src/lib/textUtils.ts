@@ -2,6 +2,18 @@ import React from 'react';
 
 /**
  * Converts URLs in text to clickable links
+ *
+ * The link takes no colour of its own: it inherits from the paragraph it sits
+ * in, and the underline carries the affordance. It used to be a hardcoded
+ * #5b5d62, set twice over as a Tailwind arbitrary class and as an inline
+ * style, so nothing theme-aware could override it. That grey was chosen on the
+ * near-black ground and measured 3.02:1 there, under the 4.5:1 body text needs.
+ *
+ * Inheriting rather than naming a token is deliberate. Every one of the ten
+ * call sites wraps the text in either text-muted-foreground or text-foreground,
+ * both of which are AA in both themes, so the link is correct on every surface
+ * by construction and cannot drift when a caller changes its copy colour.
+ *
  * @param text The text that may contain URLs
  * @returns React node with clickable links for URLs
  */
@@ -37,8 +49,8 @@ export function linkifyText(text: string): React.ReactNode {
           href,
           target: '_blank',
           rel: 'noopener noreferrer',
-          className: 'text-[#5b5d62] underline break-all',
-          style: { textDecoration: 'underline', color: '#5b5d62' },
+          className: 'underline break-all',
+          style: { textDecoration: 'underline' },
           onClick: (e: React.MouseEvent<HTMLAnchorElement>) => e.stopPropagation()
         },
         displayUrl
