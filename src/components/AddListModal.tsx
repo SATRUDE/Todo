@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent, useEffect, useRef } from "react";
+import { useState, KeyboardEvent, useEffect, useRef, CSSProperties } from "react";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 import { createPortal } from "react-dom";
@@ -31,6 +31,27 @@ interface AddListModalProps {
   folders?: ListFolder[];
   onUpdateFolder?: (folderId: number, folderName: string) => void;
   onDeleteFolder?: (folderId: number) => void;
+}
+
+// The folder chips take the same shape as taskStatusPillStyle in lib/taskStatus.ts:
+// a quiet secondary fill when unselected, the status-info pair when selected.
+// The ring is not decoration. Selected and unselected fills differ in hue but
+// barely in luminance (1.17:1 light, 1.07:1 dark, measured), so the fill alone
+// cannot carry the state. The ring is 9.47:1 light and 9.53:1 dark against the
+// sheet, and presence-of-ring is a shape difference rather than a colour one.
+// Both states carry a 1px border so selecting a chip cannot reflow the row.
+function folderChipStyle(isSelected: boolean): CSSProperties {
+  return isSelected
+    ? {
+        backgroundColor: 'hsl(var(--status-info-bg))',
+        color: 'hsl(var(--status-info-fg))',
+        borderColor: 'hsl(var(--status-info-fg))',
+      }
+    : {
+        backgroundColor: 'hsl(var(--secondary))',
+        color: 'hsl(var(--secondary-foreground))',
+        borderColor: 'transparent',
+      };
 }
 
 export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDeleteList, editingList, folders = [], onUpdateFolder, onDeleteFolder }: AddListModalProps) {
@@ -178,19 +199,14 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
             {/* Folder picker - full-width block with 16px padding (no overflow clip) */}
             {folders.length > 0 ? (
               <div className="flex flex-col gap-[8px] items-start relative shrink-0 w-full" style={{ paddingLeft: 16, paddingRight: 16 }}>
-                <div ref={folderChipsRowRef} className="flex flex-wrap items-center w-full" style={{ gap: 16 }}>
+                <div ref={folderChipsRowRef} className="flex flex-wrap items-center w-full" style={{ gap: 16 }} role="group" aria-label="Folder for this list">
                   <button
                     ref={firstChipRef}
                     type="button"
                     onClick={() => setSelectedFolderId(null)}
+                    aria-pressed={selectedFolderId === null}
                     className="px-[12px] py-[6px] rounded-[100px] text-[14px] border transition-colors"
-                    style={{
-                      backgroundColor: selectedFolderId === null ? 'rgba(11, 100, 249, 0.25)' : 'rgba(225, 230, 238, 0.1)',
-                      color: selectedFolderId === null ? '#4b93f8' : '#e1e6ee',
-                      border: 'none',
-                      paddingLeft: 12,
-                      paddingRight: 12,
-                    }}
+                    style={folderChipStyle(selectedFolderId === null)}
                   >
                     No folder
                   </button>
@@ -199,14 +215,9 @@ export function AddListModal({ isOpen, onClose, onAddList, onUpdateList, onDelet
                       key={folder.id}
                       type="button"
                       onClick={() => setSelectedFolderId(folder.id)}
+                      aria-pressed={selectedFolderId === folder.id}
                       className="px-[12px] py-[6px] rounded-[100px] text-[14px] border transition-colors"
-                      style={{
-                        backgroundColor: selectedFolderId === folder.id ? 'rgba(11, 100, 249, 0.25)' : 'rgba(225, 230, 238, 0.1)',
-                        color: selectedFolderId === folder.id ? '#4b93f8' : '#e1e6ee',
-                        border: 'none',
-                        paddingLeft: 12,
-                        paddingRight: 12,
-                      }}
+                      style={folderChipStyle(selectedFolderId === folder.id)}
                     >
                       {folder.name}
                     </button>
