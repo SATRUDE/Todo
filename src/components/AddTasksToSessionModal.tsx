@@ -175,7 +175,7 @@ export function AddTasksToSessionModal({
 
           {/* Search */}
           <div className="px-5 pb-3 shrink-0">
-            <div className="flex items-center gap-2 bg-[rgba(225,230,238,0.08)] rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 bg-secondary rounded-xl px-3 py-2">
               <Search className="size-4 text-muted-foreground shrink-0" />
               <input
                 type="text"
@@ -202,11 +202,11 @@ export function AddTasksToSessionModal({
                       <button
                         key={task.id}
                         type="button"
-                        className="flex items-center gap-3 w-full text-left py-2 px-3 rounded-lg hover:bg-[rgba(225,230,238,0.05)] transition-colors"
+                        className="flex items-center gap-3 w-full text-left py-2 px-3 rounded-lg hover:bg-accent transition-colors"
                         onClick={() => toggleTask(task.id)}
                       >
                         {/* Checkbox */}
-                        <div className="shrink-0 size-5 rounded-full border border-[rgba(225,230,238,0.3)] flex items-center justify-center"
+                        <div className="shrink-0 size-5 rounded-full border border-muted-foreground flex items-center justify-center"
                           style={selectedIds.has(task.id) ? { backgroundColor: "#0b64f9", borderColor: "#0b64f9" } : {}}>
                           {selectedIds.has(task.id) && (
                             <svg className="size-3" fill="none" viewBox="0 0 12 12" stroke="white" strokeWidth="2">
@@ -224,15 +224,13 @@ export function AddTasksToSessionModal({
           </div>
 
           {/* Add button */}
-          <div className="px-5 pb-10 pt-3 shrink-0 border-t border-[rgba(225,230,238,0.08)]">
+          <div className="px-5 pb-10 pt-3 shrink-0 border-t border-border">
             <button
               type="button"
-              className="w-full py-3 rounded-xl text-base font-medium transition-opacity"
-              style={{
-                backgroundColor: selectedIds.size > 0 ? "#0b64f9" : "#3a3a3a",
-                color: "#e1e6ee",
-                opacity: selectedIds.size > 0 ? 1 : 0.5,
-              }}
+              className={`w-full py-3 rounded-xl text-base font-medium transition-colors ${
+                selectedIds.size > 0 ? "text-white" : "bg-muted text-muted-foreground"
+              }`}
+              style={selectedIds.size > 0 ? { backgroundColor: "#0b64f9" } : undefined}
               onClick={handleAdd}
               disabled={selectedIds.size === 0}
             >
