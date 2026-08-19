@@ -126,7 +126,22 @@ export function SearchPage({
           </h1>
         </header>
 
-        {/* Search input */}
+        {/* Search input.
+            The dark half is written [.dark_&]: and not dark:, because this
+            project declares no custom dark variant, so dark: compiles to a
+            prefers-color-scheme query and follows the phone rather than the
+            app's own theme switch. Same rule as DrinkWater.tsx:91 and
+            Dashboard.tsx:100; see src/lib/goalStatus.ts:10.
+            The field carries its own fill rather than the base Input's
+            bg-transparent, so it stays a field and not a bare underline. In
+            light that fill is deliberately the same white as the page, which
+            is what the fixed !bg-white used to give; it is written as a token
+            so it follows the theme if the page's surface ever changes. The
+            placeholder overrides are gone: the base Input already sets
+            placeholder:text-muted-foreground.
+            The field's own edge is still only border-border, 1.27:1 in light
+            and 1.34:1 in dark, which is under 1.4.11. That is the --border /
+            --input / --secondary collapse, not this change, and it is filed. */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -134,7 +149,7 @@ export function SearchPage({
             placeholder="Search tasks and notes"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="h-12 pl-10 !bg-white !border-border !text-gray-900 placeholder:!text-muted-foreground focus-visible:ring-violet-500/30 dark:!bg-input dark:!text-foreground dark:placeholder:!text-muted-foreground"
+            className="h-12 pl-10 !bg-background [.dark_&]:!bg-input !border-border !text-foreground focus-visible:ring-violet-500/30"
             autoFocus
           />
         </div>
