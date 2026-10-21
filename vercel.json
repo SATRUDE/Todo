@@ -3,28 +3,6 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": "vite",
-  "crons": [
-{
-    "path": "/api/reminders",
-    "schedule": "* * * * *"
-  },
-  {
-    "path": "/api/reminders-overdue",
-    "schedule": "0 9,13,17,21 * * *"
-  },
-  {
-    "path": "/api/water-reminders",
-    "schedule": "*/10 * * * *"
-  },
-    {
-      "path": "/api/calendar/sync-cron",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/generate-tasks",
-      "schedule": "0 23 * * *"
-    }
-  ],
   "rewrites": [
     {
       "source": "/(.*)",
@@ -32,4 +10,3 @@
     }
   ]
 }
-
